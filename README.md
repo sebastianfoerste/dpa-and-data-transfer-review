@@ -1,10 +1,10 @@
 # dpa-and-data-transfer-review
 
-Deterministic, cited first-pass review of a **Data Processing Agreement (DPA)** and its **international data transfers** under the GDPR (with a CCPA/CPRA secondary check). It produces a **review packet** with a visible review state — `BLOCKED`, `NEEDS_REVIEW`, or `CLEARED_FOR_REVIEW` — and a non-zero exit code when the packet is blocked, so it can gate a workflow.
-
-This is a review and triage artifact, **not legal advice**. All bundled data is **synthetic**.
+Deterministic, cited GDPR Art. 28 + Chapter V transfer checks; produces a review packet with a visible review state and a gating exit code. Not legal advice; data is synthetic.
 
 > **If you don't code:** scroll to [What the demo produces](#what-the-demo-produces). The repository ships a sample output you can read in the browser — a cited checklist with a clear review state. The point is not the code; it is whether the legal review is structured, cited, reviewable, and testable.
+
+![demo](docs/demo.png)
 
 ## Why this exists
 
