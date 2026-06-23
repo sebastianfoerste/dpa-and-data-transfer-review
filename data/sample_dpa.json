@@ -1,0 +1,42 @@
+{
+  "agreement": "Synthetic SaaS Data Processing Agreement",
+  "controller": "Acme SaaS GmbH (synthetic)",
+  "processor": "Vendor Cloud Inc. (synthetic)",
+  "roles_defined": true,
+  "processing": {
+    "subject_matter": true,
+    "duration": true,
+    "nature_and_purpose": true,
+    "data_types": ["account data", "usage logs", "support correspondence"],
+    "data_subjects": ["customer end users"]
+  },
+  "art28_clauses": {
+    "process_on_documented_instructions": true,
+    "confidentiality_commitment": true,
+    "security_measures_art32": true,
+    "subprocessor_authorization": "general",
+    "subprocessor_flowdown": false,
+    "assist_data_subject_requests": true,
+    "assist_security_breach": true,
+    "delete_or_return_on_termination": true,
+    "audit_and_inspection_rights": true
+  },
+  "breach_notification": {
+    "controller_notifies_authority_art33": true,
+    "processor_notifies_controller": true,
+    "timing": "without undue delay"
+  },
+  "subprocessors": [
+    {"name": "EU Hosting SARL", "country": "FR", "purpose": "hosting"},
+    {"name": "Support Tools LLC", "country": "US", "purpose": "support desk", "transfer_mechanism": "none"},
+    {"name": "Analytics KK", "country": "JP", "purpose": "product analytics"}
+  ],
+  "transfers": {
+    "destinations": ["FR", "US", "JP"],
+    "mechanisms": {"FR": "none", "US": "none", "JP": "adequacy"},
+    "transfer_impact_assessment": false
+  },
+  "ccpa": {
+    "service_provider_terms": true
+  }
+}

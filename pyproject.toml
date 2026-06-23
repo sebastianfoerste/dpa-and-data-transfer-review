@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dpa-review"
+version = "0.1.0"
+description = "Deterministic, cited first-pass review of a DPA and its international data transfers."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Sebastian Förste" }]
+keywords = ["gdpr", "dpa", "data-transfers", "legal-engineering", "compliance"]
+dependencies = []
+
+[project.scripts]
+dpa-review = "dpa_review.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

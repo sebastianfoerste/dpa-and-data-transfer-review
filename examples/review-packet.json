@@ -1,0 +1,195 @@
+{
+  "title": "Synthetic SaaS Data Processing Agreement — review packet",
+  "review_state": "BLOCKED",
+  "summary": {
+    "total": 20,
+    "present": 17,
+    "missing": 3,
+    "needs_review": 0,
+    "high_open": 3,
+    "medium_open": 0
+  },
+  "disclaimer": "This is an automated first-pass review packet generated from a checklist of deterministic rules. It is not legal advice, does not create a lawyer-client relationship, and must be reviewed by a qualified lawyer before any decision. All data in the bundled example is synthetic.",
+  "findings": [
+    {
+      "rule_id": "subprocessor.flowdown",
+      "title": "Sub-processor flow-down of data-protection obligations",
+      "citation": "GDPR Art. 28(4)",
+      "severity": "HIGH",
+      "status": "MISSING",
+      "detail": "The DPA does not flow the same data-protection obligations down to sub-processors.",
+      "remediation": "Add a clause imposing materially equivalent obligations on every sub-processor (Art. 28(4))."
+    },
+    {
+      "rule_id": "transfer.subprocessor.support_tools_llc",
+      "title": "Sub-processor transfer: Support Tools LLC (US)",
+      "citation": "GDPR Art. 28(4) / Art. 44-46",
+      "severity": "HIGH",
+      "status": "MISSING",
+      "detail": "Support Tools LLC processes data in US. Transfer to US has no valid Chapter V mechanism (no adequacy, SCCs, BCR, or Art. 49 derogation).",
+      "remediation": "Confirm the transfer mechanism covering Support Tools LLC in US."
+    },
+    {
+      "rule_id": "transfer.us",
+      "title": "International transfer to US",
+      "citation": "GDPR Art. 44-46",
+      "severity": "HIGH",
+      "status": "MISSING",
+      "detail": "Transfer to US has no valid Chapter V mechanism (no adequacy, SCCs, BCR, or Art. 49 derogation).",
+      "remediation": "Document a valid Art. 46 safeguard for US (or an Art. 49 derogation) and record the basis."
+    },
+    {
+      "rule_id": "art28.assist_data_subject_requests",
+      "title": "Assistance with data-subject rights requests",
+      "citation": "GDPR Art. 28(3)(e)",
+      "severity": "HIGH",
+      "status": "PRESENT",
+      "detail": "Clause 'Assistance with data-subject rights requests' is present in the DPA.",
+      "remediation": ""
+    },
+    {
+      "rule_id": "art28.assist_security_breach",
+      "title": "Assistance with security, breach, DPIA obligations",
+      "citation": "GDPR Art. 28(3)(f)",
+      "severity": "HIGH",
+      "status": "PRESENT",
+      "detail": "Clause 'Assistance with security, breach, DPIA obligations' is present in the DPA.",
+      "remediation": ""
+    },
+    {
+      "rule_id": "art28.audit_and_inspection_rights",
+      "title": "Audit and inspection rights",
+      "citation": "GDPR Art. 28(3)(h)",
+      "severity": "HIGH",
+      "status": "PRESENT",
+      "detail": "Clause 'Audit and inspection rights' is present in the DPA.",
+      "remediation": ""
+    },
+    {
+      "rule_id": "art28.confidentiality_commitment",
+      "title": "Confidentiality commitment for authorised persons",
+      "citation": "GDPR Art. 28(3)(b)",
+      "severity": "HIGH",
+      "status": "PRESENT",
+      "detail": "Clause 'Confidentiality commitment for authorised persons' is present in the DPA.",
+      "remediation": ""
+    },
+    {
+      "rule_id": "art28.delete_or_return_on_termination",
+      "title": "Deletion or return of data on termination",
+      "citation": "GDPR Art. 28(3)(g)",
+      "severity": "HIGH",
+      "status": "PRESENT",
+      "detail": "Clause 'Deletion or return of data on termination' is present in the DPA.",
+      "remediation": ""
+    },
+    {
+      "rule_id": "art28.process_on_documented_instructions",
+      "title": "Processing only on documented instructions",
+      "citation": "GDPR Art. 28(3)(a)",
+      "severity": "HIGH",
+      "status": "PRESENT",
+      "detail": "Clause 'Processing only on documented instructions' is present in the DPA.",
+      "remediation": ""
+    },
+    {
+      "rule_id": "art28.security_measures_art32",
+      "title": "Security of processing (technical & organisational measures)",
+      "citation": "GDPR Art. 28(3)(c) / Art. 32",
+      "severity": "HIGH",
+      "status": "PRESENT",
+      "detail": "Clause 'Security of processing (technical & organisational measures)' is present in the DPA.",
+      "remediation": ""
+    },
+    {
+      "rule_id": "breach.processor_notifies",
+      "title": "Personal-data breach notification to controller",
+      "citation": "GDPR Art. 33(2)",
+      "severity": "HIGH",
+      "status": "PRESENT",
+      "detail": "Processor notifies controller; timing recorded as 'without undue delay'.",
+      "remediation": ""
+    },
+    {
+      "rule_id": "subprocessor.authorization",
+      "title": "Sub-processor authorisation",
+      "citation": "GDPR Art. 28(2)",
+      "severity": "HIGH",
+      "status": "PRESENT",
+      "detail": "Sub-processor authorisation is 'general'.",
+      "remediation": ""
+    },
+    {
+      "rule_id": "processing.data_types",
+      "title": "Processing description: categories of personal data",
+      "citation": "GDPR Art. 28(3)",
+      "severity": "MEDIUM",
+      "status": "PRESENT",
+      "detail": "Categories of personal data are listed: account data, usage logs, support correspondence.",
+      "remediation": ""
+    },
+    {
+      "rule_id": "processing.duration",
+      "title": "Processing description: duration of the processing",
+      "citation": "GDPR Art. 28(3)",
+      "severity": "MEDIUM",
+      "status": "PRESENT",
+      "detail": "The DPA specifies the duration of the processing.",
+      "remediation": ""
+    },
+    {
+      "rule_id": "processing.nature_and_purpose",
+      "title": "Processing description: nature and purpose of the processing",
+      "citation": "GDPR Art. 28(3)",
+      "severity": "MEDIUM",
+      "status": "PRESENT",
+      "detail": "The DPA specifies the nature and purpose of the processing.",
+      "remediation": ""
+    },
+    {
+      "rule_id": "processing.subject_matter",
+      "title": "Processing description: subject matter of the processing",
+      "citation": "GDPR Art. 28(3)",
+      "severity": "MEDIUM",
+      "status": "PRESENT",
+      "detail": "The DPA specifies the subject matter of the processing.",
+      "remediation": ""
+    },
+    {
+      "rule_id": "ccpa.service_provider_terms",
+      "title": "CCPA/CPRA service-provider terms",
+      "citation": "CCPA §1798.140(ag); CPRA §1798.100(d)",
+      "severity": "LOW",
+      "status": "PRESENT",
+      "detail": "Service-provider / contractor terms restricting sale and retention are present.",
+      "remediation": ""
+    },
+    {
+      "rule_id": "transfer.jp",
+      "title": "International transfer to JP",
+      "citation": "GDPR Art. 44-46",
+      "severity": "LOW",
+      "status": "PRESENT",
+      "detail": "JP benefits from an adequacy decision (Art. 45).",
+      "remediation": ""
+    },
+    {
+      "rule_id": "transfer.subprocessor.analytics_kk",
+      "title": "Sub-processor transfer: Analytics KK (JP)",
+      "citation": "GDPR Art. 28(4) / Art. 44-46",
+      "severity": "LOW",
+      "status": "PRESENT",
+      "detail": "Analytics KK processes data in JP. JP benefits from an adequacy decision (Art. 45).",
+      "remediation": ""
+    },
+    {
+      "rule_id": "transfer.fr",
+      "title": "International transfer to FR",
+      "citation": "GDPR Art. 44-46",
+      "severity": "INFO",
+      "status": "PRESENT",
+      "detail": "FR is within the EEA; no Chapter V transfer mechanism required.",
+      "remediation": ""
+    }
+  ]
+}
