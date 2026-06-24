@@ -89,3 +89,25 @@ This is a **first-pass triage** tool over a structured representation of a DPA. 
 ## License
 
 MIT. See [`LICENSE`](LICENSE).
+
+## Human-authored legal judgment
+AI tools assisted the implementation, but the parts that carry the value are
+human-authored: the legal answer sets, risk taxonomy, escalation logic, citations,
+and review states. The point of this repository is not code volume — it is showing
+how legal judgment can be made structured, testable, and reviewable.
+
+## Business use case
+A scaling AI SaaS company receives recurring vendor, customer, and sub-processor
+reviews. The questions repeat, but the risk is not zero. This shows how first-pass
+privacy review becomes structured, cited, and reviewable while preserving escalation,
+source visibility, and human judgment.
+
+## Known limitations
+A public-safe prototype, not legal advice.
+1. Operates over a structured representation of a DPA, not free-text contracts.
+2. The adequacy/transfer reference data is illustrative — verify against current
+   European Commission decisions before any real use.
+3. One jurisdiction lens (GDPR + a CCPA secondary check).
+4. No integration with a real CLM or ticketing system.
+Next production step: free-text ingestion, current adequacy data as a maintained
+source, and CLM integration.
