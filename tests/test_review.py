@@ -54,7 +54,7 @@ class SamplePacket(unittest.TestCase):
         self.assertEqual(finding.citation, "GDPR Art. 28(4)")
 
     def test_overall_state_is_blocked(self):
-        # Open HIGH findings must block the packet — the equivalent of "marked for rejection".
+        # Open HIGH findings must block the packet, the equivalent of "marked for rejection".
         self.assertEqual(self.packet.review_state, "BLOCKED")
 
     def test_every_finding_has_a_citation(self):

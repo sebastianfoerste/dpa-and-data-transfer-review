@@ -1,10 +1,10 @@
-# Synthetic SaaS Data Processing Agreement — review packet
+# Synthetic SaaS Data Processing Agreement review packet
 
 **Review state: BLOCKED**
 
-> BLOCKED — open high-severity findings must be resolved before this DPA can be relied on.
+> BLOCKED: open high-severity findings must be resolved before this DPA can be relied on.
 
-Checks: 20 · present 17 · missing 3 · needs-review 0 · open high 3 · open medium 0
+Checks: 20, present 17, missing 3, needs-review 0, open high 3, open medium 0
 
 ## Open findings
 
