@@ -80,14 +80,14 @@ def build_packet(dpa: dict) -> ReviewPacket:
     )
     summary = _summarise(findings)
     state = _decide_state(summary)
-    title = dpa.get("agreement", "Data Processing Agreement") + " — review packet"
+    title = dpa.get("agreement", "Data Processing Agreement") + " review packet"
     return ReviewPacket(title=title, review_state=state, summary=summary, findings=findings)
 
 
 _STATE_BANNER = {
-    "BLOCKED": "BLOCKED — open high-severity findings must be resolved before this DPA can be relied on.",
-    "NEEDS_REVIEW": "NEEDS REVIEW — open items require a lawyer's judgement.",
-    "CLEARED_FOR_REVIEW": "CLEARED FOR REVIEW — no open high or medium findings; lawyer sign-off still required.",
+    "BLOCKED": "BLOCKED: open high-severity findings must be resolved before this DPA can be relied on.",
+    "NEEDS_REVIEW": "NEEDS REVIEW: open items require a lawyer's judgement.",
+    "CLEARED_FOR_REVIEW": "CLEARED FOR REVIEW: no open high or medium findings; lawyer sign-off still required.",
 }
 
 _STATUS_MARK = {"PRESENT": "[ok]", "MISSING": "[missing]", "NEEDS_REVIEW": "[review]"}
@@ -103,9 +103,9 @@ def render_markdown(packet: ReviewPacket) -> str:
     lines.append(f"> {_STATE_BANNER[packet.review_state]}")
     lines.append("")
     lines.append(
-        f"Checks: {s['total']} · present {s['present']} · "
-        f"missing {s['missing']} · needs-review {s['needs_review']} · "
-        f"open high {s['high_open']} · open medium {s['medium_open']}"
+        f"Checks: {s['total']}, present {s['present']}, "
+        f"missing {s['missing']}, needs-review {s['needs_review']}, "
+        f"open high {s['high_open']}, open medium {s['medium_open']}"
     )
     lines.append("")
 
@@ -117,7 +117,7 @@ def render_markdown(packet: ReviewPacket) -> str:
         lines.append("| --- | --- | --- | --- | --- |")
         for f in open_findings:
             lines.append(
-                f"| {f.severity} | {_STATUS_MARK[f.status]} | {f.title} | {f.citation} | {f.remediation or '—'} |"
+                f"| {f.severity} | {_STATUS_MARK[f.status]} | {f.title} | {f.citation} | {f.remediation or 'n/a'} |"
             )
         lines.append("")
 

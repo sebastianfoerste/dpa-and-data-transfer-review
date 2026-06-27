@@ -1,4 +1,4 @@
-"""dpa_review — deterministic, cited first-pass review of a Data Processing
+"""dpa_review: deterministic, cited first-pass review of a Data Processing
 Agreement and its international data transfers. Produces a review packet with a
 visible review state. Not legal advice; bundled data is synthetic."""
 

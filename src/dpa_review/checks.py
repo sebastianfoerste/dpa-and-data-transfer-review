@@ -278,7 +278,7 @@ def check_transfers(dpa: dict) -> list[Finding]:
                 )
             )
 
-    # Transfer impact assessment (Schrems II) — required where Art. 46 tools are relied on.
+    # Transfer impact assessment (Schrems II): required where Art. 46 tools are relied on.
     relies_on_safeguards = any(
         (mechanisms.get(c, "none") or "none").lower() in {"sccs", "bcr"} for c in destinations
     ) or any(
