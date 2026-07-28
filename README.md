@@ -52,6 +52,13 @@ Checks: 20, present 17, missing 3, needs-review 0, open high 3, open medium 0
 
 The full packet (cleared items included) is committed at [`examples/review-packet.md`](examples/review-packet.md) and [`examples/review-packet.json`](examples/review-packet.json) so you can read a real output without running anything.
 
+The [transfer-chain evidence graph](examples/transfer-evidence-graph.md) maps
+controller, processor, sub-processors, and destinations into a reviewable
+control graph. Each edge carries the relevant deterministic rule IDs and
+citations. The weakest-link view exposes missing flow-down language and
+uncovered Chapter V paths while keeping every approval and transfer action
+disabled.
+
 Fix the three defects in the input (flow-down clause, an Art. 46 mechanism for the US transfer, and a recorded transfer impact assessment) and the packet drops to `NEEDS_REVIEW`. There is a test that asserts exactly this transition.
 
 ## AI SaaS GC use case
@@ -90,6 +97,7 @@ Reference data (EEA members, adequacy countries, valid mechanisms) is explicit a
 src/dpa_review/
   checks.py   # the rules: each maps a feature of the DPA to a citation + severity
   review.py   # engine: runs the rules, decides the review state, renders the packet
+  transfer_graph.py # transfer-chain evidence graph and weakest-link analysis
   cli.py      # python -m dpa_review.cli --input data/sample_dpa.json --out examples
 data/sample_dpa.json     # synthetic DPA with three planted defects
 examples/                # committed sample output (md + json)
