@@ -78,6 +78,7 @@ def build_transfer_evidence_graph(
 
     flowdown = _finding(packet, "subprocessor.flowdown")
     authorization = _finding(packet, "subprocessor.authorization")
+    transfer_impact = _finding(packet, "transfer.impact_assessment")
     represented_destinations: set[str] = set()
     for index, subprocessor in enumerate(dpa.get("subprocessors", []) or []):
         name = str(subprocessor.get("name", f"Sub-processor {index + 1}"))
@@ -111,6 +112,14 @@ def build_transfer_evidence_graph(
             }
         )
         if country:
+            mechanism = str(
+                subprocessor.get("transfer_mechanism", "none")
+            ).lower()
+            location_findings = [transfer_finding] if transfer_finding else []
+            location_controls = [transfer_rule_id]
+            if mechanism in {"sccs", "bcr"} and transfer_impact:
+                location_findings.append(transfer_impact)
+                location_controls.append(transfer_impact.rule_id)
             jurisdiction_id = add_node(
                 "jurisdiction",
                 country,
@@ -122,14 +131,17 @@ def build_transfer_evidence_graph(
                     "source": subprocessor_id,
                     "target": jurisdiction_id,
                     "relationship": "processes_in",
-                    "status": _edge_status([transfer_finding] if transfer_finding else []),
-                    "control_refs": [transfer_rule_id],
+                    "status": _edge_status(location_findings),
+                    "control_refs": location_controls,
                     "citation_refs": (
-                        [transfer_finding.citation] if transfer_finding else []
+                        sorted(
+                            {
+                                finding.citation
+                                for finding in location_findings
+                            }
+                        )
                     ),
-                    "mechanism": str(
-                        subprocessor.get("transfer_mechanism", "none")
-                    ).lower(),
+                    "mechanism": mechanism,
                 }
             )
 
@@ -138,16 +150,24 @@ def build_transfer_evidence_graph(
         country = str(country_value).upper()
         jurisdiction_id = add_node("jurisdiction", country, eea=country in EEA)
         finding = _finding(packet, f"transfer.{country.lower()}")
+        mechanism = str(mechanisms.get(country, "none")).lower()
+        direct_findings = [finding] if finding else []
+        direct_controls = [f"transfer.{country.lower()}"]
+        if mechanism in {"sccs", "bcr"} and transfer_impact:
+            direct_findings.append(transfer_impact)
+            direct_controls.append(transfer_impact.rule_id)
         edges.append(
             {
                 "edge_id": f"processor-direct-to-{country.lower()}",
                 "source": processor_id,
                 "target": jurisdiction_id,
                 "relationship": "direct_transfer_to",
-                "status": _edge_status([finding] if finding else []),
-                "control_refs": [f"transfer.{country.lower()}"],
-                "citation_refs": [finding.citation] if finding else [],
-                "mechanism": str(mechanisms.get(country, "none")).lower(),
+                "status": _edge_status(direct_findings),
+                "control_refs": direct_controls,
+                "citation_refs": sorted(
+                    {item.citation for item in direct_findings}
+                ),
+                "mechanism": mechanism,
                 "also_used_by_subprocessor": country in represented_destinations,
             }
         )
@@ -164,6 +184,41 @@ def build_transfer_evidence_graph(
         for edge in ordered_edges
         if edge["status"] != "pass"
     ]
+    affected_edges_by_control: dict[str, list[str]] = {}
+    for edge in ordered_edges:
+        for control_ref in edge["control_refs"]:
+            affected_edges_by_control.setdefault(control_ref, []).append(edge["edge_id"])
+    reviewer_roles = {
+        "transfer": "Privacy Counsel",
+        "subprocessor": "Privacy Counsel",
+        "art28": "Commercial Counsel",
+        "processing": "Commercial Counsel",
+        "breach": "Privacy Counsel",
+    }
+    remediation_queue = []
+    for finding in packet.findings:
+        affected_edges = sorted(affected_edges_by_control.get(finding.rule_id, []))
+        if finding.status not in OPEN_STATUSES or not affected_edges:
+            continue
+        prefix = finding.rule_id.split(".", 1)[0]
+        remediation_queue.append(
+            {
+                "control_ref": finding.rule_id,
+                "severity": finding.severity,
+                "status": finding.status,
+                "citation": finding.citation,
+                "affected_edges": affected_edges,
+                "reviewer_role": reviewer_roles.get(prefix, "Qualified Lawyer"),
+                "required_evidence": finding.remediation or finding.detail,
+                "decision_state": "open",
+            }
+        )
+    remediation_queue.sort(
+        key=lambda item: (
+            -{"HIGH": 3, "MEDIUM": 2, "LOW": 1, "INFO": 0}[item["severity"]],
+            item["control_ref"],
+        )
+    )
     status = (
         "BLOCKED"
         if any(edge["status"] == "block" for edge in ordered_edges)
@@ -181,10 +236,12 @@ def build_transfer_evidence_graph(
             "blocked_edges": sum(edge["status"] == "block" for edge in ordered_edges),
             "review_edges": sum(edge["status"] == "review" for edge in ordered_edges),
             "pass_edges": sum(edge["status"] == "pass" for edge in ordered_edges),
+            "open_remediation_items": len(remediation_queue),
         },
         "nodes": ordered_nodes,
         "edges": ordered_edges,
         "weakest_links": weakest_links,
+        "remediation_queue": remediation_queue,
         "source_dpa_sha256": _canonical_sha256(dpa),
         "review_gate": (
             "The graph is a deterministic reviewer aid. It does not validate a "
@@ -246,5 +303,22 @@ def render_transfer_evidence_graph(graph: dict[str, Any]) -> str:
         )
     if not graph["weakest_links"]:
         lines.append("| none | pass | n/a | n/a |")
+    lines.extend(
+        [
+            "",
+            "## Control remediation queue",
+            "",
+            "| Control | Severity | Affected edges | Reviewer | Required evidence |",
+            "| --- | --- | ---: | --- | --- |",
+        ]
+    )
+    for item in graph["remediation_queue"]:
+        lines.append(
+            f"| {item['control_ref']} | {item['severity']} "
+            f"| {len(item['affected_edges'])} | {item['reviewer_role']} "
+            f"| {item['required_evidence']} |"
+        )
+    if not graph["remediation_queue"]:
+        lines.append("| none | n/a | 0 | n/a | none |")
     lines.extend(["", "## Review gate", "", graph["review_gate"], ""])
     return "\n".join(lines)

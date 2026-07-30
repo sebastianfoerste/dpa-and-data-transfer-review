@@ -27,6 +27,18 @@ class TransferEvidenceGraphTests(unittest.TestCase):
         )
         self.assertFalse(graph["external_actions_allowed"])
         self.assertEqual(len(graph["graph_sha256"]), 64)
+        self.assertEqual(graph["summary"]["open_remediation_items"], 3)
+        self.assertEqual(
+            {item["control_ref"] for item in graph["remediation_queue"]},
+            {
+                "subprocessor.flowdown",
+                "transfer.subprocessor.support_tools_llc",
+                "transfer.us",
+            },
+        )
+        self.assertTrue(
+            all(item["affected_edges"] for item in graph["remediation_queue"])
+        )
 
     def test_cured_transfer_chain_removes_blocked_edges(self):
         cured = json.loads(json.dumps(SAMPLE))
@@ -48,6 +60,7 @@ class TransferEvidenceGraphTests(unittest.TestCase):
         markdown = render_transfer_evidence_graph(first)
         self.assertIn("```mermaid", markdown)
         self.assertIn("Weakest links", markdown)
+        self.assertIn("Control remediation queue", markdown)
         self.assertIn("External actions: disabled", markdown)
 
 

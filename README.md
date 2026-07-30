@@ -57,7 +57,8 @@ controller, processor, sub-processors, and destinations into a reviewable
 control graph. Each edge carries the relevant deterministic rule IDs and
 citations. The weakest-link view exposes missing flow-down language and
 uncovered Chapter V paths while keeping every approval and transfer action
-disabled.
+disabled. Its control remediation queue deduplicates each open rule, shows every
+affected transfer edge, and routes the required evidence to a named lawyer role.
 
 Fix the three defects in the input (flow-down clause, an Art. 46 mechanism for the US transfer, and a recorded transfer impact assessment) and the packet drops to `NEEDS_REVIEW`. There is a test that asserts exactly this transition.
 

@@ -7,7 +7,8 @@
     "edges": 10,
     "blocked_edges": 5,
     "review_edges": 0,
-    "pass_edges": 5
+    "pass_edges": 5,
+    "open_remediation_items": 3
   },
   "nodes": [
     {
@@ -277,8 +278,49 @@
       ]
     }
   ],
+  "remediation_queue": [
+    {
+      "control_ref": "subprocessor.flowdown",
+      "severity": "HIGH",
+      "status": "MISSING",
+      "citation": "GDPR Art. 28(4)",
+      "affected_edges": [
+        "processor-to-subprocessor-1",
+        "processor-to-subprocessor-2",
+        "processor-to-subprocessor-3"
+      ],
+      "reviewer_role": "Privacy Counsel",
+      "required_evidence": "Add a clause imposing materially equivalent obligations on every sub-processor (Art. 28(4)).",
+      "decision_state": "open"
+    },
+    {
+      "control_ref": "transfer.subprocessor.support_tools_llc",
+      "severity": "HIGH",
+      "status": "MISSING",
+      "citation": "GDPR Art. 28(4) / Art. 44-46",
+      "affected_edges": [
+        "processor-to-subprocessor-2",
+        "subprocessor-2-to-us"
+      ],
+      "reviewer_role": "Privacy Counsel",
+      "required_evidence": "Confirm the transfer mechanism covering Support Tools LLC in US.",
+      "decision_state": "open"
+    },
+    {
+      "control_ref": "transfer.us",
+      "severity": "HIGH",
+      "status": "MISSING",
+      "citation": "GDPR Art. 44-46",
+      "affected_edges": [
+        "processor-direct-to-us"
+      ],
+      "reviewer_role": "Privacy Counsel",
+      "required_evidence": "Document a valid Art. 46 safeguard for US (or an Art. 49 derogation) and record the basis.",
+      "decision_state": "open"
+    }
+  ],
   "source_dpa_sha256": "39314dc6ac5d3d63c2d07dab52ab93fd50d7f246194b669ee41d9b4d72af0c66",
   "review_gate": "The graph is a deterministic reviewer aid. It does not validate a transfer mechanism, approve a sub-processor, or execute a transfer.",
   "external_actions_allowed": false,
-  "graph_sha256": "2c4ef634809a7a7ae3b59a3c38ecda65667007b8092ef13013c55d36eaec8202"
+  "graph_sha256": "e2954b2184c0bad1ddb79a8173574fe54451963c18e8bfc7df7f25f37afbf3a9"
 }
