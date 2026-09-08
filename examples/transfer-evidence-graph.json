@@ -1,0 +1,326 @@
+{
+  "schema": "dpa-review.transfer-evidence-graph.v1",
+  "review_state": "BLOCKED",
+  "graph_status": "BLOCKED",
+  "summary": {
+    "nodes": 8,
+    "edges": 10,
+    "blocked_edges": 5,
+    "review_edges": 0,
+    "pass_edges": 5,
+    "open_remediation_items": 3
+  },
+  "nodes": [
+    {
+      "node_id": "jurisdiction:501c26b2571a",
+      "kind": "jurisdiction",
+      "label": "FR",
+      "eea": true
+    },
+    {
+      "node_id": "jurisdiction:569ec6135d37",
+      "kind": "jurisdiction",
+      "label": "JP",
+      "eea": false
+    },
+    {
+      "node_id": "jurisdiction:9b202ecbc6d4",
+      "kind": "jurisdiction",
+      "label": "US",
+      "eea": false
+    },
+    {
+      "node_id": "party:0949177808dd",
+      "kind": "party",
+      "label": "Analytics KK",
+      "role": "subprocessor",
+      "purpose": "product analytics"
+    },
+    {
+      "node_id": "party:171759eef6e9",
+      "kind": "party",
+      "label": "Acme SaaS GmbH (synthetic)",
+      "role": "controller"
+    },
+    {
+      "node_id": "party:36127c4f0207",
+      "kind": "party",
+      "label": "Vendor Cloud Inc. (synthetic)",
+      "role": "processor"
+    },
+    {
+      "node_id": "party:3d02e6bf1ee8",
+      "kind": "party",
+      "label": "EU Hosting SARL",
+      "role": "subprocessor",
+      "purpose": "hosting"
+    },
+    {
+      "node_id": "party:dccc7225c2c4",
+      "kind": "party",
+      "label": "Support Tools LLC",
+      "role": "subprocessor",
+      "purpose": "support desk"
+    }
+  ],
+  "edges": [
+    {
+      "edge_id": "controller-to-processor",
+      "source": "party:171759eef6e9",
+      "target": "party:36127c4f0207",
+      "relationship": "appoints_processor",
+      "status": "pass",
+      "control_refs": [
+        "art28.assist_data_subject_requests",
+        "art28.assist_security_breach",
+        "art28.audit_and_inspection_rights",
+        "art28.confidentiality_commitment",
+        "art28.delete_or_return_on_termination",
+        "art28.process_on_documented_instructions",
+        "art28.security_measures_art32",
+        "breach.processor_notifies",
+        "processing.data_types",
+        "processing.duration",
+        "processing.nature_and_purpose",
+        "processing.subject_matter"
+      ],
+      "citation_refs": [
+        "GDPR Art. 28(3)",
+        "GDPR Art. 28(3)(a)",
+        "GDPR Art. 28(3)(b)",
+        "GDPR Art. 28(3)(c) / Art. 32",
+        "GDPR Art. 28(3)(e)",
+        "GDPR Art. 28(3)(f)",
+        "GDPR Art. 28(3)(g)",
+        "GDPR Art. 28(3)(h)",
+        "GDPR Art. 33(2)"
+      ]
+    },
+    {
+      "edge_id": "processor-direct-to-fr",
+      "source": "party:36127c4f0207",
+      "target": "jurisdiction:501c26b2571a",
+      "relationship": "direct_transfer_to",
+      "status": "pass",
+      "control_refs": [
+        "transfer.fr"
+      ],
+      "citation_refs": [
+        "GDPR Art. 44-46"
+      ],
+      "mechanism": "none",
+      "also_used_by_subprocessor": true
+    },
+    {
+      "edge_id": "processor-direct-to-jp",
+      "source": "party:36127c4f0207",
+      "target": "jurisdiction:569ec6135d37",
+      "relationship": "direct_transfer_to",
+      "status": "pass",
+      "control_refs": [
+        "transfer.jp"
+      ],
+      "citation_refs": [
+        "GDPR Art. 44-46"
+      ],
+      "mechanism": "adequacy",
+      "also_used_by_subprocessor": true
+    },
+    {
+      "edge_id": "processor-direct-to-us",
+      "source": "party:36127c4f0207",
+      "target": "jurisdiction:9b202ecbc6d4",
+      "relationship": "direct_transfer_to",
+      "status": "block",
+      "control_refs": [
+        "transfer.us"
+      ],
+      "citation_refs": [
+        "GDPR Art. 44-46"
+      ],
+      "mechanism": "none",
+      "also_used_by_subprocessor": true
+    },
+    {
+      "edge_id": "processor-to-subprocessor-1",
+      "source": "party:36127c4f0207",
+      "target": "party:3d02e6bf1ee8",
+      "relationship": "appoints_subprocessor",
+      "status": "block",
+      "control_refs": [
+        "subprocessor.authorization",
+        "subprocessor.flowdown"
+      ],
+      "citation_refs": [
+        "GDPR Art. 28(2)",
+        "GDPR Art. 28(4)"
+      ]
+    },
+    {
+      "edge_id": "processor-to-subprocessor-2",
+      "source": "party:36127c4f0207",
+      "target": "party:dccc7225c2c4",
+      "relationship": "appoints_subprocessor",
+      "status": "block",
+      "control_refs": [
+        "subprocessor.authorization",
+        "subprocessor.flowdown",
+        "transfer.subprocessor.support_tools_llc"
+      ],
+      "citation_refs": [
+        "GDPR Art. 28(2)",
+        "GDPR Art. 28(4)",
+        "GDPR Art. 28(4) / Art. 44-46"
+      ]
+    },
+    {
+      "edge_id": "processor-to-subprocessor-3",
+      "source": "party:36127c4f0207",
+      "target": "party:0949177808dd",
+      "relationship": "appoints_subprocessor",
+      "status": "block",
+      "control_refs": [
+        "subprocessor.authorization",
+        "subprocessor.flowdown",
+        "transfer.subprocessor.analytics_kk"
+      ],
+      "citation_refs": [
+        "GDPR Art. 28(2)",
+        "GDPR Art. 28(4)",
+        "GDPR Art. 28(4) / Art. 44-46"
+      ]
+    },
+    {
+      "edge_id": "subprocessor-1-to-fr",
+      "source": "party:3d02e6bf1ee8",
+      "target": "jurisdiction:501c26b2571a",
+      "relationship": "processes_in",
+      "status": "pass",
+      "control_refs": [
+        "transfer.subprocessor.eu_hosting_sarl"
+      ],
+      "citation_refs": [],
+      "mechanism": "none"
+    },
+    {
+      "edge_id": "subprocessor-2-to-us",
+      "source": "party:dccc7225c2c4",
+      "target": "jurisdiction:9b202ecbc6d4",
+      "relationship": "processes_in",
+      "status": "block",
+      "control_refs": [
+        "transfer.subprocessor.support_tools_llc"
+      ],
+      "citation_refs": [
+        "GDPR Art. 28(4) / Art. 44-46"
+      ],
+      "mechanism": "none"
+    },
+    {
+      "edge_id": "subprocessor-3-to-jp",
+      "source": "party:0949177808dd",
+      "target": "jurisdiction:569ec6135d37",
+      "relationship": "processes_in",
+      "status": "pass",
+      "control_refs": [
+        "transfer.subprocessor.analytics_kk"
+      ],
+      "citation_refs": [
+        "GDPR Art. 28(4) / Art. 44-46"
+      ],
+      "mechanism": "none"
+    }
+  ],
+  "weakest_links": [
+    {
+      "edge_id": "processor-direct-to-us",
+      "status": "block",
+      "relationship": "direct_transfer_to",
+      "control_refs": [
+        "transfer.us"
+      ]
+    },
+    {
+      "edge_id": "processor-to-subprocessor-1",
+      "status": "block",
+      "relationship": "appoints_subprocessor",
+      "control_refs": [
+        "subprocessor.authorization",
+        "subprocessor.flowdown"
+      ]
+    },
+    {
+      "edge_id": "processor-to-subprocessor-2",
+      "status": "block",
+      "relationship": "appoints_subprocessor",
+      "control_refs": [
+        "subprocessor.authorization",
+        "subprocessor.flowdown",
+        "transfer.subprocessor.support_tools_llc"
+      ]
+    },
+    {
+      "edge_id": "processor-to-subprocessor-3",
+      "status": "block",
+      "relationship": "appoints_subprocessor",
+      "control_refs": [
+        "subprocessor.authorization",
+        "subprocessor.flowdown",
+        "transfer.subprocessor.analytics_kk"
+      ]
+    },
+    {
+      "edge_id": "subprocessor-2-to-us",
+      "status": "block",
+      "relationship": "processes_in",
+      "control_refs": [
+        "transfer.subprocessor.support_tools_llc"
+      ]
+    }
+  ],
+  "remediation_queue": [
+    {
+      "control_ref": "subprocessor.flowdown",
+      "severity": "HIGH",
+      "status": "MISSING",
+      "citation": "GDPR Art. 28(4)",
+      "affected_edges": [
+        "processor-to-subprocessor-1",
+        "processor-to-subprocessor-2",
+        "processor-to-subprocessor-3"
+      ],
+      "reviewer_role": "Privacy Counsel",
+      "required_evidence": "Add a clause imposing materially equivalent obligations on every sub-processor (Art. 28(4)).",
+      "decision_state": "open"
+    },
+    {
+      "control_ref": "transfer.subprocessor.support_tools_llc",
+      "severity": "HIGH",
+      "status": "MISSING",
+      "citation": "GDPR Art. 28(4) / Art. 44-46",
+      "affected_edges": [
+        "processor-to-subprocessor-2",
+        "subprocessor-2-to-us"
+      ],
+      "reviewer_role": "Privacy Counsel",
+      "required_evidence": "Confirm the transfer mechanism covering Support Tools LLC in US.",
+      "decision_state": "open"
+    },
+    {
+      "control_ref": "transfer.us",
+      "severity": "HIGH",
+      "status": "MISSING",
+      "citation": "GDPR Art. 44-46",
+      "affected_edges": [
+        "processor-direct-to-us"
+      ],
+      "reviewer_role": "Privacy Counsel",
+      "required_evidence": "Document a valid Art. 46 safeguard for US (or an Art. 49 derogation) and record the basis.",
+      "decision_state": "open"
+    }
+  ],
+  "source_dpa_sha256": "39314dc6ac5d3d63c2d07dab52ab93fd50d7f246194b669ee41d9b4d72af0c66",
+  "review_gate": "The graph is a deterministic reviewer aid. It does not validate a transfer mechanism, approve a sub-processor, or execute a transfer.",
+  "external_actions_allowed": false,
+  "graph_sha256": "e2954b2184c0bad1ddb79a8173574fe54451963c18e8bfc7df7f25f37afbf3a9"
+}
