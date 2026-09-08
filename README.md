@@ -54,9 +54,9 @@ The full packet (cleared items included) is committed at [`examples/review-packe
 
 Fix the three defects in the input (flow-down clause, an Art. 46 mechanism for the US transfer, and a recorded transfer impact assessment) and the packet drops to `NEEDS_REVIEW`. There is a test that asserts exactly this transition.
 
-## AI SaaS GC use case
+## AI SaaS legal-team use case
 
-A legal function lead or General Counsel at an AI SaaS company can use this as a privacy proof surface before signature:
+A legal team or reviewer at an AI SaaS company can use this as a privacy review surface before signature:
 
 1. **DPA defects:** the sample packet catches missing sub-processor flow-down, missing transfer mechanism, and missing transfer impact evidence.
 2. **Transfer mechanism:** the review distinguishes adequacy, Art. 46 safeguards, and Art. 49 derogations per destination and sub-processor.
