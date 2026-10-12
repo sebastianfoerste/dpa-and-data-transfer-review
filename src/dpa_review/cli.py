@@ -14,6 +14,10 @@ import sys
 from pathlib import Path
 
 from dpa_review.review import build_packet, render_markdown
+from dpa_review.transfer_graph import (
+    build_transfer_evidence_graph,
+    render_transfer_evidence_graph,
+)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -36,6 +40,15 @@ def main(argv: list[str] | None = None) -> int:
         (out_dir / "review-packet.md").write_text(markdown, encoding="utf-8")
         (out_dir / "review-packet.json").write_text(
             json.dumps(packet.to_dict(), indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+        )
+        transfer_graph = build_transfer_evidence_graph(dpa, packet)
+        (out_dir / "transfer-evidence-graph.json").write_text(
+            json.dumps(transfer_graph, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+        (out_dir / "transfer-evidence-graph.md").write_text(
+            render_transfer_evidence_graph(transfer_graph),
+            encoding="utf-8",
         )
 
     # BLOCKED -> exit 2 so this can gate CI; NEEDS_REVIEW -> exit 1; cleared -> 0.
