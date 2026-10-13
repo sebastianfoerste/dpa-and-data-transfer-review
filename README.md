@@ -90,6 +90,8 @@ A legal team or reviewer at an AI SaaS company can use this as a privacy review 
 | Transfer impact assessment | GDPR Art. 46 (CJEU C-311/18); EDPB Recommendations 01/2020 on measures that supplement transfer tools to ensure compliance with the EU level of protection of personal data, version 2.0 (adopted 18 June 2021) | Recorded TIA, with any supplementary measures, where Art. 46 safeguards (SCCs or BCR) are relied on |
 | US service-provider terms | CCPA §1798.140(ag) / CPRA | Service-provider restrictions where US personal information is in scope |
 
+Recorded yes/no facts are JSON booleans (`true`/`false`); an omitted or `null` fact counts as not recorded, and any other value is refused with exit `3`. `processing.data_types`, `processing.data_subjects` and `transfers.destinations` are lists of non-empty strings.
+
 For a `dpf` transfer, the input records the importer's DPF List entry as `dpf_certified` (an active certification), `dpf_covers_non_hr_data` and `dpf_covers_hr_data`: on the sub-processor entry, or keyed by country under `transfers` for direct transfers. `processing.includes_non_hr_data` and `processing.includes_hr_data` record whether each type of data is transferred; if one is omitted and the certification is not recorded as covering that type, the transfer is flagged for review. For a `derogation_art49` transfer, `occasional_and_not_repetitive` (on the sub-processor entry, or keyed by country under `transfers`) records an occasional, non-repetitive transfer.
 
 Reference data (EEA members, adequacy countries, valid mechanisms) is explicit and citeable in [`src/dpa_review/checks.py`](src/dpa_review/checks.py); it is illustrative and should be verified against the current Commission decisions in real use.
@@ -99,7 +101,7 @@ Reference data (EEA members, adequacy countries, valid mechanisms) is explicit a
 - **Deterministic.** Same input, same packet, every time. There is a test for it. No model calls, no network.
 - **Cited.** Every finding carries a GDPR/CCPA citation; nothing is asserted without a reference.
 - **Reviewable.** Output is a packet with an explicit state and a remediation column, designed to hand to a lawyer, never to replace one.
-- **Gating.** `BLOCKED` -> exit `2`, `NEEDS_REVIEW` -> exit `1`, `CLEARED_FOR_REVIEW` -> exit `0`, so it can sit in a pipeline. Exit `3` means no review state was decided: the input could not be read or has a field of the wrong shape (for example a recorded flag that is not `true`/`false`), the command line was wrong, or the run failed. A pipeline can therefore never mistake a crash for a review state.
+- **Gating.** `BLOCKED` -> exit `2`, `NEEDS_REVIEW` -> exit `1`, `CLEARED_FOR_REVIEW` -> exit `0`, so it can sit in a pipeline. Exit `3` means the CLI decided no review state: the input could not be read, a field the review reads has the wrong shape (for example a recorded flag that is not `true`/`false`, or categories of data subjects given as one string instead of a list), the command line was wrong, or the review raised an error. A failure before the CLI starts, such as a broken installation, exits `1` as any Python program does, so a pipeline should treat every non-zero exit as not cleared. `make demo` reports any non-zero exit as make's own `Error 2`.
 
 ```
 src/dpa_review/

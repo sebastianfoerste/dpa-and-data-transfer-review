@@ -6,6 +6,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from dpa_review.cli import EXIT_NO_REVIEW_STATE, main
 
@@ -56,11 +57,26 @@ class CliExitCodes(unittest.TestCase):
         code, _, _ = _run(["--input", str(Path(self.tmp.name) / "absent.json")])
         self.assertEqual(code, 3)
 
-    def test_unexpected_shape_crash_exits_3(self):
+    def test_string_false_flag_exits_3_instead_of_passing_as_present(self):
+        dpa = json.loads(SAMPLE_PATH.read_text(encoding="utf-8"))
+        dpa["art28_clauses"]["subprocessor_flowdown"] = "false"
+        code, out, err = _run(["--input", self._write(dpa)])
+        self.assertEqual(code, 3)
+        self.assertEqual(out, "")
+        self.assertIn("art28_clauses.subprocessor_flowdown must be true or false", err)
+
+    def test_wrong_shape_list_exits_3(self):
         dpa = json.loads(SAMPLE_PATH.read_text(encoding="utf-8"))
         dpa["subprocessors"] = ["not an object"]
         code, _, err = _run(["--input", self._write(dpa)])
         self.assertEqual(code, 3)
+        self.assertIn("subprocessors must be a list of objects", err)
+
+    def test_unexpected_failure_exits_3(self):
+        with mock.patch("dpa_review.cli.build_packet", side_effect=RuntimeError("boom")):
+            code, out, err = _run(["--input", str(SAMPLE_PATH)])
+        self.assertEqual(code, 3)
+        self.assertEqual(out, "")
         self.assertIn("Traceback", err)
 
     def test_usage_error_exits_3_not_2(self):

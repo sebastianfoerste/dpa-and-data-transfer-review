@@ -88,17 +88,28 @@ class Finding:
         return asdict(self)
 
 
-def _get(d: dict, path: str, default=None):
-    cur: Any = d
-    for part in path.split("."):
-        if not isinstance(cur, dict) or part not in cur:
-            return default
-        cur = cur[part]
-    return cur
-
-
 class InvalidInputError(ValueError):
     """A DPA input field has the wrong shape, so the review cannot run on it."""
+
+
+def _get(d: dict, path: str, default=None):
+    """The value at a dotted path, or `default` when it is absent or null.
+
+    Every field on the path above the value must be an object: a review cannot run on a
+    section given as a list or a scalar, so that is refused rather than read as absent.
+    """
+    cur: Any = d
+    walked: list[str] = []
+    for part in path.split("."):
+        if cur is None:
+            return default
+        if not isinstance(cur, dict):
+            raise InvalidInputError(f"{'.'.join(walked)} must be an object, got {cur!r}.")
+        if part not in cur:
+            return default
+        cur = cur[part]
+        walked.append(part)
+    return default if cur is None else cur
 
 
 def _flag(value: Any, field: str) -> bool | None:
@@ -106,6 +117,40 @@ def _flag(value: Any, field: str) -> bool | None:
     if value is None or isinstance(value, bool):
         return value
     raise InvalidInputError(f"{field} must be true or false, got {value!r}.")
+
+
+def _recorded(dpa: dict, path: str) -> bool:
+    """A yes/no fact that counts only when the input records it as true."""
+    return bool(_flag(_get(dpa, path), path))
+
+
+def _text(value: Any, field: str) -> str | None:
+    """A recorded word or phrase, or None when the input does not say."""
+    if value is None or isinstance(value, str):
+        return value
+    raise InvalidInputError(f"{field} must be a string, got {value!r}.")
+
+
+def _labels(dpa: dict, path: str, example: str) -> list[str]:
+    """A list of non-empty strings, such as the categories of data subjects."""
+    value = _get(dpa, path)
+    if value is None:
+        return []
+    if not isinstance(value, list) or not all(isinstance(item, str) and item.strip() for item in value):
+        raise InvalidInputError(
+            f"{path} must be a list of non-empty strings, such as {example}; got {value!r}."
+        )
+    return value
+
+
+def _objects(dpa: dict, path: str) -> list[dict]:
+    """A list of objects, such as the sub-processors."""
+    value = _get(dpa, path)
+    if value is None:
+        return []
+    if not isinstance(value, list) or not all(isinstance(item, dict) for item in value):
+        raise InvalidInputError(f"{path} must be a list of objects, got {value!r}.")
+    return value
 
 
 def _country_flags(dpa: dict, path: str) -> dict[Any, bool | None]:
@@ -118,6 +163,19 @@ def _country_flags(dpa: dict, path: str) -> dict[Any, bool | None]:
             f'{path} must be an object keyed by country code, such as {{"US": true}}; got {value!r}.'
         )
     return {country: _flag(flag, f"{path}.{country}") for country, flag in value.items()}
+
+
+def _mechanisms(dpa: dict) -> dict[Any, str | None]:
+    """The transfer mechanism recorded per destination, as an object keyed by country code."""
+    path = "transfers.mechanisms"
+    value = _get(dpa, path)
+    if value is None:
+        return {}
+    if not isinstance(value, dict):
+        raise InvalidInputError(
+            f'{path} must be an object keyed by country code, such as {{"US": "sccs"}}; got {value!r}.'
+        )
+    return {country: _text(mechanism, f"{path}.{country}") for country, mechanism in value.items()}
 
 
 # --- Article 28(3) mandatory processor clauses -------------------------------
@@ -136,9 +194,8 @@ _ART28_CLAUSES: list[tuple[str, str, str]] = [
 
 def check_art28_core(dpa: dict) -> list[Finding]:
     findings: list[Finding] = []
-    clauses = dpa.get("art28_clauses", {})
     for key, citation, title in _ART28_CLAUSES:
-        present = bool(clauses.get(key, False))
+        present = _recorded(dpa, f"art28_clauses.{key}")
         findings.append(
             Finding(
                 rule_id=f"art28.{key}",
@@ -169,7 +226,7 @@ def check_processing_description(dpa: dict) -> list[Finding]:
     }
     findings: list[Finding] = []
     for key, label in required.items():
-        present = bool(_get(dpa, f"processing.{key}", False))
+        present = _recorded(dpa, f"processing.{key}")
         findings.append(
             Finding(
                 rule_id=f"processing.{key}",
@@ -185,7 +242,7 @@ def check_processing_description(dpa: dict) -> list[Finding]:
                 remediation="" if present else f"State the {label} in the processing schedule.",
             )
         )
-    data_types = _get(dpa, "processing.data_types", []) or []
+    data_types = _labels(dpa, "processing.data_types", '["account data"]')
     findings.append(
         Finding(
             rule_id="processing.data_types",
@@ -201,7 +258,7 @@ def check_processing_description(dpa: dict) -> list[Finding]:
             remediation="" if data_types else "List the type of personal data processed.",
         )
     )
-    data_subjects = _get(dpa, "processing.data_subjects", []) or []
+    data_subjects = _labels(dpa, "processing.data_subjects", '["customer end users"]')
     findings.append(
         Finding(
             rule_id="processing.data_subjects",
@@ -224,7 +281,8 @@ def check_processing_description(dpa: dict) -> list[Finding]:
 
 def check_subprocessors(dpa: dict) -> list[Finding]:
     findings: list[Finding] = []
-    auth = _get(dpa, "art28_clauses.subprocessor_authorization", "none")
+    path = "art28_clauses.subprocessor_authorization"
+    auth = _text(_get(dpa, path), path) or "none"
     findings.append(
         Finding(
             rule_id="subprocessor.authorization",
@@ -243,7 +301,7 @@ def check_subprocessors(dpa: dict) -> list[Finding]:
             ),
         )
     )
-    flowdown = bool(_get(dpa, "art28_clauses.subprocessor_flowdown", False))
+    flowdown = _recorded(dpa, "art28_clauses.subprocessor_flowdown")
     findings.append(
         Finding(
             rule_id="subprocessor.flowdown",
@@ -268,8 +326,8 @@ def check_subprocessors(dpa: dict) -> list[Finding]:
 # --- Breach notification (Art. 33) -------------------------------------------
 
 def check_breach_notification(dpa: dict) -> list[Finding]:
-    processor_notifies = bool(_get(dpa, "breach_notification.processor_notifies_controller", False))
-    timing = (_get(dpa, "breach_notification.timing", "") or "").lower()
+    processor_notifies = _recorded(dpa, "breach_notification.processor_notifies_controller")
+    timing = (_text(_get(dpa, "breach_notification.timing"), "breach_notification.timing") or "").lower()
     acceptable_timing = "undue delay" in timing or "without delay" in timing
     status = "PRESENT" if (processor_notifies and acceptable_timing) else (
         "NEEDS_REVIEW" if processor_notifies else "MISSING"
@@ -531,8 +589,9 @@ def _transfer_remediation(country: str, mechanism: str | None, occasional_and_no
 
 def check_transfers(dpa: dict) -> list[Finding]:
     findings: list[Finding] = []
-    destinations = _get(dpa, "transfers.destinations", []) or []
-    mechanisms = _get(dpa, "transfers.mechanisms", {}) or {}
+    destinations = _labels(dpa, "transfers.destinations", '["US"]')
+    mechanisms = _mechanisms(dpa)
+    subprocessors = _objects(dpa, "subprocessors")
     dpf_certified = _country_flags(dpa, "transfers.dpf_certified")
     dpf_covers_hr_data = _country_flags(dpa, "transfers.dpf_covers_hr_data")
     dpf_covers_non_hr_data = _country_flags(dpa, "transfers.dpf_covers_non_hr_data")
@@ -571,18 +630,20 @@ def check_transfers(dpa: dict) -> list[Finding]:
         )
 
     # Sub-processor located in a third country is itself a transfer.
-    for index, sp in enumerate(_get(dpa, "subprocessors", []) or []):
+    for index, sp in enumerate(subprocessors):
+        for key in ("name", "country", "transfer_mechanism"):
+            _text(sp.get(key), f"subprocessors[{index}].{key}")
+        flags = {
+            key: bool(_flag(sp.get(key), f"subprocessors[{index}].{key}"))
+            for key in (
+                "dpf_certified",
+                "dpf_covers_hr_data",
+                "dpf_covers_non_hr_data",
+                "occasional_and_not_repetitive",
+            )
+        }
         country = (sp.get("country") or "").upper()
         if country and country not in EEA:
-            flags = {
-                key: bool(_flag(sp.get(key), f"subprocessors[{index}].{key}"))
-                for key in (
-                    "dpf_certified",
-                    "dpf_covers_hr_data",
-                    "dpf_covers_non_hr_data",
-                    "occasional_and_not_repetitive",
-                )
-            }
             status, severity, detail = assess_transfer(
                 country,
                 sp.get("transfer_mechanism"),
@@ -607,14 +668,14 @@ def check_transfers(dpa: dict) -> list[Finding]:
 
     # Transfer impact assessment (Schrems II): required where Art. 46 tools are relied on.
     # DPF transfers rely on an Art. 45 adequacy decision and therefore do not trigger it.
+    tia = _recorded(dpa, "transfers.transfer_impact_assessment")
     relies_on_safeguards = any(
         (mechanisms.get(c, "none") or "none").lower() in {"sccs", "bcr"} for c in destinations
     ) or any(
         (sp.get("transfer_mechanism") or "none").lower() in {"sccs", "bcr"}
-        for sp in (_get(dpa, "subprocessors", []) or [])
+        for sp in subprocessors
     )
     if relies_on_safeguards:
-        tia = bool(_get(dpa, "transfers.transfer_impact_assessment", False))
         findings.append(
             Finding(
                 rule_id="transfer.impact_assessment",
@@ -642,7 +703,7 @@ def check_transfers(dpa: dict) -> list[Finding]:
 # --- CCPA service-provider basics (secondary, US) ----------------------------
 
 def check_ccpa(dpa: dict) -> list[Finding]:
-    sp_terms = bool(_get(dpa, "ccpa.service_provider_terms", False))
+    sp_terms = _recorded(dpa, "ccpa.service_provider_terms")
     return [
         Finding(
             rule_id="ccpa.service_provider_terms",

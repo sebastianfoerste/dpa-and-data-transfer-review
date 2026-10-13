@@ -347,6 +347,65 @@ class RecordedFlagShape(unittest.TestCase):
         with self.assertRaisesRegex(InvalidInputError, r"subprocessors\[1\].dpf_certified"):
             build_packet(dpa)
 
+    def test_every_recorded_flag_must_be_boolean(self):
+        # A string "false" used to pass through bool() and come out PRESENT.
+        for section, key in (
+            ("art28_clauses", "subprocessor_flowdown"),
+            ("art28_clauses", "audit_and_inspection_rights"),
+            ("processing", "subject_matter"),
+            ("breach_notification", "processor_notifies_controller"),
+            ("transfers", "transfer_impact_assessment"),
+            ("ccpa", "service_provider_terms"),
+        ):
+            with self.subTest(field=f"{section}.{key}"):
+                dpa = self._dpa()
+                dpa[section][key] = "false"
+                with self.assertRaisesRegex(InvalidInputError, rf"{section}\.{key} must be true or false"):
+                    build_packet(dpa)
+
+    def test_omitted_or_null_flag_is_not_recorded(self):
+        for value in (None, False):
+            dpa = self._dpa()
+            dpa["art28_clauses"]["audit_and_inspection_rights"] = value
+            finding = _by_id(build_packet(dpa), "art28.audit_and_inspection_rights")
+            self.assertEqual((finding.status, finding.severity), ("MISSING", "HIGH"))
+
+    def test_lists_must_hold_non_empty_strings(self):
+        for path, value in (
+            ("processing.data_subjects", "customers"),
+            ("processing.data_subjects", ["customers", ""]),
+            ("processing.data_types", "account data"),
+            ("transfers.destinations", "US"),
+        ):
+            with self.subTest(field=path, value=value):
+                dpa = self._dpa()
+                section, key = path.split(".")
+                dpa[section][key] = value
+                with self.assertRaisesRegex(InvalidInputError, rf"{path} must be a list of non-empty strings"):
+                    build_packet(dpa)
+
+    def test_text_fields_must_be_strings(self):
+        dpa = self._dpa()
+        dpa["breach_notification"]["timing"] = 72
+        with self.assertRaisesRegex(InvalidInputError, "breach_notification.timing must be a string"):
+            build_packet(dpa)
+        dpa = self._dpa()
+        dpa["transfers"]["mechanisms"]["US"] = ["sccs"]
+        with self.assertRaisesRegex(InvalidInputError, "transfers.mechanisms.US must be a string"):
+            build_packet(dpa)
+
+    def test_section_given_as_a_list_is_refused(self):
+        dpa = self._dpa()
+        dpa["art28_clauses"] = []
+        with self.assertRaisesRegex(InvalidInputError, "art28_clauses must be an object"):
+            build_packet(dpa)
+
+    def test_subprocessors_must_be_objects(self):
+        dpa = self._dpa()
+        dpa["subprocessors"] = ["Support Tools LLC"]
+        with self.assertRaisesRegex(InvalidInputError, "subprocessors must be a list of objects"):
+            build_packet(dpa)
+
 
 class CuredPacket(unittest.TestCase):
     def test_fixing_defects_clears_high_findings(self):
