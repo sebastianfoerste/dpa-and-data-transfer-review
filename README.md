@@ -67,7 +67,7 @@ Fix the three defects in the input (flow-down clause, an Art. 46 mechanism for t
 A legal team or reviewer at an AI SaaS company can use this as a privacy review surface before signature:
 
 1. **DPA defects:** the sample packet catches missing sub-processor flow-down, missing transfer mechanism, and missing transfer impact evidence.
-2. **Transfer mechanism:** the review distinguishes adequacy, Art. 46 safeguards, and Art. 49 derogations per destination and sub-processor.
+2. **Transfer mechanism:** the review distinguishes adequacy (including the EU-US Data Privacy Framework), Art. 46 safeguards, and Art. 49 derogations per destination and sub-processor.
 3. **Transfer impact evidence:** the packet stays blocked until transfer impact assessment evidence is recorded where needed.
 4. **Blocked state:** high-severity findings produce `BLOCKED` and exit code `2`, so the review can stop a workflow rather than merely warn.
 5. **Lawyer review:** even a remediated packet moves to review, not autonomous approval.
@@ -82,8 +82,11 @@ A legal team or reviewer at an AI SaaS company can use this as a privacy review 
 | Sub-processor flow-down | GDPR Art. 28(4) | Equivalent obligations imposed on sub-processors |
 | Breach notification | GDPR Art. 33(2) | Processor-to-controller notice, "without undue delay" |
 | International transfers | GDPR Art. 44-46 | EEA vs adequacy (Art. 45) vs SCCs/BCR (Art. 46) vs Art. 49 derogations, per destination **and** per sub-processor |
+| EU-US Data Privacy Framework | GDPR Art. 45; Commission Implementing Decision (EU) 2023/1795 | Treated as an adequacy basis, not an Art. 46 safeguard, so no transfer impact assessment is triggered. Requires the US importer to be recorded as actively certified on the Data Privacy Framework List, and certified for HR data where HR data is transferred |
 | Transfer impact assessment | GDPR Art. 46 (CJEU C-311/18) | Recorded TIA where Art. 46 safeguards are relied on |
 | US service-provider terms | CCPA §1798.140(ag) / CPRA | Service-provider restrictions where US personal information is in scope |
+
+For a `dpf` transfer, the input records the importer's certification as `dpf_certified` and `dpf_covers_hr_data`: on the sub-processor entry, or keyed by country under `transfers` for direct transfers. `processing.includes_hr_data` records whether HR data is in scope; if it is omitted, an importer certified without HR data is flagged for review.
 
 Reference data (EEA members, adequacy countries, valid mechanisms) is explicit and citeable in [`src/dpa_review/checks.py`](src/dpa_review/checks.py); it is illustrative and should be verified against the current Commission decisions in real use.
 
