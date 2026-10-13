@@ -38,6 +38,21 @@ VALID_TRANSFER_MECHANISMS = {"adequacy", "sccs", "bcr", "derogation_art49", "dpf
 DPF_COUNTRY = "US"
 DPF_DECISION = "Commission Implementing Decision (EU) 2023/1795"
 
+# Standard Contractual Clauses (Art. 46(2)(c)): Commission Implementing Decision (EU)
+# 2021/914 of 4 June 2021 on standard contractual clauses for the transfer of personal data
+# to third countries pursuant to Regulation (EU) 2016/679 (OJ L 199, 7.6.2021, p. 31).
+# Since CJEU C-311/18 (Schrems II), an exporter relying on an Art. 46 tool assesses the
+# destination's law and practice and adds supplementary measures where needed: EDPB
+# Recommendations 01/2020 on measures that supplement transfer tools to ensure compliance
+# with the EU level of protection of personal data, version 2.0, adopted 18 June 2021.
+SCC_DECISION = "Commission Implementing Decision (EU) 2021/914"
+SUPPLEMENTARY_MEASURES = "EDPB Recommendations 01/2020"
+SUPPLEMENTARY_MEASURES_TITLE = (
+    "EDPB Recommendations 01/2020 on measures that supplement transfer tools to ensure "
+    "compliance with the EU level of protection of personal data, version 2.0, adopted "
+    "18 June 2021"
+)
+
 # Art. 49 derogations apply only in the absence of an Art. 45(3) adequacy decision or of
 # Art. 46 safeguards (Art. 49(1)). EDPB Guidelines 2/2018 on derogations of Article 49
 # under Regulation 2016/679 (adopted 25 May 2018), section 1, require them to be interpreted
@@ -449,10 +464,17 @@ def assess_transfer(
         return _assess_derogation(country, occasional_and_not_repetitive)
     if mech in {"sccs", "bcr"}:
         label = {
-            "sccs": "Standard Contractual Clauses (Art. 46(2)(c))",
+            "sccs": f"Standard Contractual Clauses (Art. 46(2)(c); {SCC_DECISION})",
             "bcr": "Binding Corporate Rules (Art. 47)",
         }[mech]
-        return ("NEEDS_REVIEW", "LOW", f"Transfer to {country} relies on {label}; confirm validity and a transfer impact assessment.")
+        return (
+            "NEEDS_REVIEW",
+            "LOW",
+            (
+                f"Transfer to {country} relies on {label}; confirm validity, a transfer impact "
+                f"assessment and any supplementary measures ({SUPPLEMENTARY_MEASURES})."
+            ),
+        )
     return (
         "MISSING",
         "HIGH",
@@ -473,6 +495,8 @@ def _transfer_articles(country: str, mechanism: str | None) -> str:
         return f"Art. 44-45; {DPF_DECISION}"
     if mech == "derogation_art49":
         return f"Art. 44, 49; {ART49_GUIDELINES}"
+    if mech == "sccs":
+        return f"Art. 44-46; {SCC_DECISION}"
     return "Art. 44-46"
 
 
@@ -492,6 +516,15 @@ def _transfer_remediation(country: str, mechanism: str | None, occasional_and_no
         return (
             f"Record an Art. 45 adequacy basis or an Art. 46 safeguard for {country}, or record that "
             "the transfer is occasional and not repetitive and which Art. 49(1) derogation applies."
+        )
+    if mech in {"sccs", "bcr"}:
+        tool = {
+            "sccs": f"the SCCs of {SCC_DECISION}",
+            "bcr": "approved Binding Corporate Rules (Art. 47)",
+        }[mech]
+        return (
+            f"Confirm that {tool} cover the transfer to {country}, with a transfer impact assessment "
+            f"and any supplementary measures ({SUPPLEMENTARY_MEASURES})."
         )
     return f"Record an Art. 45 adequacy basis or an Art. 46 safeguard for {country}."
 
@@ -586,7 +619,7 @@ def check_transfers(dpa: dict) -> list[Finding]:
             Finding(
                 rule_id="transfer.impact_assessment",
                 title="Transfer impact assessment (Schrems II)",
-                citation="GDPR Art. 46 (CJEU C-311/18)",
+                citation=f"GDPR Art. 46 (CJEU C-311/18); {SUPPLEMENTARY_MEASURES}",
                 severity="MEDIUM",
                 status="PRESENT" if tia else "NEEDS_REVIEW",
                 detail=(
@@ -594,7 +627,13 @@ def check_transfers(dpa: dict) -> list[Finding]:
                     if tia
                     else "Safeguard-based transfers are present but no transfer impact assessment is recorded."
                 ),
-                remediation="" if tia else "Document a transfer impact assessment for each Art. 46-based transfer.",
+                remediation=(
+                    "" if tia
+                    else (
+                        "Document a transfer impact assessment, and any supplementary measures, for each "
+                        f"Art. 46-based transfer ({SUPPLEMENTARY_MEASURES_TITLE})."
+                    )
+                ),
             )
         )
     return findings

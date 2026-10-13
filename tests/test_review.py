@@ -32,9 +32,11 @@ class TransferAssessment(unittest.TestCase):
         self.assertEqual(sev, "HIGH")
 
     def test_sccs_need_review_not_block(self):
-        status, sev, _ = assess_transfer("US", "sccs")
+        status, sev, detail = assess_transfer("US", "sccs")
         self.assertEqual(status, "NEEDS_REVIEW")
         self.assertEqual(sev, "LOW")
+        self.assertIn("Art. 46(2)(c); Commission Implementing Decision (EU) 2021/914", detail)
+        self.assertIn("EDPB Recommendations 01/2020", detail)
 
 
 class DataPrivacyFrameworkAssessment(unittest.TestCase):
@@ -355,6 +357,18 @@ class CuredPacket(unittest.TestCase):
         packet = build_packet(cured)
         self.assertEqual(packet.summary["high_open"], 0)
         self.assertIn(packet.review_state, {"NEEDS_REVIEW", "CLEARED_FOR_REVIEW"})
+
+    def test_scc_findings_cite_the_scc_decision_and_supplementary_measures(self):
+        dpa = json.loads(json.dumps(SAMPLE))
+        dpa["transfers"]["mechanisms"]["US"] = "sccs"
+        packet = build_packet(dpa)
+        transfer = _by_id(packet, "transfer.us")
+        self.assertEqual(transfer.citation, "GDPR Art. 44-46; Commission Implementing Decision (EU) 2021/914")
+        self.assertIn("SCCs of Commission Implementing Decision (EU) 2021/914", transfer.remediation)
+        tia = _by_id(packet, "transfer.impact_assessment")
+        self.assertEqual(tia.status, "NEEDS_REVIEW")
+        self.assertEqual(tia.citation, "GDPR Art. 46 (CJEU C-311/18); EDPB Recommendations 01/2020")
+        self.assertIn("version 2.0, adopted 18 June 2021", tia.remediation)
 
 
 if __name__ == "__main__":
