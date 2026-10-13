@@ -239,7 +239,9 @@ class Art49DerogationAssessment(unittest.TestCase):
         self.assertEqual(derogation[:2], ("MISSING", "HIGH"))
         self.assertEqual(derogation[:2], no_mechanism[:2])
         self.assertIn("EDPB Guidelines 2/2018", derogation[2])
-        self.assertIn("systematic and repeated", derogation[2])
+        self.assertIn("section 1", derogation[2])
+        self.assertIn("can basically be deemed systematic and repeated", derogation[2])
+        self.assertIn("this tool treats such a derogation as a missing basis", derogation[2])
 
     def test_derogation_for_occasional_transfer_needs_review(self):
         status, sev, detail = assess_transfer("IN", "derogation_art49", occasional_and_not_repetitive=True)
@@ -262,10 +264,11 @@ class Art49DerogationAssessment(unittest.TestCase):
         for rule_id in ("transfer.us", "transfer.subprocessor.support_tools_llc"):
             finding = _by_id(packet, rule_id)
             self.assertEqual((finding.status, finding.severity), ("MISSING", "HIGH"))
-            self.assertIn("Art. 44, 49; EDPB Guidelines 2/2018", finding.citation)
+            self.assertIn("Art. 44, 49; EDPB Guidelines 2/2018, section 1", finding.citation)
         remediation = _by_id(packet, "transfer.us").remediation
         self.assertIn("Art. 45", remediation)
         self.assertIn("Art. 46", remediation)
+        self.assertIn("occasional and not repetitive", remediation)
         self.assertEqual(packet.review_state, "BLOCKED")
 
     def test_occasional_derogation_transfers_go_to_review_not_block(self):
@@ -276,10 +279,11 @@ class Art49DerogationAssessment(unittest.TestCase):
         self.assertIn("Art. 49(1)", _by_id(packet, "transfer.us").remediation)
         self.assertEqual(packet.review_state, "NEEDS_REVIEW")
 
-    def test_remediation_no_longer_suggests_a_derogation_for_a_dpa_transfer(self):
-        remediation = _by_id(build_packet(SAMPLE), "transfer.us").remediation
-        self.assertNotIn("or an Art. 49 derogation", remediation)
-        self.assertIn("interpreted restrictively", remediation)
+    def test_missing_basis_no_longer_offers_a_derogation_as_the_cure(self):
+        finding = _by_id(build_packet(SAMPLE), "transfer.us")
+        self.assertEqual(finding.remediation, "Record an Art. 45 adequacy basis or an Art. 46 safeguard for US.")
+        self.assertIn("has no recorded Chapter V basis", finding.detail)
+        self.assertIn("Data Privacy Framework", finding.detail)
 
 
 class DataSubjectCategories(unittest.TestCase):

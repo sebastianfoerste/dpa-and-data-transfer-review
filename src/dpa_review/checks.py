@@ -38,18 +38,22 @@ VALID_TRANSFER_MECHANISMS = {"adequacy", "sccs", "bcr", "derogation_art49", "dpf
 DPF_COUNTRY = "US"
 DPF_DECISION = "Commission Implementing Decision (EU) 2023/1795"
 
-# Art. 49 derogations: EDPB Guidelines 2/2018 on derogations of Article 49 under
-# Regulation 2016/679 (adopted 25 May 2018) require the derogations to be interpreted
-# restrictively, and treat a transfer that occurs regularly within a stable relationship
-# between exporter and importer as systematic and repeated, so it is not occasional or
-# not repetitive (see also the "not repetitive" condition in Art. 49(1), second
-# subparagraph). Transfers under a DPA serve an ongoing processing relationship, so a
-# derogation is treated like a missing basis unless the input records the transfer as
-# occasional and not repetitive.
-ART49_GUIDELINES = "EDPB Guidelines 2/2018"
+# Art. 49 derogations apply only in the absence of an Art. 45(3) adequacy decision or of
+# Art. 46 safeguards (Art. 49(1)). EDPB Guidelines 2/2018 on derogations of Article 49
+# under Regulation 2016/679 (adopted 25 May 2018), section 1, require them to be interpreted
+# restrictively, and say that a transfer that occurs regularly within a stable relationship
+# between exporter and importer "can basically be deemed as systematic and repeated", so it
+# cannot be considered occasional or not repetitive. Recital 111 expressly limits only the
+# contract and legal-claims derogations (Art. 49(1)(b), (c) and (e)) to occasional
+# transfers, and the second subparagraph of Art. 49(1) requires a transfer that is not
+# repetitive; the guidelines read the other derogations as exceptions too. A DPA governs an
+# ongoing processing relationship, so as a conservative tool default a derogation is treated
+# like a missing basis unless the input records the transfer as occasional and not
+# repetitive.
+ART49_GUIDELINES = "EDPB Guidelines 2/2018, section 1"
 ART49_GUIDELINES_TITLE = (
-    "EDPB Guidelines 2/2018 on derogations of Article 49 under Regulation 2016/679 "
-    "(adopted 25 May 2018)"
+    "EDPB Guidelines 2/2018 on derogations of Article 49 under Regulation 2016/679, "
+    "adopted 25 May 2018, section 1"
 )
 
 SEVERITY_ORDER = {"HIGH": 3, "MEDIUM": 2, "LOW": 1, "INFO": 0}
@@ -377,9 +381,10 @@ def _assess_derogation(country: str, occasional_and_not_repetitive: bool) -> tup
         (
             f"Transfer to {country} relies on an Art. 49 derogation, but it is not recorded as "
             "occasional and not repetitive. Derogations are interpreted restrictively, and a transfer "
-            "that occurs regularly within a stable relationship between exporter and importer is "
-            f"systematic and repeated ({ART49_GUIDELINES_TITLE}). No Art. 45 or Art. 46 basis is "
-            "recorded for this transfer."
+            "that occurs regularly within a stable relationship between exporter and importer can "
+            f"basically be deemed systematic and repeated ({ART49_GUIDELINES_TITLE}). For the ongoing "
+            "transfers a DPA governs, this tool treats such a derogation as a missing basis; no "
+            "Art. 45 adequacy decision or Art. 46 safeguard is recorded for this transfer."
         ),
     )
 
@@ -451,7 +456,11 @@ def assess_transfer(
     return (
         "MISSING",
         "HIGH",
-        f"Transfer to {country} has no valid Chapter V mechanism (no adequacy, SCCs, BCR, or Art. 49 derogation).",
+        (
+            f"Transfer to {country} has no recorded Chapter V basis: no Art. 45 adequacy decision "
+            "(including the EU-US Data Privacy Framework), Art. 46 safeguard or Art. 49 derogation "
+            "is recorded."
+        ),
     )
 
 
@@ -479,10 +488,12 @@ def _transfer_remediation(country: str, mechanism: str | None, occasional_and_no
         )
     if mech == "derogation_art49" and occasional_and_not_repetitive:
         return f"Record which Art. 49(1) derogation applies to the transfer to {country} and how its conditions are met."
-    return (
-        f"Record an Art. 45 adequacy basis or an Art. 46 safeguard for {country}; "
-        f"Art. 49 derogations are interpreted restrictively ({ART49_GUIDELINES})."
-    )
+    if mech == "derogation_art49":
+        return (
+            f"Record an Art. 45 adequacy basis or an Art. 46 safeguard for {country}, or record that "
+            "the transfer is occasional and not repetitive and which Art. 49(1) derogation applies."
+        )
+    return f"Record an Art. 45 adequacy basis or an Art. 46 safeguard for {country}."
 
 
 def check_transfers(dpa: dict) -> list[Finding]:
