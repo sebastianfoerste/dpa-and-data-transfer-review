@@ -2,8 +2,8 @@
   "title": "Synthetic SaaS Data Processing Agreement review packet",
   "review_state": "BLOCKED",
   "summary": {
-    "total": 20,
-    "present": 17,
+    "total": 21,
+    "present": 18,
     "missing": 3,
     "needs_review": 0,
     "high_open": 3,
@@ -117,6 +117,15 @@
       "severity": "HIGH",
       "status": "PRESENT",
       "detail": "Sub-processor authorisation is 'general'.",
+      "remediation": ""
+    },
+    {
+      "rule_id": "processing.data_subjects",
+      "title": "Processing description: categories of data subjects",
+      "citation": "GDPR Art. 28(3)",
+      "severity": "MEDIUM",
+      "status": "PRESENT",
+      "detail": "Categories of data subjects are listed: customer end users.",
       "remediation": ""
     },
     {

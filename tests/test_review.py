@@ -140,6 +140,28 @@ class SamplePacket(unittest.TestCase):
         self.assertEqual(finding.status, "PRESENT")
 
 
+class DataSubjectCategories(unittest.TestCase):
+    """Art. 28(3) first subparagraph: the contract sets out the categories of data subjects."""
+
+    def test_listed_categories_of_data_subjects_are_present(self):
+        finding = _by_id(build_packet(SAMPLE), "processing.data_subjects")
+        self.assertEqual(finding.status, "PRESENT")
+        self.assertEqual(finding.citation, "GDPR Art. 28(3)")
+        self.assertIn("customer end users", finding.detail)
+
+    def test_missing_categories_of_data_subjects_are_flagged(self):
+        for missing in (None, []):
+            dpa = json.loads(json.dumps(SAMPLE))
+            if missing is None:
+                del dpa["processing"]["data_subjects"]
+            else:
+                dpa["processing"]["data_subjects"] = missing
+            finding = _by_id(build_packet(dpa), "processing.data_subjects")
+            self.assertEqual(finding.status, "MISSING")
+            self.assertEqual(finding.severity, "MEDIUM")
+            self.assertTrue(finding.remediation)
+
+
 class CuredPacket(unittest.TestCase):
     def test_fixing_defects_clears_high_findings(self):
         cured = json.loads(json.dumps(SAMPLE))
