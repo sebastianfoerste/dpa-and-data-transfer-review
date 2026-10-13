@@ -31,7 +31,7 @@ Checks: 21, present 18, missing 3, needs-review 0, open high 3, open medium 0
 | HIGH | [ok] | Personal-data breach notification to controller | GDPR Art. 33(2) |
 | HIGH | [ok] | Sub-processor authorisation | GDPR Art. 28(2) |
 | MEDIUM | [ok] | Processing description: categories of data subjects | GDPR Art. 28(3) |
-| MEDIUM | [ok] | Processing description: categories of personal data | GDPR Art. 28(3) |
+| MEDIUM | [ok] | Processing description: type of personal data | GDPR Art. 28(3) |
 | MEDIUM | [ok] | Processing description: duration of the processing | GDPR Art. 28(3) |
 | MEDIUM | [ok] | Processing description: nature and purpose of the processing | GDPR Art. 28(3) |
 | MEDIUM | [ok] | Processing description: subject matter of the processing | GDPR Art. 28(3) |

@@ -130,11 +130,11 @@
     },
     {
       "rule_id": "processing.data_types",
-      "title": "Processing description: categories of personal data",
+      "title": "Processing description: type of personal data",
       "citation": "GDPR Art. 28(3)",
       "severity": "MEDIUM",
       "status": "PRESENT",
-      "detail": "Categories of personal data are listed: account data, usage logs, support correspondence.",
+      "detail": "The types of personal data are listed: account data, usage logs, support correspondence.",
       "remediation": ""
     },
     {

@@ -289,6 +289,12 @@ class Art49DerogationAssessment(unittest.TestCase):
 class DataSubjectCategories(unittest.TestCase):
     """Art. 28(3) first subparagraph: the contract sets out the categories of data subjects."""
 
+    def test_data_types_use_the_statutory_wording(self):
+        # Art. 28(3) speaks of "the type of personal data and categories of data subjects".
+        finding = _by_id(build_packet(SAMPLE), "processing.data_types")
+        self.assertEqual(finding.title, "Processing description: type of personal data")
+        self.assertEqual(finding.status, "PRESENT")
+
     def test_listed_categories_of_data_subjects_are_present(self):
         finding = _by_id(build_packet(SAMPLE), "processing.data_subjects")
         self.assertEqual(finding.status, "PRESENT")

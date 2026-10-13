@@ -174,16 +174,16 @@ def check_processing_description(dpa: dict) -> list[Finding]:
     findings.append(
         Finding(
             rule_id="processing.data_types",
-            title="Processing description: categories of personal data",
+            title="Processing description: type of personal data",
             citation="GDPR Art. 28(3)",
             severity="MEDIUM",
             status="PRESENT" if data_types else "MISSING",
             detail=(
-                f"Categories of personal data are listed: {', '.join(data_types)}."
+                f"The types of personal data are listed: {', '.join(data_types)}."
                 if data_types
-                else "No categories of personal data are listed."
+                else "The type of personal data is not listed."
             ),
-            remediation="" if data_types else "List the categories of personal data processed.",
+            remediation="" if data_types else "List the type of personal data processed.",
         )
     )
     data_subjects = _get(dpa, "processing.data_subjects", []) or []
