@@ -36,6 +36,20 @@ VALID_TRANSFER_MECHANISMS = {"adequacy", "sccs", "bcr", "derogation_art49", "dpf
 DPF_COUNTRY = "US"
 DPF_DECISION = "Commission Implementing Decision (EU) 2023/1795"
 
+# Art. 49 derogations: EDPB Guidelines 2/2018 on derogations of Article 49 under
+# Regulation 2016/679 (adopted 25 May 2018) require the derogations to be interpreted
+# restrictively, and treat a transfer that occurs regularly within a stable relationship
+# between exporter and importer as systematic and repeated, so it is not occasional or
+# not repetitive (see also the "not repetitive" condition in Art. 49(1), second
+# subparagraph). Transfers under a DPA serve an ongoing processing relationship, so a
+# derogation is treated like a missing basis unless the input records the transfer as
+# occasional and not repetitive.
+ART49_GUIDELINES = "EDPB Guidelines 2/2018"
+ART49_GUIDELINES_TITLE = (
+    "EDPB Guidelines 2/2018 on derogations of Article 49 under Regulation 2016/679 "
+    "(adopted 25 May 2018)"
+)
+
 SEVERITY_ORDER = {"HIGH": 3, "MEDIUM": 2, "LOW": 1, "INFO": 0}
 
 
@@ -294,6 +308,31 @@ def _assess_dpf(
     )
 
 
+def _assess_derogation(country: str, occasional_and_not_repetitive: bool) -> tuple[str, str, str]:
+    """An Art. 49 derogation is an exception, not a basis for systematic or repeated transfers."""
+    if occasional_and_not_repetitive:
+        return (
+            "NEEDS_REVIEW",
+            "MEDIUM",
+            (
+                f"Transfer to {country} relies on an Art. 49 derogation and is recorded as occasional "
+                "and not repetitive; confirm which Art. 49(1) derogation applies and that its "
+                f"conditions are met. Derogations are interpreted restrictively ({ART49_GUIDELINES_TITLE})."
+            ),
+        )
+    return (
+        "MISSING",
+        "HIGH",
+        (
+            f"Transfer to {country} relies on an Art. 49 derogation, but it is not recorded as "
+            "occasional and not repetitive. Derogations are interpreted restrictively, and a transfer "
+            "that occurs regularly within a stable relationship between exporter and importer is "
+            f"systematic and repeated ({ART49_GUIDELINES_TITLE}). No Art. 45 or Art. 46 basis is "
+            "recorded for this transfer."
+        ),
+    )
+
+
 def assess_transfer(
     country: str,
     mechanism: str | None,
@@ -301,11 +340,13 @@ def assess_transfer(
     dpf_certified: bool = False,
     dpf_covers_hr_data: bool = False,
     includes_hr_data: bool | None = None,
+    occasional_and_not_repetitive: bool = False,
 ) -> tuple[str, str, str]:
     """Return (status, severity, detail) for a single destination country.
 
     The DPF keywords describe the importer's entry on the Data Privacy Framework List and
     whether the DPA covers HR data (None means the DPA does not say).
+    `occasional_and_not_repetitive` is the recorded nature of a derogation-based transfer.
     """
     country = (country or "").upper()
     mech = (mechanism or "none").lower()
@@ -315,14 +356,14 @@ def assess_transfer(
         return ("PRESENT", "LOW", f"{country} benefits from an adequacy decision (Art. 45).")
     if mech == "dpf":
         return _assess_dpf(country, dpf_certified, dpf_covers_hr_data, includes_hr_data)
-    if mech in {"sccs", "bcr", "derogation_art49"}:
+    if mech == "derogation_art49":
+        return _assess_derogation(country, occasional_and_not_repetitive)
+    if mech in {"sccs", "bcr"}:
         label = {
             "sccs": "Standard Contractual Clauses (Art. 46(2)(c))",
             "bcr": "Binding Corporate Rules (Art. 47)",
-            "derogation_art49": "an Art. 49 derogation",
         }[mech]
-        sev = "MEDIUM" if mech == "derogation_art49" else "LOW"
-        return ("NEEDS_REVIEW", sev, f"Transfer to {country} relies on {label}; confirm validity and a transfer impact assessment.")
+        return ("NEEDS_REVIEW", "LOW", f"Transfer to {country} relies on {label}; confirm validity and a transfer impact assessment.")
     return (
         "MISSING",
         "HIGH",
@@ -332,18 +373,27 @@ def assess_transfer(
 
 def _transfer_articles(mechanism: str | None) -> str:
     """Chapter V provisions behind a transfer finding, for its citation."""
-    if (mechanism or "none").lower() == "dpf":
+    mech = (mechanism or "none").lower()
+    if mech == "dpf":
         return f"Art. 44-45; {DPF_DECISION}"
+    if mech == "derogation_art49":
+        return f"Art. 44, 49; {ART49_GUIDELINES}"
     return "Art. 44-46"
 
 
-def _transfer_remediation(country: str, mechanism: str | None) -> str:
-    if (mechanism or "none").lower() == "dpf":
+def _transfer_remediation(country: str, mechanism: str | None, occasional_and_not_repetitive: bool) -> str:
+    mech = (mechanism or "none").lower()
+    if mech == "dpf":
         return (
             f"Record the importer's active certification on the Data Privacy Framework List "
             f"(covering HR data if HR data is transferred), or another Chapter V basis for {country}."
         )
-    return f"Document a valid Art. 46 safeguard for {country} (or an Art. 49 derogation) and record the basis."
+    if mech == "derogation_art49" and occasional_and_not_repetitive:
+        return f"Record which Art. 49(1) derogation applies to the transfer to {country} and how its conditions are met."
+    return (
+        f"Record an Art. 45 adequacy basis or an Art. 46 safeguard for {country}; "
+        f"Art. 49 derogations are interpreted restrictively ({ART49_GUIDELINES})."
+    )
 
 
 def check_transfers(dpa: dict) -> list[Finding]:
@@ -354,14 +404,17 @@ def check_transfers(dpa: dict) -> list[Finding]:
     dpf_covers_hr_data = _get(dpa, "transfers.dpf_covers_hr_data", {}) or {}
     hr_flag = _get(dpa, "processing.includes_hr_data")
     includes_hr_data = None if hr_flag is None else bool(hr_flag)  # None: the DPA does not say
+    occasional = _get(dpa, "transfers.occasional_and_not_repetitive", {}) or {}
 
     for country in destinations:
+        is_occasional = bool(occasional.get(country, False))
         status, severity, detail = assess_transfer(
             country,
             mechanisms.get(country),
             dpf_certified=bool(dpf_certified.get(country, False)),
             dpf_covers_hr_data=bool(dpf_covers_hr_data.get(country, False)),
             includes_hr_data=includes_hr_data,
+            occasional_and_not_repetitive=is_occasional,
         )
         findings.append(
             Finding(
@@ -373,7 +426,7 @@ def check_transfers(dpa: dict) -> list[Finding]:
                 detail=detail,
                 remediation=(
                     "" if status == "PRESENT"
-                    else _transfer_remediation(country, mechanisms.get(country))
+                    else _transfer_remediation(country, mechanisms.get(country), is_occasional)
                 ),
             )
         )
@@ -388,6 +441,7 @@ def check_transfers(dpa: dict) -> list[Finding]:
                 dpf_certified=bool(sp.get("dpf_certified", False)),
                 dpf_covers_hr_data=bool(sp.get("dpf_covers_hr_data", False)),
                 includes_hr_data=includes_hr_data,
+                occasional_and_not_repetitive=bool(sp.get("occasional_and_not_repetitive", False)),
             )
             findings.append(
                 Finding(

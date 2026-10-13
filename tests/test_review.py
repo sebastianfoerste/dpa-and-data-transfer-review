@@ -140,6 +140,58 @@ class SamplePacket(unittest.TestCase):
         self.assertEqual(finding.status, "PRESENT")
 
 
+class Art49DerogationAssessment(unittest.TestCase):
+    """EDPB Guidelines 2/2018: derogations are interpreted restrictively, not for systematic transfers."""
+
+    def test_derogation_for_systematic_transfer_is_treated_like_a_missing_basis(self):
+        derogation = assess_transfer("IN", "derogation_art49")
+        no_mechanism = assess_transfer("IN", "none")
+        self.assertEqual(derogation[:2], ("MISSING", "HIGH"))
+        self.assertEqual(derogation[:2], no_mechanism[:2])
+        self.assertIn("EDPB Guidelines 2/2018", derogation[2])
+        self.assertIn("systematic and repeated", derogation[2])
+
+    def test_derogation_for_occasional_transfer_needs_review(self):
+        status, sev, detail = assess_transfer("IN", "derogation_art49", occasional_and_not_repetitive=True)
+        self.assertEqual(status, "NEEDS_REVIEW")
+        self.assertEqual(sev, "MEDIUM")
+        self.assertIn("restrictively", detail)
+
+    def _derogation_dpa(self, occasional):
+        dpa = json.loads(json.dumps(SAMPLE))
+        dpa["art28_clauses"]["subprocessor_flowdown"] = True  # isolate the transfer findings
+        dpa["transfers"]["mechanisms"]["US"] = "derogation_art49"
+        dpa["subprocessors"][1]["transfer_mechanism"] = "derogation_art49"
+        if occasional:
+            dpa["transfers"]["occasional_and_not_repetitive"] = {"US": True}
+            dpa["subprocessors"][1]["occasional_and_not_repetitive"] = True
+        return dpa
+
+    def test_systematic_derogation_transfers_block_the_packet(self):
+        packet = build_packet(self._derogation_dpa(occasional=False))
+        for rule_id in ("transfer.us", "transfer.subprocessor.support_tools_llc"):
+            finding = _by_id(packet, rule_id)
+            self.assertEqual((finding.status, finding.severity), ("MISSING", "HIGH"))
+            self.assertIn("Art. 44, 49; EDPB Guidelines 2/2018", finding.citation)
+        remediation = _by_id(packet, "transfer.us").remediation
+        self.assertIn("Art. 45", remediation)
+        self.assertIn("Art. 46", remediation)
+        self.assertEqual(packet.review_state, "BLOCKED")
+
+    def test_occasional_derogation_transfers_go_to_review_not_block(self):
+        packet = build_packet(self._derogation_dpa(occasional=True))
+        for rule_id in ("transfer.us", "transfer.subprocessor.support_tools_llc"):
+            finding = _by_id(packet, rule_id)
+            self.assertEqual((finding.status, finding.severity), ("NEEDS_REVIEW", "MEDIUM"))
+        self.assertIn("Art. 49(1)", _by_id(packet, "transfer.us").remediation)
+        self.assertEqual(packet.review_state, "NEEDS_REVIEW")
+
+    def test_remediation_no_longer_suggests_a_derogation_for_a_dpa_transfer(self):
+        remediation = _by_id(build_packet(SAMPLE), "transfer.us").remediation
+        self.assertNotIn("or an Art. 49 derogation", remediation)
+        self.assertIn("interpreted restrictively", remediation)
+
+
 class DataSubjectCategories(unittest.TestCase):
     """Art. 28(3) first subparagraph: the contract sets out the categories of data subjects."""
 

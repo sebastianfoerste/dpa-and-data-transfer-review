@@ -47,7 +47,7 @@ Checks: 21, present 18, missing 3, needs-review 0, open high 3, open medium 0
 | --- | --- | --- | --- | --- |
 | HIGH | [missing] | Sub-processor flow-down of data-protection obligations | GDPR Art. 28(4) | Add a clause imposing materially equivalent obligations on every sub-processor (Art. 28(4)). |
 | HIGH | [missing] | Sub-processor transfer: Support Tools LLC (US) | GDPR Art. 28(4) / Art. 44-46 | Confirm the transfer mechanism covering Support Tools LLC in US. |
-| HIGH | [missing] | International transfer to US | GDPR Art. 44-46 | Document a valid Art. 46 safeguard for US (or an Art. 49 derogation) and record the basis. |
+| HIGH | [missing] | International transfer to US | GDPR Art. 44-46 | Record an Art. 45 adequacy basis or an Art. 46 safeguard for US; Art. 49 derogations are interpreted restrictively (EDPB Guidelines 2/2018). |
 ```
 
 The full packet (cleared items included) is committed at [`examples/review-packet.md`](examples/review-packet.md) and [`examples/review-packet.json`](examples/review-packet.json) so you can read a real output without running anything.
@@ -83,10 +83,11 @@ A legal team or reviewer at an AI SaaS company can use this as a privacy review 
 | Breach notification | GDPR Art. 33(2) | Processor-to-controller notice, "without undue delay" |
 | International transfers | GDPR Art. 44-46 | EEA vs adequacy (Art. 45) vs SCCs/BCR (Art. 46) vs Art. 49 derogations, per destination **and** per sub-processor |
 | EU-US Data Privacy Framework | GDPR Art. 45; Commission Implementing Decision (EU) 2023/1795 | Treated as an adequacy basis, not an Art. 46 safeguard, so no transfer impact assessment is triggered. Requires the US importer to be recorded as actively certified on the Data Privacy Framework List, and certified for HR data where HR data is transferred |
+| Art. 49 derogations | GDPR Art. 49; EDPB Guidelines 2/2018 on derogations of Article 49 under Regulation 2016/679 (adopted 25 May 2018) | Derogations are interpreted restrictively. A derogation is `HIGH`/missing, like a transfer with no mechanism, unless the transfer is recorded as occasional and not repetitive, because regular transfers within a stable relationship are systematic and repeated. A recorded occasional transfer goes to review |
 | Transfer impact assessment | GDPR Art. 46 (CJEU C-311/18) | Recorded TIA where Art. 46 safeguards are relied on |
 | US service-provider terms | CCPA §1798.140(ag) / CPRA | Service-provider restrictions where US personal information is in scope |
 
-For a `dpf` transfer, the input records the importer's certification as `dpf_certified` and `dpf_covers_hr_data`: on the sub-processor entry, or keyed by country under `transfers` for direct transfers. `processing.includes_hr_data` records whether HR data is in scope; if it is omitted, an importer certified without HR data is flagged for review.
+For a `dpf` transfer, the input records the importer's certification as `dpf_certified` and `dpf_covers_hr_data`: on the sub-processor entry, or keyed by country under `transfers` for direct transfers. `processing.includes_hr_data` records whether HR data is in scope; if it is omitted, an importer certified without HR data is flagged for review. For a `derogation_art49` transfer, `occasional_and_not_repetitive` (on the sub-processor entry, or keyed by country under `transfers`) records an occasional, non-repetitive transfer.
 
 Reference data (EEA members, adequacy countries, valid mechanisms) is explicit and citeable in [`src/dpa_review/checks.py`](src/dpa_review/checks.py); it is illustrative and should be verified against the current Commission decisions in real use.
 

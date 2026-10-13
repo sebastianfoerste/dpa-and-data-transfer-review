@@ -316,12 +316,12 @@
         "processor-direct-to-us"
       ],
       "reviewer_role": "Privacy Counsel",
-      "required_evidence": "Document a valid Art. 46 safeguard for US (or an Art. 49 derogation) and record the basis.",
+      "required_evidence": "Record an Art. 45 adequacy basis or an Art. 46 safeguard for US; Art. 49 derogations are interpreted restrictively (EDPB Guidelines 2/2018).",
       "decision_state": "open"
     }
   ],
   "source_dpa_sha256": "39314dc6ac5d3d63c2d07dab52ab93fd50d7f246194b669ee41d9b4d72af0c66",
   "review_gate": "The graph is a deterministic reviewer aid. It does not validate a transfer mechanism, approve a sub-processor, or execute a transfer.",
   "external_actions_allowed": false,
-  "graph_sha256": "fdff5ee2eb2b2bfbc2b2937b0c499733fbf185eb0a7376bc2b913b94a17a212e"
+  "graph_sha256": "a253ff10bda7cd315880c883f8304d040132feff803f457dd743e3ba1963428b"
 }

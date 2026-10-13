@@ -5,7 +5,7 @@
 - Review packet state: `BLOCKED`
 - Blocked edges: 5
 - Review edges: 0
-- Graph SHA-256: `fdff5ee2eb2b2bfbc2b2937b0c499733fbf185eb0a7376bc2b913b94a17a212e`
+- Graph SHA-256: `a253ff10bda7cd315880c883f8304d040132feff803f457dd743e3ba1963428b`
 - External actions: disabled
 
 ## Transfer chain
@@ -48,7 +48,7 @@ flowchart LR
 | --- | --- | ---: | --- | --- |
 | subprocessor.flowdown | HIGH | 3 | Privacy Counsel | Add a clause imposing materially equivalent obligations on every sub-processor (Art. 28(4)). |
 | transfer.subprocessor.support_tools_llc | HIGH | 2 | Privacy Counsel | Confirm the transfer mechanism covering Support Tools LLC in US. |
-| transfer.us | HIGH | 1 | Privacy Counsel | Document a valid Art. 46 safeguard for US (or an Art. 49 derogation) and record the basis. |
+| transfer.us | HIGH | 1 | Privacy Counsel | Record an Art. 45 adequacy basis or an Art. 46 safeguard for US; Art. 49 derogations are interpreted restrictively (EDPB Guidelines 2/2018). |
 
 ## Review gate
 

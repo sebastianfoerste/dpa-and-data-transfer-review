@@ -36,7 +36,7 @@
       "severity": "HIGH",
       "status": "MISSING",
       "detail": "Transfer to US has no valid Chapter V mechanism (no adequacy, SCCs, BCR, or Art. 49 derogation).",
-      "remediation": "Document a valid Art. 46 safeguard for US (or an Art. 49 derogation) and record the basis."
+      "remediation": "Record an Art. 45 adequacy basis or an Art. 46 safeguard for US; Art. 49 derogations are interpreted restrictively (EDPB Guidelines 2/2018)."
     },
     {
       "rule_id": "art28.assist_data_subject_requests",
