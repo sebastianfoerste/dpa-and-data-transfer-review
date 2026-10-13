@@ -8,7 +8,9 @@ Deterministic, cited GDPR Art. 28 + Chapter V transfer checks; produces a review
 
 > **If you don't code:** scroll to [What the demo produces](#what-the-demo-produces). The repository ships a sample output you can read in the browser: a cited checklist with a clear review state. The point is not the code; it is whether the legal review is structured, cited, reviewable, and testable.
 
-![demo](docs/demo.png)
+![Terminal rendering of the full make demo output: the BLOCKED review packet for the synthetic sample DPA](docs/demo.png)
+
+*The complete, unedited terminal output of `make demo` on the bundled synthetic DPA, rendered as an image. The last line is make reporting the CLI's gating exit code `2` (`BLOCKED`).*
 
 ## Why this exists
 
