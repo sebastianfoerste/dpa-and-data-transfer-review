@@ -310,6 +310,23 @@ class Art49DerogationAssessment(unittest.TestCase):
         self.assertIn("Art. 49(1)", _by_id(packet, "transfer.us").remediation)
         self.assertEqual(packet.review_state, "NEEDS_REVIEW")
 
+    def test_subprocessor_gets_the_same_remediation_as_a_direct_transfer(self):
+        packet = build_packet(SAMPLE)
+        self.assertEqual(
+            _by_id(packet, "transfer.subprocessor.support_tools_llc").remediation,
+            "Record an Art. 45 adequacy basis or an Art. 46 safeguard for Support Tools LLC in US.",
+        )
+        packet = build_packet(self._derogation_dpa(occasional=False))
+        remediation = _by_id(packet, "transfer.subprocessor.support_tools_llc").remediation
+        self.assertIn("Support Tools LLC in US", remediation)
+        self.assertIn("occasional and not repetitive", remediation)
+
+    def test_subprocessor_dpf_remediation_names_the_certification_to_record(self):
+        dpa = json.loads(json.dumps(SAMPLE))
+        dpa["subprocessors"][1]["transfer_mechanism"] = "dpf"
+        remediation = _by_id(build_packet(dpa), "transfer.subprocessor.support_tools_llc").remediation
+        self.assertIn("the active certification of Support Tools LLC on the Data Privacy Framework List", remediation)
+
     def test_missing_basis_no_longer_offers_a_derogation_as_the_cure(self):
         finding = _by_id(build_packet(SAMPLE), "transfer.us")
         self.assertEqual(finding.remediation, "Record an Art. 45 adequacy basis or an Art. 46 safeguard for US.")

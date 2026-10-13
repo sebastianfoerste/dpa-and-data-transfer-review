@@ -601,31 +601,44 @@ def _transfer_articles(country: str, mechanism: str | None) -> str:
     return "Art. 44-46"
 
 
-def _transfer_remediation(country: str, mechanism: str | None, occasional_and_not_repetitive: bool) -> str:
+def _transfer_remediation(
+    country: str,
+    mechanism: str | None,
+    occasional_and_not_repetitive: bool,
+    importer: str | None = None,
+) -> str:
+    """What to record or confirm for an open transfer finding.
+
+    `importer` names a sub-processor; a direct transfer is described by its country alone.
+    The same defect gets the same remediation in either place.
+    """
     mech = (mechanism or "none").lower()
+    where = f"{importer} in {country}" if importer else country
+    transfer = f"the transfer to {importer}" if importer else "the transfer"
+    certification = f"the active certification of {importer}" if importer else "the importer's active certification"
     if country.upper() in ADEQUACY and mech in _ADEQUACY_REDUNDANT:
-        return f"Record reliance on the Art. 45 adequacy decision for {country} as the transfer basis."
+        return f"Record reliance on the Art. 45 adequacy decision for {country} as the basis for {transfer}."
     if mech == "adequacy" and country.upper() not in ADEQUACY:
         if country.upper() == DPF_COUNTRY:
             return (
-                f"Record the mechanism for {country} as dpf, with the importer's active certification on "
-                "the Data Privacy Framework List and the data it covers, or record an Art. 46 safeguard."
+                f"Record the mechanism for {where} as dpf, with {certification} on the Data Privacy "
+                "Framework List and the data it covers, or record an Art. 46 safeguard."
             )
         return (
             f"Confirm that a current Commission adequacy decision covers {country} (the tool's adequacy "
-            f"list is illustrative), or record an Art. 46 safeguard for {country}."
+            f"list is illustrative), or record an Art. 46 safeguard for {where}."
         )
     if mech == "dpf":
         return (
-            "Record the importer's active certification on the Data Privacy Framework List and the "
-            "data it covers (non-HR data, and HR data if HR data is transferred), or another "
-            f"Chapter V basis for {country}."
+            f"Record {certification} on the Data Privacy Framework List and the data it covers "
+            "(non-HR data, and HR data if HR data is transferred), or another Chapter V basis for "
+            f"{where}."
         )
     if mech == "derogation_art49" and occasional_and_not_repetitive:
-        return f"Record which Art. 49(1) derogation applies to the transfer to {country} and how its conditions are met."
+        return f"Record which Art. 49(1) derogation applies to the transfer to {where} and how its conditions are met."
     if mech == "derogation_art49":
         return (
-            f"Record an Art. 45 adequacy basis or an Art. 46 safeguard for {country}, or record that "
+            f"Record an Art. 45 adequacy basis or an Art. 46 safeguard for {where}, or record that "
             "the transfer is occasional and not repetitive and which Art. 49(1) derogation applies."
         )
     if mech in {"sccs", "bcr"}:
@@ -634,10 +647,10 @@ def _transfer_remediation(country: str, mechanism: str | None, occasional_and_no
             "bcr": "approved Binding Corporate Rules (Art. 47)",
         }[mech]
         return (
-            f"Confirm that {tool} cover the transfer to {country}, with a transfer impact assessment "
+            f"Confirm that {tool} cover the transfer to {where}, with a transfer impact assessment "
             f"and any supplementary measures ({SUPPLEMENTARY_MEASURES})."
         )
-    return f"Record an Art. 45 adequacy basis or an Art. 46 safeguard for {country}."
+    return f"Record an Art. 45 adequacy basis or an Art. 46 safeguard for {where}."
 
 
 def check_transfers(dpa: dict) -> list[Finding]:
@@ -696,6 +709,7 @@ def check_transfers(dpa: dict) -> list[Finding]:
             )
         }
         country = (sp.get("country") or "").upper()
+        name = sp.get("name") or "unknown"
         if country and country not in EEA:
             status, severity, detail = assess_transfer(
                 country,
@@ -706,15 +720,20 @@ def check_transfers(dpa: dict) -> list[Finding]:
             )
             findings.append(
                 Finding(
-                    rule_id=f"transfer.subprocessor.{sp.get('name', 'unknown').lower().replace(' ', '_')}",
-                    title=f"Sub-processor transfer: {sp.get('name', 'unknown')} ({country})",
+                    rule_id=f"transfer.subprocessor.{name.lower().replace(' ', '_')}",
+                    title=f"Sub-processor transfer: {name} ({country})",
                     citation="GDPR Art. 28(4) / " + _transfer_articles(country, sp.get("transfer_mechanism")),
                     severity=severity,
                     status=status,
-                    detail=f"{sp.get('name', 'unknown')} processes data in {country}. {detail}",
+                    detail=f"{name} processes data in {country}. {detail}",
                     remediation=(
                         "" if status == "PRESENT"
-                        else f"Confirm the transfer mechanism covering {sp.get('name', 'unknown')} in {country}."
+                        else _transfer_remediation(
+                            country,
+                            sp.get("transfer_mechanism"),
+                            flags["occasional_and_not_repetitive"],
+                            importer=name,
+                        )
                     ),
                 )
             )

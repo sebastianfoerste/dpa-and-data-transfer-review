@@ -27,7 +27,7 @@
       "severity": "HIGH",
       "status": "MISSING",
       "detail": "Support Tools LLC processes data in US. Transfer to US has no recorded Chapter V basis: no Art. 45 adequacy decision (including the EU-US Data Privacy Framework), Art. 46 safeguard or Art. 49 derogation is recorded.",
-      "remediation": "Confirm the transfer mechanism covering Support Tools LLC in US."
+      "remediation": "Record an Art. 45 adequacy basis or an Art. 46 safeguard for Support Tools LLC in US."
     },
     {
       "rule_id": "transfer.us",

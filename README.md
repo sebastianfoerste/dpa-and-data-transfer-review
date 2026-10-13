@@ -48,7 +48,7 @@ Checks: 21, present 18, missing 3, needs-review 0, open high 3, open medium 0
 | Severity | Status | Finding | Citation | Remediation |
 | --- | --- | --- | --- | --- |
 | HIGH | [missing] | Sub-processor flow-down of data-protection obligations | GDPR Art. 28(4) | Add a clause imposing materially equivalent obligations on every sub-processor (Art. 28(4)). |
-| HIGH | [missing] | Sub-processor transfer: Support Tools LLC (US) | GDPR Art. 28(4) / Art. 44-46 | Confirm the transfer mechanism covering Support Tools LLC in US. |
+| HIGH | [missing] | Sub-processor transfer: Support Tools LLC (US) | GDPR Art. 28(4) / Art. 44-46 | Record an Art. 45 adequacy basis or an Art. 46 safeguard for Support Tools LLC in US. |
 | HIGH | [missing] | International transfer to US | GDPR Art. 44-46 | Record an Art. 45 adequacy basis or an Art. 46 safeguard for US. |
 ```
 
