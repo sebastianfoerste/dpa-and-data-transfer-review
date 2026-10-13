@@ -153,29 +153,47 @@ def _objects(dpa: dict, path: str) -> list[dict]:
     return value
 
 
-def _country_flags(dpa: dict, path: str) -> dict[Any, bool | None]:
-    """A yes/no fact recorded per destination, as an object keyed by country code."""
+def _by_country(dpa: dict, path: str, read: Callable[[Any, str], Any], example: str) -> dict[str, Any]:
+    """A fact recorded per destination, as an object keyed by country code.
+
+    Country codes are compared without case, as assess_transfer does, so a flag keyed "us"
+    applies to the destination "US". Two keys for the same country are refused.
+    """
     value = _get(dpa, path)
     if value is None:
         return {}
     if not isinstance(value, dict):
         raise InvalidInputError(
-            f'{path} must be an object keyed by country code, such as {{"US": true}}; got {value!r}.'
+            f"{path} must be an object keyed by country code, such as {example}; got {value!r}."
         )
-    return {country: _flag(flag, f"{path}.{country}") for country, flag in value.items()}
+    recorded: dict[str, Any] = {}
+    for key, item in value.items():
+        country = key.upper()
+        if country in recorded:
+            raise InvalidInputError(f"{path} records {country} more than once (country codes ignore case).")
+        recorded[country] = read(item, f"{path}.{key}")
+    return recorded
 
 
-def _mechanisms(dpa: dict) -> dict[Any, str | None]:
-    """The transfer mechanism recorded per destination, as an object keyed by country code."""
-    path = "transfers.mechanisms"
-    value = _get(dpa, path)
-    if value is None:
-        return {}
-    if not isinstance(value, dict):
+def _country_flags(dpa: dict, path: str) -> dict[str, bool | None]:
+    """A yes/no fact recorded per destination."""
+    return _by_country(dpa, path, _flag, '{"US": true}')
+
+
+def transfer_mechanisms(dpa: dict) -> dict[str, str | None]:
+    """The transfer mechanism recorded per destination, keyed by upper-case country code."""
+    return _by_country(dpa, "transfers.mechanisms", _text, '{"US": "sccs"}')
+
+
+def _destinations(dpa: dict) -> list[str]:
+    """The direct transfer destinations as upper-case country codes, each listed once."""
+    destinations = [country.upper() for country in _labels(dpa, "transfers.destinations", '["US"]')]
+    repeated = sorted({country for country in destinations if destinations.count(country) > 1})
+    if repeated:
         raise InvalidInputError(
-            f'{path} must be an object keyed by country code, such as {{"US": "sccs"}}; got {value!r}.'
+            f"transfers.destinations lists {', '.join(repeated)} more than once (country codes ignore case)."
         )
-    return {country: _text(mechanism, f"{path}.{country}") for country, mechanism in value.items()}
+    return destinations
 
 
 # --- Article 28(3) mandatory processor clauses -------------------------------
@@ -589,8 +607,8 @@ def _transfer_remediation(country: str, mechanism: str | None, occasional_and_no
 
 def check_transfers(dpa: dict) -> list[Finding]:
     findings: list[Finding] = []
-    destinations = _labels(dpa, "transfers.destinations", '["US"]')
-    mechanisms = _mechanisms(dpa)
+    destinations = _destinations(dpa)
+    mechanisms = transfer_mechanisms(dpa)
     subprocessors = _objects(dpa, "subprocessors")
     dpf_certified = _country_flags(dpa, "transfers.dpf_certified")
     dpf_covers_hr_data = _country_flags(dpa, "transfers.dpf_covers_hr_data")

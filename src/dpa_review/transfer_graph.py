@@ -7,7 +7,7 @@ import json
 import re
 from typing import Any
 
-from dpa_review.checks import EEA
+from dpa_review.checks import EEA, transfer_mechanisms
 from dpa_review.review import OPEN_STATUSES, ReviewPacket
 
 SCHEMA = "dpa-review.transfer-evidence-graph.v1"
@@ -145,7 +145,7 @@ def build_transfer_evidence_graph(
                 }
             )
 
-    mechanisms = dpa.get("transfers", {}).get("mechanisms", {}) or {}
+    mechanisms = transfer_mechanisms(dpa)
     for country_value in dpa.get("transfers", {}).get("destinations", []) or []:
         country = str(country_value).upper()
         jurisdiction_id = add_node("jurisdiction", country, eea=country in EEA)

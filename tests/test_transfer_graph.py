@@ -52,6 +52,14 @@ class TransferEvidenceGraphTests(unittest.TestCase):
         self.assertEqual(graph["summary"]["blocked_edges"], 0)
         self.assertEqual(graph["graph_status"], "NEEDS_REVIEW")
 
+    def test_graph_reads_mechanisms_keyed_in_any_case(self):
+        dpa = json.loads(json.dumps(SAMPLE))
+        dpa["transfers"]["mechanisms"] = {"fr": "none", "us": "sccs", "jp": "adequacy"}
+        graph = build_transfer_evidence_graph(dpa, build_packet(dpa))
+        edge = next(e for e in graph["edges"] if e["edge_id"] == "processor-direct-to-us")
+        self.assertEqual(edge["mechanism"], "sccs")
+        self.assertIn("transfer.impact_assessment", edge["control_refs"])
+
     def test_graph_is_deterministic_and_renders_mermaid(self):
         first = build_transfer_evidence_graph(SAMPLE, build_packet(SAMPLE))
         second = build_transfer_evidence_graph(SAMPLE, build_packet(SAMPLE))

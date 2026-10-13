@@ -407,6 +407,38 @@ class RecordedFlagShape(unittest.TestCase):
             build_packet(dpa)
 
 
+class CountryCodeCase(unittest.TestCase):
+    """Per-country fields are matched to destinations without regard to case, as assess_transfer does."""
+
+    def _dpf_dpa(self, destination, flag_key):
+        dpa = json.loads(json.dumps(SAMPLE))
+        dpa["processing"]["includes_hr_data"] = False
+        dpa["transfers"]["destinations"] = ["FR", destination, "JP"]
+        dpa["transfers"]["mechanisms"] = {"FR": "none", flag_key: "dpf", "JP": "adequacy"}
+        dpa["transfers"]["dpf_certified"] = {flag_key: True}
+        dpa["transfers"]["dpf_covers_non_hr_data"] = {flag_key: True}
+        return dpa
+
+    def test_lower_case_keys_apply_to_an_upper_case_destination(self):
+        finding = _by_id(build_packet(self._dpf_dpa("US", "us")), "transfer.us")
+        self.assertEqual((finding.status, finding.severity), ("PRESENT", "LOW"))
+
+    def test_lower_case_destination_uses_upper_case_keys(self):
+        finding = _by_id(build_packet(self._dpf_dpa("us", "US")), "transfer.us")
+        self.assertEqual((finding.status, finding.severity), ("PRESENT", "LOW"))
+        self.assertEqual(finding.title, "International transfer to US")
+
+    def test_country_recorded_twice_is_refused(self):
+        dpa = json.loads(json.dumps(SAMPLE))
+        dpa["transfers"]["mechanisms"]["us"] = "sccs"
+        with self.assertRaisesRegex(InvalidInputError, "transfers.mechanisms records US more than once"):
+            build_packet(dpa)
+        dpa = json.loads(json.dumps(SAMPLE))
+        dpa["transfers"]["destinations"].append("us")
+        with self.assertRaisesRegex(InvalidInputError, "transfers.destinations lists US more than once"):
+            build_packet(dpa)
+
+
 class CuredPacket(unittest.TestCase):
     def test_fixing_defects_clears_high_findings(self):
         cured = json.loads(json.dumps(SAMPLE))
