@@ -356,7 +356,8 @@ class CuredPacket(unittest.TestCase):
         cured["subprocessors"][1]["transfer_mechanism"] = "sccs"
         packet = build_packet(cured)
         self.assertEqual(packet.summary["high_open"], 0)
-        self.assertIn(packet.review_state, {"NEEDS_REVIEW", "CLEARED_FOR_REVIEW"})
+        # The SCC transfers still need a lawyer's review, so the packet is not cleared.
+        self.assertEqual(packet.review_state, "NEEDS_REVIEW")
 
     def test_scc_findings_cite_the_scc_decision_and_supplementary_measures(self):
         dpa = json.loads(json.dumps(SAMPLE))

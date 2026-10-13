@@ -19,5 +19,11 @@ jobs:
         run: make test
       - name: Demo (review packet must stay reproducible)
         run: |
-          make demo || true   # demo exits non-zero by design when the sample DPA is BLOCKED
-          test -f examples/review-packet.md
+          # The sample DPA is BLOCKED by design, so the CLI must exit 2. Run it directly:
+          # make would turn every non-zero exit, including a crash (3), into its own 2.
+          set +e
+          PYTHONPATH=src python -m dpa_review.cli --input data/sample_dpa.json --out examples --quiet
+          status=$?
+          set -e
+          test "$status" -eq 2
+          git diff --exit-code -- examples/

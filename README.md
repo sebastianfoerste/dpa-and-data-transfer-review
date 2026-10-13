@@ -12,7 +12,7 @@ Deterministic, cited GDPR Art. 28 + Chapter V transfer checks; produces a review
 
 ## Why this exists
 
-Vendor and DPA review is high-volume, repetitive, and easy to do inconsistently. Every miss, a sub-processor in a third country with no transfer mechanism, no flow-down of obligations, or a missing breach-notification clause, is a real exposure. This encodes the recurring GDPR Article 28 and Chapter V checks as deterministic rules with citations, so the boring 80% is consistent and a lawyer's time goes to the judgement calls.
+Vendor and DPA review is high-volume, repetitive, and easy to do inconsistently. Every miss, a sub-processor in a third country with no transfer mechanism, no flow-down of obligations, or a missing breach-notification clause, is a real exposure. This encodes the recurring GDPR Article 28 and Chapter V checks as deterministic rules with citations, so the routine checks are applied the same way every time and a lawyer's time goes to the judgement calls.
 
 The thesis is the same one that runs through my other repositories: **legal AI and legal automation quality should be measured and reviewable, not asserted.**
 
@@ -23,10 +23,10 @@ git clone https://github.com/sebastianfoerste/dpa-and-data-transfer-review
 cd dpa-and-data-transfer-review
 make install   # no third-party dependencies, standard library only
 make test      # deterministic unit tests
-make demo      # writes examples/review-packet.md and .json, prints the packet
+make demo      # prints the packet and writes it, plus the transfer evidence graph, to examples/ (md + json)
 ```
 
-`make demo` runs end to end, offline and deterministically, against the synthetic DPA in `data/sample_dpa.json`.
+`make demo` runs end to end, offline and deterministically, against the synthetic DPA in `data/sample_dpa.json`. Because the sample is blocked, the CLI exits `2` and `make` then reports the recipe as failed with `Error 2`: that is make passing on the gating exit code, not a crash. `make test` fails if the committed files in `examples/` or the excerpt below drift from what `make demo` produces.
 
 ## What the demo produces
 
@@ -60,15 +60,15 @@ uncovered Chapter V paths while keeping every approval and transfer action
 disabled. Its control remediation queue deduplicates each open rule, shows every
 affected transfer edge, and routes the required evidence to a named lawyer role.
 
-Fix the three defects in the input (flow-down clause, an Art. 46 mechanism for the US transfer, and a recorded transfer impact assessment) and the packet drops to `NEEDS_REVIEW`. There is a test that asserts exactly this transition.
+Fix the three defects in the input (add the flow-down clause, and record SCCs for the direct US transfer and for the US sub-processor), record the transfer impact assessment that SCCs then require, and the packet drops to `NEEDS_REVIEW`: the SCC transfers still go to a lawyer for review. A test asserts exactly this transition.
 
 ## AI SaaS legal-team use case
 
 A legal team or reviewer at an AI SaaS company can use this as a privacy review surface before signature:
 
-1. **DPA defects:** the sample packet catches missing sub-processor flow-down, missing transfer mechanism, and missing transfer impact evidence.
+1. **DPA defects:** the sample packet catches missing sub-processor flow-down and a missing transfer mechanism, both for the direct US transfer and for the US sub-processor. The sample relies on no SCCs or BCR, so the transfer impact assessment check does not fire on it.
 2. **Transfer mechanism:** the review distinguishes adequacy (including the EU-US Data Privacy Framework), Art. 46 safeguards, and Art. 49 derogations per destination and sub-processor.
-3. **Transfer impact evidence:** the packet stays blocked until transfer impact assessment evidence is recorded where needed.
+3. **Transfer impact evidence:** where SCCs or BCR are relied on, a missing transfer impact assessment is an open `MEDIUM` finding that keeps the packet in review.
 4. **Blocked state:** high-severity findings produce `BLOCKED` and exit code `2`, so the review can stop a workflow rather than merely warn.
 5. **Lawyer review:** even a remediated packet moves to review, not autonomous approval.
 
@@ -106,8 +106,8 @@ src/dpa_review/
   transfer_graph.py # transfer-chain evidence graph and weakest-link analysis
   cli.py      # python -m dpa_review.cli --input data/sample_dpa.json --out examples
 data/sample_dpa.json     # synthetic DPA with three planted defects
-examples/                # committed sample output (md + json)
-tests/test_review.py     # deterministic tests, standard-library unittest
+examples/                # committed sample output (md + json), checked by tests/test_examples.py
+tests/                   # deterministic tests, standard-library unittest
 ```
 
 ## Scope and disclaimers

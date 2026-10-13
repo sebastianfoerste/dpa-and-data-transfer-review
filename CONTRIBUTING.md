@@ -17,7 +17,7 @@ make test      # must pass before any PR
 make demo      # regenerate examples/ if rule output changed
 ```
 
-If a change alters rule output, regenerate and commit `examples/review-packet.md` and `examples/review-packet.json` in the same PR so the committed sample stays truthful.
+If a change alters rule output, run `make demo` and commit the regenerated `examples/` files (review packet and transfer evidence graph, md and json) in the same PR, and update the packet excerpt in the README, so the committed sample stays truthful. `make test` fails until they match.
 
 ## Adding a rule
 
