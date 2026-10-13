@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 
 from dpa_review.review import build_packet, render_markdown
-from dpa_review.checks import assess_transfer
+from dpa_review.checks import InvalidInputError, assess_transfer
 
 ROOT = Path(__file__).resolve().parents[1]
 SAMPLE = json.loads((ROOT / "data" / "sample_dpa.json").read_text(encoding="utf-8"))
@@ -302,6 +302,37 @@ class DataSubjectCategories(unittest.TestCase):
             self.assertEqual(finding.status, "MISSING")
             self.assertEqual(finding.severity, "MEDIUM")
             self.assertTrue(finding.remediation)
+
+
+class RecordedFlagShape(unittest.TestCase):
+    """Recorded yes/no facts must be JSON booleans; a wrong shape is refused, not guessed."""
+
+    def _dpa(self):
+        return json.loads(json.dumps(SAMPLE))
+
+    def test_per_country_flag_given_as_a_scalar_is_refused(self):
+        dpa = self._dpa()
+        dpa["transfers"]["dpf_certified"] = True
+        with self.assertRaisesRegex(InvalidInputError, "transfers.dpf_certified must be an object"):
+            build_packet(dpa)
+
+    def test_string_instead_of_boolean_is_refused(self):
+        dpa = self._dpa()
+        dpa["processing"]["includes_hr_data"] = "false"
+        with self.assertRaisesRegex(InvalidInputError, "processing.includes_hr_data must be true or false"):
+            build_packet(dpa)
+
+    def test_country_keyed_value_must_be_boolean(self):
+        dpa = self._dpa()
+        dpa["transfers"]["occasional_and_not_repetitive"] = {"US": "yes"}
+        with self.assertRaisesRegex(InvalidInputError, "occasional_and_not_repetitive.US"):
+            build_packet(dpa)
+
+    def test_subprocessor_flag_must_be_boolean(self):
+        dpa = self._dpa()
+        dpa["subprocessors"][1]["dpf_certified"] = 1
+        with self.assertRaisesRegex(InvalidInputError, r"subprocessors\[1\].dpf_certified"):
+            build_packet(dpa)
 
 
 class CuredPacket(unittest.TestCase):

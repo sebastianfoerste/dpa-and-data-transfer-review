@@ -96,7 +96,7 @@ Reference data (EEA members, adequacy countries, valid mechanisms) is explicit a
 - **Deterministic.** Same input, same packet, every time. There is a test for it. No model calls, no network.
 - **Cited.** Every finding carries a GDPR/CCPA citation; nothing is asserted without a reference.
 - **Reviewable.** Output is a packet with an explicit state and a remediation column, designed to hand to a lawyer, never to replace one.
-- **Gating.** `BLOCKED` -> exit `2`, `NEEDS_REVIEW` -> exit `1`, `CLEARED_FOR_REVIEW` -> exit `0`, so it can sit in a pipeline.
+- **Gating.** `BLOCKED` -> exit `2`, `NEEDS_REVIEW` -> exit `1`, `CLEARED_FOR_REVIEW` -> exit `0`, so it can sit in a pipeline. Exit `3` means no review state was decided: the input could not be read or has a field of the wrong shape (for example a recorded flag that is not `true`/`false`), the command line was wrong, or the run failed. A pipeline can therefore never mistake a crash for a review state.
 
 ```
 src/dpa_review/

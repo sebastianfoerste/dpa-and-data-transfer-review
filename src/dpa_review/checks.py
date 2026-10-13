@@ -78,6 +78,29 @@ def _get(d: dict, path: str, default=None):
     return cur
 
 
+class InvalidInputError(ValueError):
+    """A DPA input field has the wrong shape, so the review cannot run on it."""
+
+
+def _flag(value: Any, field: str) -> bool | None:
+    """A recorded yes/no fact: a JSON boolean, or None when the input does not say."""
+    if value is None or isinstance(value, bool):
+        return value
+    raise InvalidInputError(f"{field} must be true or false, got {value!r}.")
+
+
+def _country_flags(dpa: dict, path: str) -> dict[Any, bool | None]:
+    """A yes/no fact recorded per destination, as an object keyed by country code."""
+    value = _get(dpa, path)
+    if value is None:
+        return {}
+    if not isinstance(value, dict):
+        raise InvalidInputError(
+            f'{path} must be an object keyed by country code, such as {{"US": true}}; got {value!r}.'
+        )
+    return {country: _flag(flag, f"{path}.{country}") for country, flag in value.items()}
+
+
 # --- Article 28(3) mandatory processor clauses -------------------------------
 
 _ART28_CLAUSES: list[tuple[str, str, str]] = [
@@ -466,23 +489,24 @@ def check_transfers(dpa: dict) -> list[Finding]:
     findings: list[Finding] = []
     destinations = _get(dpa, "transfers.destinations", []) or []
     mechanisms = _get(dpa, "transfers.mechanisms", {}) or {}
-    dpf_certified = _get(dpa, "transfers.dpf_certified", {}) or {}
-    dpf_covers_hr_data = _get(dpa, "transfers.dpf_covers_hr_data", {}) or {}
-    dpf_covers_non_hr_data = _get(dpa, "transfers.dpf_covers_non_hr_data", {}) or {}
-    hr_flag = _get(dpa, "processing.includes_hr_data")
-    includes_hr_data = None if hr_flag is None else bool(hr_flag)  # None: the DPA does not say
-    non_hr_flag = _get(dpa, "processing.includes_non_hr_data")
-    includes_non_hr_data = None if non_hr_flag is None else bool(non_hr_flag)
-    occasional = _get(dpa, "transfers.occasional_and_not_repetitive", {}) or {}
+    dpf_certified = _country_flags(dpa, "transfers.dpf_certified")
+    dpf_covers_hr_data = _country_flags(dpa, "transfers.dpf_covers_hr_data")
+    dpf_covers_non_hr_data = _country_flags(dpa, "transfers.dpf_covers_non_hr_data")
+    occasional = _country_flags(dpa, "transfers.occasional_and_not_repetitive")
+    # None: the DPA does not say whether that type of data is transferred.
+    includes_hr_data = _flag(_get(dpa, "processing.includes_hr_data"), "processing.includes_hr_data")
+    includes_non_hr_data = _flag(
+        _get(dpa, "processing.includes_non_hr_data"), "processing.includes_non_hr_data"
+    )
 
     for country in destinations:
-        is_occasional = bool(occasional.get(country, False))
+        is_occasional = bool(occasional.get(country))
         status, severity, detail = assess_transfer(
             country,
             mechanisms.get(country),
-            dpf_certified=bool(dpf_certified.get(country, False)),
-            dpf_covers_hr_data=bool(dpf_covers_hr_data.get(country, False)),
-            dpf_covers_non_hr_data=bool(dpf_covers_non_hr_data.get(country, False)),
+            dpf_certified=bool(dpf_certified.get(country)),
+            dpf_covers_hr_data=bool(dpf_covers_hr_data.get(country)),
+            dpf_covers_non_hr_data=bool(dpf_covers_non_hr_data.get(country)),
             includes_hr_data=includes_hr_data,
             includes_non_hr_data=includes_non_hr_data,
             occasional_and_not_repetitive=is_occasional,
@@ -503,18 +527,24 @@ def check_transfers(dpa: dict) -> list[Finding]:
         )
 
     # Sub-processor located in a third country is itself a transfer.
-    for sp in _get(dpa, "subprocessors", []) or []:
+    for index, sp in enumerate(_get(dpa, "subprocessors", []) or []):
         country = (sp.get("country") or "").upper()
         if country and country not in EEA:
+            flags = {
+                key: bool(_flag(sp.get(key), f"subprocessors[{index}].{key}"))
+                for key in (
+                    "dpf_certified",
+                    "dpf_covers_hr_data",
+                    "dpf_covers_non_hr_data",
+                    "occasional_and_not_repetitive",
+                )
+            }
             status, severity, detail = assess_transfer(
                 country,
                 sp.get("transfer_mechanism"),
-                dpf_certified=bool(sp.get("dpf_certified", False)),
-                dpf_covers_hr_data=bool(sp.get("dpf_covers_hr_data", False)),
-                dpf_covers_non_hr_data=bool(sp.get("dpf_covers_non_hr_data", False)),
+                **flags,
                 includes_hr_data=includes_hr_data,
                 includes_non_hr_data=includes_non_hr_data,
-                occasional_and_not_repetitive=bool(sp.get("occasional_and_not_repetitive", False)),
             )
             findings.append(
                 Finding(

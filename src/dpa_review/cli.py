@@ -11,23 +11,35 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import traceback
 from pathlib import Path
 
+from dpa_review.checks import InvalidInputError
 from dpa_review.review import build_packet, render_markdown
 from dpa_review.transfer_graph import (
     build_transfer_evidence_graph,
     render_transfer_evidence_graph,
 )
 
+# BLOCKED -> exit 2 so this can gate CI; NEEDS_REVIEW -> exit 1; cleared -> 0.
+EXIT_CODES = {"BLOCKED": 2, "NEEDS_REVIEW": 1, "CLEARED_FOR_REVIEW": 0}
+# No review state was decided: unreadable or malformed input, a usage error, or a failure.
+# It must differ from the codes above, so that a crash never reads as a review state.
+EXIT_NO_REVIEW_STATE = 3
 
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Deterministic DPA and data-transfer review.")
-    parser.add_argument("--input", required=True, help="Path to a DPA JSON file.")
-    parser.add_argument("--out", default=None, help="Output directory for the review packet.")
-    parser.add_argument("--quiet", action="store_true", help="Do not print the markdown packet.")
-    args = parser.parse_args(argv)
 
+class _ArgumentParser(argparse.ArgumentParser):
+    """argparse exits 2 on a usage error, which would read as BLOCKED; use 3 instead."""
+
+    def error(self, message: str):  # type: ignore[override]
+        self.print_usage(sys.stderr)
+        self.exit(EXIT_NO_REVIEW_STATE, f"{self.prog}: error: {message}\n")
+
+
+def _review(args: argparse.Namespace) -> int:
     dpa = json.loads(Path(args.input).read_text(encoding="utf-8"))
+    if not isinstance(dpa, dict):
+        raise InvalidInputError("the DPA input must be a JSON object.")
     packet = build_packet(dpa)
     markdown = render_markdown(packet)
 
@@ -51,8 +63,24 @@ def main(argv: list[str] | None = None) -> int:
             encoding="utf-8",
         )
 
-    # BLOCKED -> exit 2 so this can gate CI; NEEDS_REVIEW -> exit 1; cleared -> 0.
-    return {"BLOCKED": 2, "NEEDS_REVIEW": 1, "CLEARED_FOR_REVIEW": 0}[packet.review_state]
+    return EXIT_CODES[packet.review_state]
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = _ArgumentParser(description="Deterministic DPA and data-transfer review.")
+    parser.add_argument("--input", required=True, help="Path to a DPA JSON file.")
+    parser.add_argument("--out", default=None, help="Output directory for the review packet.")
+    parser.add_argument("--quiet", action="store_true", help="Do not print the markdown packet.")
+    args = parser.parse_args(argv)
+
+    try:
+        return _review(args)
+    except (OSError, ValueError) as exc:  # includes InvalidInputError and JSON decode errors
+        print(f"error: cannot review {args.input}: {exc}", file=sys.stderr)
+    except Exception:  # any other failure must not read as a review state either
+        traceback.print_exc()
+        print(f"error: cannot review {args.input}; see the traceback above.", file=sys.stderr)
+    return EXIT_NO_REVIEW_STATE
 
 
 if __name__ == "__main__":
