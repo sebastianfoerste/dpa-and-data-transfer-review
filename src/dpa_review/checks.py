@@ -30,9 +30,11 @@ VALID_TRANSFER_MECHANISMS = {"adequacy", "sccs", "bcr", "derogation_art49", "dpf
 # 10 July 2023, adopted under Art. 45(3). It is an adequacy decision, not an Art. 46
 # safeguard. Its Article 1 limits the adequacy finding to organisations in the United
 # States that are included in the "Data Privacy Framework List" maintained by the U.S.
-# Department of Commerce. HR data from the employment context is covered only where the
-# organisation's self-certification extends to it (DPF Principles, Annex I, Supplemental
-# Principle 9 "Human Resources Data").
+# Department of Commerce. A listed certification states the data it covers, and the
+# exporter checks that it covers the type of data transferred (HR or non-HR data). HR data
+# from the employment context is covered only where the organisation's self-certification
+# extends to it (DPF Principles, Annex I, Supplemental Principles 6 "Self-Certification"
+# and 9 "Human Resources Data").
 DPF_COUNTRY = "US"
 DPF_DECISION = "Commission Implementing Decision (EU) 2023/1795"
 
@@ -252,13 +254,26 @@ def check_breach_notification(dpa: dict) -> list[Finding]:
 
 # --- Chapter V international transfers (Art. 44-49) ---------------------------
 
+def _join(labels: list[str]) -> tuple[str, str]:
+    """Join data-type labels for a sentence, with the matching verb."""
+    return " and ".join(labels), ("are" if len(labels) > 1 else "is")
+
+
 def _assess_dpf(
     country: str,
-    dpf_certified: bool,
-    dpf_covers_hr_data: bool,
+    *,
+    certified: bool,
+    covers_hr_data: bool,
+    covers_non_hr_data: bool,
     includes_hr_data: bool | None,
+    includes_non_hr_data: bool | None,
 ) -> tuple[str, str, str]:
-    """A DPF transfer relies on an Art. 45 adequacy decision limited to listed US organisations."""
+    """A DPF transfer relies on an Art. 45 adequacy decision limited to listed US organisations.
+
+    The listed certification must also cover each type of data transferred: non-HR data,
+    and HR data where HR data is in scope. An `includes_*` value of None means the DPA does
+    not say whether that type of data is transferred.
+    """
     basis = f"the EU-US Data Privacy Framework adequacy decision (Art. 45; {DPF_DECISION})"
     if country != DPF_COUNTRY:
         return (
@@ -269,7 +284,7 @@ def _assess_dpf(
                 "organisations in the United States."
             ),
         )
-    if not dpf_certified:
+    if not certified:
         return (
             "MISSING",
             "HIGH",
@@ -279,22 +294,35 @@ def _assess_dpf(
                 "covers only organisations on that list."
             ),
         )
-    if not dpf_covers_hr_data and includes_hr_data is True:
+    uncovered: list[str] = []
+    unknown: list[str] = []
+    for label, covered, in_scope in (
+        ("non-HR data", covers_non_hr_data, includes_non_hr_data),
+        ("HR data", covers_hr_data, includes_hr_data),
+    ):
+        if covered or in_scope is False:
+            continue
+        (uncovered if in_scope else unknown).append(label)
+    if uncovered:
+        data, verb = _join(uncovered)
         return (
             "MISSING",
             "HIGH",
             (
-                f"Transfer to {country} relies on {basis}, and HR data is in scope, but the importer's "
-                "DPF certification is not recorded as covering HR data."
+                f"Transfer to {country} relies on {basis}, and {data} {verb} in scope, but the "
+                f"importer's DPF certification is not recorded as covering {data}."
             ),
         )
-    if not dpf_covers_hr_data and includes_hr_data is None:
+    if unknown:
+        data, verb = _join(unknown)
         return (
             "NEEDS_REVIEW",
             "MEDIUM",
             (
                 f"Transfer to {country} relies on {basis}; the importer is recorded as certified on the "
-                "Data Privacy Framework List, but not for HR data. Confirm whether HR data is transferred."
+                f"Data Privacy Framework List, but its certification is not recorded as covering "
+                f"{data}, and the DPA does not say whether {data} {verb} transferred. "
+                "Confirm the data the certification covers."
             ),
         )
     return (
@@ -302,8 +330,8 @@ def _assess_dpf(
         "LOW",
         (
             f"Transfer to {country} relies on {basis}; the importer is recorded as actively certified "
-            "on the Data Privacy Framework List. As an Art. 45 basis it needs no transfer impact "
-            "assessment; re-check the listing before relying on it."
+            "on the Data Privacy Framework List for the data transferred. As an Art. 45 basis it needs "
+            "no transfer impact assessment; re-check the listing before relying on it."
         ),
     )
 
@@ -333,29 +361,62 @@ def _assess_derogation(country: str, occasional_and_not_repetitive: bool) -> tup
     )
 
 
+# Recorded mechanisms that do not fit a destination with its own adequacy decision: the DPF
+# covers only organisations in the United States, and Art. 49 applies only in the absence of
+# an Art. 45(3) adequacy decision or Art. 46 safeguards (Art. 49(1)).
+_ADEQUACY_REDUNDANT = {
+    "dpf": "the EU-US Data Privacy Framework, which covers only organisations in the United States",
+    "derogation_art49": (
+        "an Art. 49 derogation, which applies only in the absence of an adequacy decision or "
+        "appropriate safeguards (Art. 49(1))"
+    ),
+}
+
+
 def assess_transfer(
     country: str,
     mechanism: str | None,
     *,
     dpf_certified: bool = False,
     dpf_covers_hr_data: bool = False,
+    dpf_covers_non_hr_data: bool = False,
     includes_hr_data: bool | None = None,
+    includes_non_hr_data: bool | None = None,
     occasional_and_not_repetitive: bool = False,
 ) -> tuple[str, str, str]:
     """Return (status, severity, detail) for a single destination country.
 
-    The DPF keywords describe the importer's entry on the Data Privacy Framework List and
-    whether the DPA covers HR data (None means the DPA does not say).
+    The `dpf_*` keywords describe the importer's entry on the Data Privacy Framework List:
+    an active certification, and whether it covers HR and non-HR data. The `includes_*`
+    keywords say whether the DPA transfers HR and non-HR data (None means it does not say).
     `occasional_and_not_repetitive` is the recorded nature of a derogation-based transfer.
     """
     country = (country or "").upper()
     mech = (mechanism or "none").lower()
     if country in EEA:
         return ("PRESENT", "INFO", f"{country} is within the EEA; no Chapter V transfer mechanism required.")
-    if country in ADEQUACY and mech in {"none", "adequacy"}:
-        return ("PRESENT", "LOW", f"{country} benefits from an adequacy decision (Art. 45).")
+    if country in ADEQUACY:
+        if mech in {"none", "adequacy"}:
+            return ("PRESENT", "LOW", f"{country} benefits from an adequacy decision (Art. 45).")
+        if mech in _ADEQUACY_REDUNDANT:
+            return (
+                "NEEDS_REVIEW",
+                "LOW",
+                (
+                    f"{country} benefits from an adequacy decision (Art. 45), but the transfer is recorded "
+                    f"as relying on {_ADEQUACY_REDUNDANT[mech]}. Confirm the basis relied on and record the "
+                    "adequacy decision."
+                ),
+            )
     if mech == "dpf":
-        return _assess_dpf(country, dpf_certified, dpf_covers_hr_data, includes_hr_data)
+        return _assess_dpf(
+            country,
+            certified=dpf_certified,
+            covers_hr_data=dpf_covers_hr_data,
+            covers_non_hr_data=dpf_covers_non_hr_data,
+            includes_hr_data=includes_hr_data,
+            includes_non_hr_data=includes_non_hr_data,
+        )
     if mech == "derogation_art49":
         return _assess_derogation(country, occasional_and_not_repetitive)
     if mech in {"sccs", "bcr"}:
@@ -371,9 +432,11 @@ def assess_transfer(
     )
 
 
-def _transfer_articles(mechanism: str | None) -> str:
+def _transfer_articles(country: str, mechanism: str | None) -> str:
     """Chapter V provisions behind a transfer finding, for its citation."""
     mech = (mechanism or "none").lower()
+    if country.upper() in ADEQUACY and mech in _ADEQUACY_REDUNDANT:
+        return "Art. 44-45"
     if mech == "dpf":
         return f"Art. 44-45; {DPF_DECISION}"
     if mech == "derogation_art49":
@@ -383,10 +446,13 @@ def _transfer_articles(mechanism: str | None) -> str:
 
 def _transfer_remediation(country: str, mechanism: str | None, occasional_and_not_repetitive: bool) -> str:
     mech = (mechanism or "none").lower()
+    if country.upper() in ADEQUACY and mech in _ADEQUACY_REDUNDANT:
+        return f"Record reliance on the Art. 45 adequacy decision for {country} as the transfer basis."
     if mech == "dpf":
         return (
-            f"Record the importer's active certification on the Data Privacy Framework List "
-            f"(covering HR data if HR data is transferred), or another Chapter V basis for {country}."
+            "Record the importer's active certification on the Data Privacy Framework List and the "
+            "data it covers (non-HR data, and HR data if HR data is transferred), or another "
+            f"Chapter V basis for {country}."
         )
     if mech == "derogation_art49" and occasional_and_not_repetitive:
         return f"Record which Art. 49(1) derogation applies to the transfer to {country} and how its conditions are met."
@@ -402,8 +468,11 @@ def check_transfers(dpa: dict) -> list[Finding]:
     mechanisms = _get(dpa, "transfers.mechanisms", {}) or {}
     dpf_certified = _get(dpa, "transfers.dpf_certified", {}) or {}
     dpf_covers_hr_data = _get(dpa, "transfers.dpf_covers_hr_data", {}) or {}
+    dpf_covers_non_hr_data = _get(dpa, "transfers.dpf_covers_non_hr_data", {}) or {}
     hr_flag = _get(dpa, "processing.includes_hr_data")
     includes_hr_data = None if hr_flag is None else bool(hr_flag)  # None: the DPA does not say
+    non_hr_flag = _get(dpa, "processing.includes_non_hr_data")
+    includes_non_hr_data = None if non_hr_flag is None else bool(non_hr_flag)
     occasional = _get(dpa, "transfers.occasional_and_not_repetitive", {}) or {}
 
     for country in destinations:
@@ -413,14 +482,16 @@ def check_transfers(dpa: dict) -> list[Finding]:
             mechanisms.get(country),
             dpf_certified=bool(dpf_certified.get(country, False)),
             dpf_covers_hr_data=bool(dpf_covers_hr_data.get(country, False)),
+            dpf_covers_non_hr_data=bool(dpf_covers_non_hr_data.get(country, False)),
             includes_hr_data=includes_hr_data,
+            includes_non_hr_data=includes_non_hr_data,
             occasional_and_not_repetitive=is_occasional,
         )
         findings.append(
             Finding(
                 rule_id=f"transfer.{str(country).lower()}",
                 title=f"International transfer to {country}",
-                citation="GDPR " + _transfer_articles(mechanisms.get(country)),
+                citation="GDPR " + _transfer_articles(str(country), mechanisms.get(country)),
                 severity=severity,
                 status=status,
                 detail=detail,
@@ -440,14 +511,16 @@ def check_transfers(dpa: dict) -> list[Finding]:
                 sp.get("transfer_mechanism"),
                 dpf_certified=bool(sp.get("dpf_certified", False)),
                 dpf_covers_hr_data=bool(sp.get("dpf_covers_hr_data", False)),
+                dpf_covers_non_hr_data=bool(sp.get("dpf_covers_non_hr_data", False)),
                 includes_hr_data=includes_hr_data,
+                includes_non_hr_data=includes_non_hr_data,
                 occasional_and_not_repetitive=bool(sp.get("occasional_and_not_repetitive", False)),
             )
             findings.append(
                 Finding(
                     rule_id=f"transfer.subprocessor.{sp.get('name', 'unknown').lower().replace(' ', '_')}",
                     title=f"Sub-processor transfer: {sp.get('name', 'unknown')} ({country})",
-                    citation="GDPR Art. 28(4) / " + _transfer_articles(sp.get("transfer_mechanism")),
+                    citation="GDPR Art. 28(4) / " + _transfer_articles(country, sp.get("transfer_mechanism")),
                     severity=severity,
                     status=status,
                     detail=f"{sp.get('name', 'unknown')} processes data in {country}. {detail}",

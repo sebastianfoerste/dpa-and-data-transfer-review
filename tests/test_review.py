@@ -40,8 +40,11 @@ class TransferAssessment(unittest.TestCase):
 class DataPrivacyFrameworkAssessment(unittest.TestCase):
     """EU-US DPF: Art. 45 adequacy decision (EU) 2023/1795, limited to listed US organisations."""
 
+    # An importer listed on the DPF List with a certification that covers non-HR data.
+    LISTED = {"dpf_certified": True, "dpf_covers_non_hr_data": True}
+
     def test_dpf_is_an_art45_adequacy_basis_not_art46(self):
-        status, sev, detail = assess_transfer("US", "dpf", dpf_certified=True, includes_hr_data=False)
+        status, sev, detail = assess_transfer("US", "dpf", **self.LISTED, includes_hr_data=False)
         self.assertEqual(status, "PRESENT")
         self.assertEqual(sev, "LOW")
         self.assertIn("Art. 45", detail)
@@ -55,41 +58,81 @@ class DataPrivacyFrameworkAssessment(unittest.TestCase):
         self.assertIn("Data Privacy Framework List", detail)
 
     def test_dpf_does_not_cover_importers_outside_the_us(self):
-        status, sev, _ = assess_transfer("IN", "dpf", dpf_certified=True, includes_hr_data=False)
+        status, sev, _ = assess_transfer("IN", "dpf", **self.LISTED, includes_hr_data=False)
         self.assertEqual(status, "MISSING")
         self.assertEqual(sev, "HIGH")
 
     def test_dpf_hr_data_needs_hr_certification(self):
-        status, sev, detail = assess_transfer("US", "dpf", dpf_certified=True, includes_hr_data=True)
+        status, sev, detail = assess_transfer("US", "dpf", **self.LISTED, includes_hr_data=True)
         self.assertEqual(status, "MISSING")
         self.assertEqual(sev, "HIGH")
         self.assertIn("HR data", detail)
 
     def test_dpf_hr_data_with_hr_certification_is_covered(self):
         status, sev, _ = assess_transfer(
-            "US", "dpf", dpf_certified=True, dpf_covers_hr_data=True, includes_hr_data=True
+            "US", "dpf", **self.LISTED, dpf_covers_hr_data=True, includes_hr_data=True
         )
         self.assertEqual(status, "PRESENT")
         self.assertEqual(sev, "LOW")
 
     def test_dpf_with_unknown_hr_scope_needs_review(self):
-        status, sev, _ = assess_transfer("US", "dpf", dpf_certified=True)
+        status, sev, detail = assess_transfer("US", "dpf", **self.LISTED)
         self.assertEqual(status, "NEEDS_REVIEW")
         self.assertEqual(sev, "MEDIUM")
+        self.assertIn("HR data", detail)
 
-    def _dpf_dpa(self, certified):
+    def test_hr_only_certification_does_not_cover_non_hr_data(self):
+        status, sev, detail = assess_transfer(
+            "US",
+            "dpf",
+            dpf_certified=True,
+            dpf_covers_hr_data=True,
+            includes_hr_data=False,
+            includes_non_hr_data=True,
+        )
+        self.assertEqual((status, sev), ("MISSING", "HIGH"))
+        self.assertIn("non-HR data", detail)
+
+    def test_hr_only_certification_with_unknown_non_hr_scope_needs_review(self):
+        status, sev, detail = assess_transfer(
+            "US", "dpf", dpf_certified=True, dpf_covers_hr_data=True, includes_hr_data=True
+        )
+        self.assertEqual((status, sev), ("NEEDS_REVIEW", "MEDIUM"))
+        self.assertIn("non-HR data", detail)
+
+    def test_hr_only_certification_covers_an_hr_only_transfer(self):
+        status, sev, _ = assess_transfer(
+            "US",
+            "dpf",
+            dpf_certified=True,
+            dpf_covers_hr_data=True,
+            includes_hr_data=True,
+            includes_non_hr_data=False,
+        )
+        self.assertEqual((status, sev), ("PRESENT", "LOW"))
+
+    def _dpf_dpa(self, certified, includes_hr_data=False, covers_hr_data=None):
         dpa = json.loads(json.dumps(SAMPLE))
         dpa["art28_clauses"]["subprocessor_flowdown"] = True  # isolate the transfer findings
-        dpa["processing"]["includes_hr_data"] = False
+        if includes_hr_data is not None:
+            dpa["processing"]["includes_hr_data"] = includes_hr_data
         dpa["transfers"]["mechanisms"]["US"] = "dpf"
         dpa["transfers"]["dpf_certified"] = {"US": certified}
-        dpa["subprocessors"][1]["transfer_mechanism"] = "dpf"
-        dpa["subprocessors"][1]["dpf_certified"] = certified
+        dpa["transfers"]["dpf_covers_non_hr_data"] = {"US": True}
+        support_tools = dpa["subprocessors"][1]
+        support_tools["transfer_mechanism"] = "dpf"
+        support_tools["dpf_certified"] = certified
+        support_tools["dpf_covers_non_hr_data"] = True
+        if covers_hr_data is not None:
+            dpa["transfers"]["dpf_covers_hr_data"] = {"US": covers_hr_data}
+            support_tools["dpf_covers_hr_data"] = covers_hr_data
         return dpa
+
+    US_TRANSFERS = ("transfer.us", "transfer.subprocessor.support_tools_llc")
 
     def test_certified_dpf_transfers_need_no_transfer_impact_assessment(self):
         packet = build_packet(self._dpf_dpa(certified=True))
-        for rule_id in ("transfer.us", "transfer.subprocessor.support_tools_llc"):
+        for rule_id in self.US_TRANSFERS:
             finding = _by_id(packet, rule_id)
             self.assertEqual(finding.status, "PRESENT")
             self.assertIn("Art. 44-45", finding.citation)
@@ -99,12 +142,59 @@ class DataPrivacyFrameworkAssessment(unittest.TestCase):
 
     def test_uncertified_dpf_transfers_block_the_packet(self):
         packet = build_packet(self._dpf_dpa(certified=False))
-        for rule_id in ("transfer.us", "transfer.subprocessor.support_tools_llc"):
+        for rule_id in self.US_TRANSFERS:
             finding = _by_id(packet, rule_id)
             self.assertEqual(finding.status, "MISSING")
             self.assertEqual(finding.severity, "HIGH")
         self.assertIn("Data Privacy Framework List", _by_id(packet, "transfer.us").remediation)
         self.assertEqual(packet.review_state, "BLOCKED")
+
+    def test_hr_data_with_hr_certification_clears_the_packet(self):
+        packet = build_packet(self._dpf_dpa(certified=True, includes_hr_data=True, covers_hr_data=True))
+        for rule_id in self.US_TRANSFERS:
+            self.assertEqual(_by_id(packet, rule_id).status, "PRESENT")
+        self.assertEqual(packet.review_state, "CLEARED_FOR_REVIEW")
+
+    def test_hr_data_without_hr_certification_blocks_the_packet(self):
+        packet = build_packet(self._dpf_dpa(certified=True, includes_hr_data=True, covers_hr_data=False))
+        for rule_id in self.US_TRANSFERS:
+            finding = _by_id(packet, rule_id)
+            self.assertEqual((finding.status, finding.severity), ("MISSING", "HIGH"))
+            self.assertIn("HR data", finding.detail)
+        self.assertEqual(packet.review_state, "BLOCKED")
+
+    def test_omitted_hr_scope_sends_the_packet_to_review(self):
+        packet = build_packet(self._dpf_dpa(certified=True, includes_hr_data=None))
+        for rule_id in self.US_TRANSFERS:
+            finding = _by_id(packet, rule_id)
+            self.assertEqual((finding.status, finding.severity), ("NEEDS_REVIEW", "MEDIUM"))
+        self.assertEqual(packet.review_state, "NEEDS_REVIEW")
+
+
+class AdequateDestinationWithOtherMechanism(unittest.TestCase):
+    """A destination with its own adequacy decision is not worse off for a recorded mechanism."""
+
+    def test_derogation_to_an_adequate_country_goes_to_review_not_block(self):
+        status, sev, detail = assess_transfer("GB", "derogation_art49")
+        self.assertEqual((status, sev), ("NEEDS_REVIEW", "LOW"))
+        self.assertIn("adequacy decision (Art. 45)", detail)
+        self.assertIn("Art. 49(1)", detail)
+
+    def test_dpf_to_an_adequate_country_goes_to_review_not_block(self):
+        status, sev, detail = assess_transfer(
+            "CH", "dpf", dpf_certified=True, dpf_covers_non_hr_data=True, includes_hr_data=False
+        )
+        self.assertEqual((status, sev), ("NEEDS_REVIEW", "LOW"))
+        self.assertIn("United States", detail)
+
+    def test_packet_points_back_to_the_adequacy_decision(self):
+        dpa = json.loads(json.dumps(SAMPLE))
+        dpa["transfers"]["destinations"].append("GB")
+        dpa["transfers"]["mechanisms"]["GB"] = "derogation_art49"
+        finding = _by_id(build_packet(dpa), "transfer.gb")
+        self.assertEqual((finding.status, finding.severity), ("NEEDS_REVIEW", "LOW"))
+        self.assertEqual(finding.citation, "GDPR Art. 44-45")
+        self.assertIn("Art. 45 adequacy decision for GB", finding.remediation)
 
 
 class SamplePacket(unittest.TestCase):
