@@ -11,6 +11,10 @@ ROOT = Path(__file__).resolve().parents[1]
 SAMPLE = json.loads((ROOT / "data" / "sample_dpa.json").read_text(encoding="utf-8"))
 
 
+# An importer listed on the DPF List with a certification that covers non-HR data.
+DPF_LISTED = {"dpf_certified": True, "dpf_covers_non_hr_data": True}
+
+
 def _by_id(packet, rule_id):
     return next(f for f in packet.findings if f.rule_id == rule_id)
 
@@ -42,11 +46,8 @@ class TransferAssessment(unittest.TestCase):
 class DataPrivacyFrameworkAssessment(unittest.TestCase):
     """EU-US DPF: Art. 45 adequacy decision (EU) 2023/1795, limited to listed US organisations."""
 
-    # An importer listed on the DPF List with a certification that covers non-HR data.
-    LISTED = {"dpf_certified": True, "dpf_covers_non_hr_data": True}
-
     def test_dpf_is_an_art45_adequacy_basis_not_art46(self):
-        status, sev, detail = assess_transfer("US", "dpf", **self.LISTED, includes_hr_data=False)
+        status, sev, detail = assess_transfer("US", "dpf", **DPF_LISTED, includes_hr_data=False)
         self.assertEqual(status, "PRESENT")
         self.assertEqual(sev, "LOW")
         self.assertIn("Art. 45", detail)
@@ -60,25 +61,25 @@ class DataPrivacyFrameworkAssessment(unittest.TestCase):
         self.assertIn("Data Privacy Framework List", detail)
 
     def test_dpf_does_not_cover_importers_outside_the_us(self):
-        status, sev, _ = assess_transfer("IN", "dpf", **self.LISTED, includes_hr_data=False)
+        status, sev, _ = assess_transfer("IN", "dpf", **DPF_LISTED, includes_hr_data=False)
         self.assertEqual(status, "MISSING")
         self.assertEqual(sev, "HIGH")
 
     def test_dpf_hr_data_needs_hr_certification(self):
-        status, sev, detail = assess_transfer("US", "dpf", **self.LISTED, includes_hr_data=True)
+        status, sev, detail = assess_transfer("US", "dpf", **DPF_LISTED, includes_hr_data=True)
         self.assertEqual(status, "MISSING")
         self.assertEqual(sev, "HIGH")
         self.assertIn("HR data", detail)
 
     def test_dpf_hr_data_with_hr_certification_is_covered(self):
         status, sev, _ = assess_transfer(
-            "US", "dpf", **self.LISTED, dpf_covers_hr_data=True, includes_hr_data=True
+            "US", "dpf", **DPF_LISTED, dpf_covers_hr_data=True, includes_hr_data=True
         )
         self.assertEqual(status, "PRESENT")
         self.assertEqual(sev, "LOW")
 
     def test_dpf_with_unknown_hr_scope_needs_review(self):
-        status, sev, detail = assess_transfer("US", "dpf", **self.LISTED)
+        status, sev, detail = assess_transfer("US", "dpf", **DPF_LISTED)
         self.assertEqual(status, "NEEDS_REVIEW")
         self.assertEqual(sev, "MEDIUM")
         self.assertIn("HR data", detail)

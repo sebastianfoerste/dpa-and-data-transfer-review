@@ -77,7 +77,7 @@ def main(argv: list[str] | None = None) -> int:
         return _review(args)
     except (OSError, ValueError) as exc:  # includes InvalidInputError and JSON decode errors
         print(f"error: cannot review {args.input}: {exc}", file=sys.stderr)
-    except Exception:  # any other failure must not read as a review state either
+    except Exception:  # noqa: BLE001 - any other failure must not read as a review state either
         traceback.print_exc()
         print(f"error: cannot review {args.input}; see the traceback above.", file=sys.stderr)
     return EXIT_NO_REVIEW_STATE
