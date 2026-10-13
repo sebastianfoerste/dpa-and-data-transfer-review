@@ -167,7 +167,7 @@
     {
       "rule_id": "ccpa.service_provider_terms",
       "title": "CCPA/CPRA service-provider terms",
-      "citation": "CCPA §1798.140(ag); CPRA §1798.100(d)",
+      "citation": "Cal. Civ. Code §§ 1798.140(ag), 1798.100(d) (CCPA, as amended by the CPRA)",
       "severity": "LOW",
       "status": "PRESENT",
       "detail": "Service-provider / contractor terms restricting sale and retention are present.",
@@ -176,7 +176,7 @@
     {
       "rule_id": "transfer.jp",
       "title": "International transfer to JP",
-      "citation": "GDPR Art. 44-46",
+      "citation": "GDPR Art. 44-45",
       "severity": "LOW",
       "status": "PRESENT",
       "detail": "JP benefits from an adequacy decision (Art. 45).",
@@ -185,7 +185,7 @@
     {
       "rule_id": "transfer.subprocessor.analytics_kk",
       "title": "Sub-processor transfer: Analytics KK (JP)",
-      "citation": "GDPR Art. 28(4) / Art. 44-46",
+      "citation": "GDPR Art. 28(4) / Art. 44-45",
       "severity": "LOW",
       "status": "PRESENT",
       "detail": "Analytics KK processes data in JP. JP benefits from an adequacy decision (Art. 45).",

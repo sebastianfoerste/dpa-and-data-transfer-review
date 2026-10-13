@@ -484,6 +484,36 @@ class CountryCodeCase(unittest.TestCase):
             build_packet(dpa)
 
 
+class TransferCitations(unittest.TestCase):
+    """The citation of a transfer finding matches the basis the finding discusses."""
+
+    def _citation(self, country, mechanism):
+        dpa = json.loads(json.dumps(SAMPLE))
+        dpa["transfers"]["destinations"].append(country)
+        dpa["transfers"]["mechanisms"][country] = mechanism
+        return _by_id(build_packet(dpa), f"transfer.{country.lower()}").citation
+
+    def test_eea_destination_keeps_the_plain_citation_whatever_is_recorded(self):
+        for mechanism in ("derogation_art49", "dpf", "sccs"):
+            with self.subTest(mechanism=mechanism):
+                self.assertEqual(self._citation("DE", mechanism), "GDPR Art. 44-46")
+
+    def test_adequate_destination_cites_article_45(self):
+        for mechanism in ("adequacy", "none"):
+            with self.subTest(mechanism=mechanism):
+                self.assertEqual(self._citation("CH", mechanism), "GDPR Art. 44-45")
+        self.assertEqual(_by_id(build_packet(SAMPLE), "transfer.jp").citation, "GDPR Art. 44-45")
+
+    def test_bcr_transfer_cites_article_47(self):
+        self.assertEqual(self._citation("IN", "bcr"), "GDPR Art. 44-47")
+
+    def test_ccpa_citation_names_the_civil_code(self):
+        finding = _by_id(build_packet(SAMPLE), "ccpa.service_provider_terms")
+        self.assertEqual(
+            finding.citation, "Cal. Civ. Code §§ 1798.140(ag), 1798.100(d) (CCPA, as amended by the CPRA)"
+        )
+
+
 class CuredPacket(unittest.TestCase):
     def test_fixing_defects_clears_high_findings(self):
         cured = json.loads(json.dumps(SAMPLE))

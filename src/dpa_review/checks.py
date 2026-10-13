@@ -601,7 +601,9 @@ def assess_transfer(
 def _transfer_articles(country: str, mechanism: str | None) -> str:
     """Chapter V provisions behind a transfer finding, for its citation."""
     mech = (mechanism or "none").lower()
-    if country.upper() in ADEQUACY and mech in _ADEQUACY_REDUNDANT:
+    if country.upper() in EEA:
+        return "Art. 44-46"  # no Chapter V transfer; the recorded mechanism is not relied on
+    if country.upper() in ADEQUACY and (mech in {"none", "adequacy"} or mech in _ADEQUACY_REDUNDANT):
         return "Art. 44-45"
     if mech == "dpf":
         return f"Art. 44-45; {DPF_DECISION}"
@@ -609,6 +611,8 @@ def _transfer_articles(country: str, mechanism: str | None) -> str:
         return f"Art. 44, 49; {ART49_GUIDELINES}"
     if mech == "sccs":
         return f"Art. 44-46; {SCC_DECISION}"
+    if mech == "bcr":
+        return "Art. 44-47"  # Art. 46(2)(b): binding corporate rules in accordance with Art. 47
     return "Art. 44-46"
 
 
@@ -791,7 +795,7 @@ def check_ccpa(dpa: dict) -> list[Finding]:
         Finding(
             rule_id="ccpa.service_provider_terms",
             title="CCPA/CPRA service-provider terms",
-            citation="CCPA §1798.140(ag); CPRA §1798.100(d)",
+            citation="Cal. Civ. Code §§ 1798.140(ag), 1798.100(d) (CCPA, as amended by the CPRA)",
             severity="LOW",
             status="PRESENT" if sp_terms else "NEEDS_REVIEW",
             detail=(

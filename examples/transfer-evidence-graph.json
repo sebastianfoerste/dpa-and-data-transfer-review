@@ -122,7 +122,7 @@
         "transfer.jp"
       ],
       "citation_refs": [
-        "GDPR Art. 44-46"
+        "GDPR Art. 44-45"
       ],
       "mechanism": "adequacy",
       "also_used_by_subprocessor": true
@@ -188,7 +188,7 @@
       "citation_refs": [
         "GDPR Art. 28(2)",
         "GDPR Art. 28(4)",
-        "GDPR Art. 28(4) / Art. 44-46"
+        "GDPR Art. 28(4) / Art. 44-45"
       ]
     },
     {
@@ -227,7 +227,7 @@
         "transfer.subprocessor.analytics_kk"
       ],
       "citation_refs": [
-        "GDPR Art. 28(4) / Art. 44-46"
+        "GDPR Art. 28(4) / Art. 44-45"
       ],
       "mechanism": "none"
     }
@@ -323,5 +323,5 @@
   "source_dpa_sha256": "39314dc6ac5d3d63c2d07dab52ab93fd50d7f246194b669ee41d9b4d72af0c66",
   "review_gate": "The graph is a deterministic reviewer aid. It does not validate a transfer mechanism, approve a sub-processor, or execute a transfer.",
   "external_actions_allowed": false,
-  "graph_sha256": "bd44aff9f0568662f4f3c88c49732c78451de929fdb443cc987a8f87fa566b15"
+  "graph_sha256": "e9cb752054df79f9c0e58a83eaf9f05ac43f767ffd3276b39754a38fd78c304e"
 }
