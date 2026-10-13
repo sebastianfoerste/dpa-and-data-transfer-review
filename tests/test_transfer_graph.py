@@ -60,6 +60,17 @@ class TransferEvidenceGraphTests(unittest.TestCase):
         self.assertEqual(edge["mechanism"], "sccs")
         self.assertIn("transfer.impact_assessment", edge["control_refs"])
 
+    def test_graph_finds_the_transfer_finding_of_a_name_with_punctuation(self):
+        # The packet and the graph used to derive different rule ids from "Support Tools, LLC",
+        # so the graph showed the blocked US sub-processor transfer as a passing edge.
+        dpa = json.loads(json.dumps(SAMPLE))
+        dpa["subprocessors"][1]["name"] = "Support Tools, LLC"
+        packet = build_packet(dpa)
+        graph = build_transfer_evidence_graph(dpa, packet)
+        edge = next(e for e in graph["edges"] if e["edge_id"] == "subprocessor-2-to-us")
+        self.assertEqual(edge["status"], "block")
+        self.assertIn(edge["control_refs"][0], {f.rule_id for f in packet.findings})
+
     def test_graph_is_deterministic_and_renders_mermaid(self):
         first = build_transfer_evidence_graph(SAMPLE, build_packet(SAMPLE))
         second = build_transfer_evidence_graph(SAMPLE, build_packet(SAMPLE))

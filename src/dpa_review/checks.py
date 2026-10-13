@@ -8,6 +8,7 @@ present, missing, or needs human review. This is a review packet, never legal ad
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, asdict
 from typing import Any, Callable
 
@@ -183,6 +184,16 @@ def _country_flags(dpa: dict, path: str) -> dict[str, bool | None]:
 def transfer_mechanisms(dpa: dict) -> dict[str, str | None]:
     """The transfer mechanism recorded per destination, keyed by upper-case country code."""
     return _by_country(dpa, "transfers.mechanisms", _text, '{"US": "sccs"}')
+
+
+def subprocessor_name(sp: dict, index: int) -> str:
+    """The sub-processor's name, or its position in the list when it has none."""
+    return sp.get("name") or f"Sub-processor {index + 1}"
+
+
+def subprocessor_rule_id(name: str) -> str:
+    """Rule id of a sub-processor transfer finding; the transfer graph looks findings up by it."""
+    return "transfer.subprocessor." + re.sub(r"[^a-z0-9_]+", "_", name.lower().replace(" ", "_")).strip("_")
 
 
 def _destinations(dpa: dict) -> list[str]:
@@ -709,7 +720,7 @@ def check_transfers(dpa: dict) -> list[Finding]:
             )
         }
         country = (sp.get("country") or "").upper()
-        name = sp.get("name") or "unknown"
+        name = subprocessor_name(sp, index)
         if country and country not in EEA:
             status, severity, detail = assess_transfer(
                 country,
@@ -720,7 +731,7 @@ def check_transfers(dpa: dict) -> list[Finding]:
             )
             findings.append(
                 Finding(
-                    rule_id=f"transfer.subprocessor.{name.lower().replace(' ', '_')}",
+                    rule_id=subprocessor_rule_id(name),
                     title=f"Sub-processor transfer: {name} ({country})",
                     citation="GDPR Art. 28(4) / " + _transfer_articles(country, sp.get("transfer_mechanism")),
                     severity=severity,
