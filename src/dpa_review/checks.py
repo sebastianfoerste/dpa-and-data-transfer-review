@@ -527,6 +527,31 @@ def assess_transfer(
                     "adequacy decision."
                 ),
             )
+    if mech == "adequacy":
+        # Recorded as adequacy, but the destination has no decision on the tool's list.
+        detail = (
+            f"Transfer to {country} is recorded as relying on an Art. 45 adequacy decision, but no "
+            f"Commission adequacy decision for {country} is on the tool's adequacy list."
+        )
+        if country == DPF_COUNTRY:
+            detail += (
+                f" For the United States, the adequacy decision ({DPF_DECISION}) covers only "
+                "organisations on the Data Privacy Framework List: record the mechanism as dpf, "
+                "with the importer's certification."
+            )
+        else:
+            detail += " The list is illustrative; confirm whether a current adequacy decision covers it."
+        return ("MISSING", "HIGH", detail)
+    if mech != "none" and mech not in VALID_TRANSFER_MECHANISMS:
+        return (
+            "MISSING",
+            "HIGH",
+            (
+                f"Transfer to {country} is recorded as relying on '{mechanism}', which is not a Chapter V "
+                "basis this tool recognises (adequacy, dpf, sccs, bcr or derogation_art49); no "
+                "Art. 45 adequacy decision, Art. 46 safeguard or Art. 49 derogation is recorded."
+            ),
+        )
     if mech == "dpf":
         return _assess_dpf(
             country,
@@ -580,6 +605,16 @@ def _transfer_remediation(country: str, mechanism: str | None, occasional_and_no
     mech = (mechanism or "none").lower()
     if country.upper() in ADEQUACY and mech in _ADEQUACY_REDUNDANT:
         return f"Record reliance on the Art. 45 adequacy decision for {country} as the transfer basis."
+    if mech == "adequacy" and country.upper() not in ADEQUACY:
+        if country.upper() == DPF_COUNTRY:
+            return (
+                f"Record the mechanism for {country} as dpf, with the importer's active certification on "
+                "the Data Privacy Framework List and the data it covers, or record an Art. 46 safeguard."
+            )
+        return (
+            f"Confirm that a current Commission adequacy decision covers {country} (the tool's adequacy "
+            f"list is illustrative), or record an Art. 46 safeguard for {country}."
+        )
     if mech == "dpf":
         return (
             "Record the importer's active certification on the Data Privacy Framework List and the "

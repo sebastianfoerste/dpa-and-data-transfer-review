@@ -43,6 +43,34 @@ class TransferAssessment(unittest.TestCase):
         self.assertIn("EDPB Recommendations 01/2020", detail)
 
 
+class RecordedBasisWithoutCover(unittest.TestCase):
+    """A recorded mechanism that does not cover the destination is reported as what was recorded."""
+
+    def test_adequacy_recorded_for_the_us_points_to_the_dpf(self):
+        status, sev, detail = assess_transfer("US", "adequacy")
+        self.assertEqual((status, sev), ("MISSING", "HIGH"))
+        self.assertIn("recorded as relying on an Art. 45 adequacy decision", detail)
+        self.assertIn("Data Privacy Framework List", detail)
+        self.assertNotIn("no Art. 45 adequacy decision (including", detail)
+
+    def test_adequacy_recorded_for_a_country_not_on_the_list(self):
+        status, sev, detail = assess_transfer("IN", "adequacy")
+        self.assertEqual((status, sev), ("MISSING", "HIGH"))
+        self.assertIn("no Commission adequacy decision for IN is on the tool's adequacy list", detail)
+
+    def test_packet_tells_the_user_to_record_the_dpf_for_the_us(self):
+        dpa = json.loads(json.dumps(SAMPLE))
+        dpa["transfers"]["mechanisms"]["US"] = "adequacy"
+        finding = _by_id(build_packet(dpa), "transfer.us")
+        self.assertIn("as dpf", finding.remediation)
+        self.assertIn("Data Privacy Framework List", finding.remediation)
+
+    def test_unknown_mechanism_is_named(self):
+        status, sev, detail = assess_transfer("IN", "standard clauses")
+        self.assertEqual((status, sev), ("MISSING", "HIGH"))
+        self.assertIn("'standard clauses', which is not a Chapter V basis this tool recognises", detail)
+
+
 class DataPrivacyFrameworkAssessment(unittest.TestCase):
     """EU-US DPF: Art. 45 adequacy decision (EU) 2023/1795, limited to listed US organisations."""
 
