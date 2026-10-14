@@ -125,6 +125,29 @@ def _recorded(dpa: dict, path: str) -> bool:
     return bool(_flag(_get(dpa, path), path))
 
 
+# Strings that read as an answer to a yes/no question rather than as a description.
+_YES_NO_WORDS = {"true", "false", "yes", "no"}
+
+
+def _described(dpa: dict, path: str) -> bool:
+    """A part of the processing description, given as a description or as `true`.
+
+    A non-empty description counts as stated; `false`, an empty string, null or an omitted
+    value counts as not stated. A string such as "false" is refused rather than read as a
+    description, and so is any other type.
+    """
+    value = _get(dpa, path)
+    if value is None or isinstance(value, bool):
+        return bool(value)
+    if isinstance(value, str):
+        if value.strip().lower() in _YES_NO_WORDS:
+            raise InvalidInputError(
+                f"{path} must be a description or true/false, got {value!r}; record yes/no as a JSON boolean."
+            )
+        return bool(value.strip())
+    raise InvalidInputError(f"{path} must be a description (a string) or true/false, got {value!r}.")
+
+
 def _text(value: Any, field: str) -> str | None:
     """A recorded word or phrase, or None when the input does not say."""
     if value is None or isinstance(value, str):
@@ -275,7 +298,7 @@ def check_processing_description(dpa: dict) -> list[Finding]:
     }
     findings: list[Finding] = []
     for key, label in required.items():
-        present = _recorded(dpa, f"processing.{key}")
+        present = _described(dpa, f"processing.{key}")
         findings.append(
             Finding(
                 rule_id=f"processing.{key}",

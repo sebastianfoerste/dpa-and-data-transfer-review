@@ -362,6 +362,54 @@ class DataSubjectCategories(unittest.TestCase):
             self.assertTrue(finding.remediation)
 
 
+class ProcessingDescription(unittest.TestCase):
+    """Subject matter, duration, and nature and purpose take a description or `true`."""
+
+    def _finding(self, key, value):
+        dpa = json.loads(json.dumps(SAMPLE))
+        dpa["processing"][key] = value
+        return _by_id(build_packet(dpa), f"processing.{key}")
+
+    def test_a_description_states_the_element(self):
+        # Before inputs were validated, any non-empty text counted as stated; it still does.
+        for key, text in (
+            ("subject_matter", "hosting and support of the customer platform"),
+            ("duration", "term of the main agreement"),
+            ("nature_and_purpose", "storage and support ticket handling"),
+        ):
+            with self.subTest(field=key):
+                self.assertEqual(self._finding(key, text).status, "PRESENT")
+
+    def test_true_states_the_element(self):
+        self.assertEqual(self._finding("duration", True).status, "PRESENT")
+
+    def test_false_empty_or_null_is_not_stated(self):
+        for value in (False, "", "   ", None):
+            with self.subTest(value=value):
+                finding = self._finding("duration", value)
+                self.assertEqual((finding.status, finding.severity), ("MISSING", "MEDIUM"))
+
+    def test_a_yes_no_word_is_refused_rather_than_read_as_a_description(self):
+        for value in ("false", "No", " TRUE ", "yes"):
+            with self.subTest(value=value):
+                dpa = json.loads(json.dumps(SAMPLE))
+                dpa["processing"]["subject_matter"] = value
+                with self.assertRaisesRegex(
+                    InvalidInputError, "processing.subject_matter must be a description or true/false"
+                ):
+                    build_packet(dpa)
+
+    def test_other_types_are_refused(self):
+        for value in (1, ["term"], {"months": 12}):
+            with self.subTest(value=value):
+                dpa = json.loads(json.dumps(SAMPLE))
+                dpa["processing"]["nature_and_purpose"] = value
+                with self.assertRaisesRegex(
+                    InvalidInputError, r"processing.nature_and_purpose must be a description \(a string\)"
+                ):
+                    build_packet(dpa)
+
+
 class RecordedFlagShape(unittest.TestCase):
     """Recorded yes/no facts must be JSON booleans; a wrong shape is refused, not guessed."""
 
@@ -397,7 +445,6 @@ class RecordedFlagShape(unittest.TestCase):
         for section, key in (
             ("art28_clauses", "subprocessor_flowdown"),
             ("art28_clauses", "audit_and_inspection_rights"),
-            ("processing", "subject_matter"),
             ("breach_notification", "processor_notifies_controller"),
             ("transfers", "transfer_impact_assessment"),
             ("ccpa", "service_provider_terms"),
