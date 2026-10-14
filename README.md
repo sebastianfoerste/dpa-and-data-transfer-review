@@ -10,7 +10,7 @@ Deterministic, cited GDPR Art. 28 + Chapter V transfer checks; produces a review
 
 ![Terminal rendering of the full make demo output: the BLOCKED review packet for the synthetic sample DPA](docs/demo.png)
 
-*The complete, unedited terminal output of `make demo` on the bundled synthetic DPA, rendered as an image. The last line is make reporting the CLI's gating exit code `2` (`BLOCKED`).*
+*The complete, unedited terminal output of `make demo` on the bundled synthetic DPA, rendered as an image. The last line is make reporting the CLI's gating exit code `2` (`BLOCKED`). The image renders [`docs/demo.txt`](docs/demo.txt), the captured text, which `make test` checks against the live output.*
 
 ## Why this exists
 
@@ -111,6 +111,7 @@ src/dpa_review/
   cli.py      # python -m dpa_review.cli --input data/sample_dpa.json --out examples
 data/sample_dpa.json     # synthetic DPA with three planted defects
 examples/                # committed sample output (md + json), checked by tests/test_examples.py
+docs/demo.txt            # captured `make demo` output that docs/demo.png renders, also checked there
 tests/                   # deterministic tests, standard-library unittest
 ```
 
