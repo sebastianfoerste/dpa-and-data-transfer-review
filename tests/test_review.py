@@ -142,6 +142,36 @@ class DataPrivacyFrameworkAssessment(unittest.TestCase):
         )
         self.assertEqual((status, sev), ("PRESENT", "LOW"))
 
+    def test_neither_hr_nor_non_hr_data_transferred_is_contradictory(self):
+        # This input used to come out PRESENT, "certified for the data transferred".
+        for coverage in ({}, {"dpf_covers_non_hr_data": True, "dpf_covers_hr_data": True}):
+            with self.subTest(coverage=coverage):
+                status, sev, detail = assess_transfer(
+                    "US",
+                    "dpf",
+                    dpf_certified=True,
+                    **coverage,
+                    includes_hr_data=False,
+                    includes_non_hr_data=False,
+                )
+                self.assertEqual((status, sev), ("NEEDS_REVIEW", "MEDIUM"))
+                self.assertIn("neither non-HR data nor HR data is transferred", detail)
+
+    def test_uncertified_importer_blocks_whatever_data_is_recorded(self):
+        status, sev, _ = assess_transfer(
+            "US", "dpf", includes_hr_data=False, includes_non_hr_data=False
+        )
+        self.assertEqual((status, sev), ("MISSING", "HIGH"))
+
+    def test_contradictory_data_scope_sends_the_packet_to_review(self):
+        dpa = self._dpf_dpa(certified=True)
+        dpa["processing"]["includes_non_hr_data"] = False
+        packet = build_packet(dpa)
+        for rule_id in self.US_TRANSFERS:
+            finding = _by_id(packet, rule_id)
+            self.assertEqual((finding.status, finding.severity), ("NEEDS_REVIEW", "MEDIUM"))
+        self.assertEqual(packet.review_state, "NEEDS_REVIEW")
+
     def _dpf_dpa(self, certified, includes_hr_data=False, covers_hr_data=None):
         dpa = json.loads(json.dumps(SAMPLE))
         dpa["art28_clauses"]["subprocessor_flowdown"] = True  # isolate the transfer findings

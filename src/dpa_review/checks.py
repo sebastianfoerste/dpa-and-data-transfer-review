@@ -466,6 +466,18 @@ def _assess_dpf(
                 "covers only organisations on that list."
             ),
         )
+    if includes_hr_data is False and includes_non_hr_data is False:
+        # Every personal datum is HR or non-HR data, so the input contradicts itself.
+        return (
+            "NEEDS_REVIEW",
+            "MEDIUM",
+            (
+                f"Transfer to {country} relies on {basis}; the importer is recorded as certified on the "
+                "Data Privacy Framework List, but the DPA records that neither non-HR data nor HR data "
+                "is transferred, so the data the certification must cover is unclear. Confirm the data "
+                "transferred and that the certification covers it."
+            ),
+        )
     uncovered: list[str] = []
     unknown: list[str] = []
     for label, covered, in_scope in (
