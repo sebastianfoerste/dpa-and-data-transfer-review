@@ -8,6 +8,7 @@ from typing import Any
 
 from dpa_review.checks import (
     EEA,
+    relies_on_art46_safeguard,
     subprocessor_country,
     subprocessor_name,
     subprocessor_rule_id,
@@ -133,7 +134,7 @@ def build_transfer_evidence_graph(
             )
             location_findings = [transfer_finding] if transfer_finding else []
             location_controls = [transfer_rule_id]
-            if mechanism in {"sccs", "bcr"} and transfer_impact:
+            if transfer_impact and relies_on_art46_safeguard(country, mechanism):
                 location_findings.append(transfer_impact)
                 location_controls.append(transfer_impact.rule_id)
             jurisdiction_id = add_node(
@@ -168,7 +169,7 @@ def build_transfer_evidence_graph(
         mechanism = _mechanism(mechanisms.get(country))
         direct_findings = [finding] if finding else []
         direct_controls = [f"transfer.{country.lower()}"]
-        if mechanism in {"sccs", "bcr"} and transfer_impact:
+        if transfer_impact and relies_on_art46_safeguard(country, mechanism):
             direct_findings.append(transfer_impact)
             direct_controls.append(transfer_impact.rule_id)
         edges.append(

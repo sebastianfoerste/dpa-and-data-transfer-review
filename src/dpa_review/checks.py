@@ -641,6 +641,15 @@ def assess_transfer(
     )
 
 
+def relies_on_art46_safeguard(country: str, mechanism: str | None) -> bool:
+    """Whether a transfer relies on SCCs or BCR, so that a transfer impact assessment is due.
+
+    A destination inside the EEA is not a Chapter V transfer (Art. 44 covers transfers to a third
+    country or an international organisation), so SCCs or BCR recorded for it are not relied on.
+    """
+    return country.upper() not in EEA and (mechanism or "none").lower() in {"sccs", "bcr"}
+
+
 def _transfer_articles(country: str, mechanism: str | None) -> str:
     """Chapter V provisions behind a transfer finding, for its citation."""
     mech = (mechanism or "none").lower()
@@ -796,14 +805,15 @@ def check_transfers(dpa: dict) -> list[Finding]:
                 )
             )
 
-    # Transfer impact assessment (Schrems II): required where Art. 46 tools are relied on.
-    # DPF transfers rely on an Art. 45 adequacy decision and therefore do not trigger it.
+    # Transfer impact assessment (Schrems II): required where Art. 46 tools are relied on for a
+    # transfer outside the EEA. DPF transfers rely on an Art. 45 adequacy decision and therefore
+    # do not trigger it.
     tia = _recorded(dpa, "transfers.transfer_impact_assessment")
     relies_on_safeguards = any(
-        (mechanisms.get(c, "none") or "none").lower() in {"sccs", "bcr"} for c in destinations
+        relies_on_art46_safeguard(c, mechanisms.get(c)) for c in destinations
     ) or any(
-        (sp.get("transfer_mechanism") or "none").lower() in {"sccs", "bcr"}
-        for sp in entries
+        relies_on_art46_safeguard(subprocessor_country(sp, i), sp.get("transfer_mechanism"))
+        for i, sp in enumerate(entries)
     )
     if relies_on_safeguards:
         findings.append(

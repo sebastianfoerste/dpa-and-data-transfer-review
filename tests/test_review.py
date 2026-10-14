@@ -586,5 +586,31 @@ class CuredPacket(unittest.TestCase):
         self.assertIn("version 2.0, adopted 18 June 2021", tia.remediation)
 
 
+class TransferImpactAssessmentScope(unittest.TestCase):
+    """A transfer impact assessment is due only where SCCs or BCR carry a transfer outside the EEA."""
+
+    def _tia_ids(self, dpa):
+        return {f.rule_id for f in build_packet(dpa).findings} & {"transfer.impact_assessment"}
+
+    def test_sccs_recorded_for_an_eea_destination_trigger_no_assessment(self):
+        # The FR finding itself says no Chapter V mechanism is required.
+        for mechanism in ("sccs", "bcr", "SCCs"):
+            with self.subTest(mechanism=mechanism):
+                dpa = json.loads(json.dumps(SAMPLE))
+                dpa["transfers"]["mechanisms"]["FR"] = mechanism
+                self.assertEqual(self._tia_ids(dpa), set())
+
+    def test_sccs_recorded_for_an_eea_subprocessor_trigger_no_assessment(self):
+        dpa = json.loads(json.dumps(SAMPLE))
+        dpa["subprocessors"][0]["transfer_mechanism"] = "sccs"
+        self.assertEqual(self._tia_ids(dpa), set())
+
+    def test_sccs_for_a_third_country_still_trigger_the_assessment(self):
+        dpa = json.loads(json.dumps(SAMPLE))
+        dpa["transfers"]["mechanisms"]["FR"] = "sccs"
+        dpa["subprocessors"][1]["transfer_mechanism"] = "sccs"
+        self.assertEqual(self._tia_ids(dpa), {"transfer.impact_assessment"})
+
+
 if __name__ == "__main__":
     unittest.main()

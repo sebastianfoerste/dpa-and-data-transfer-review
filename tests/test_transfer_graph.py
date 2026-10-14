@@ -71,6 +71,17 @@ class TransferEvidenceGraphTests(unittest.TestCase):
         self.assertEqual(edge["status"], "block")
         self.assertIn(edge["control_refs"][0], {f.rule_id for f in packet.findings})
 
+    def test_assessment_attaches_only_to_transfers_outside_the_eea(self):
+        dpa = json.loads(json.dumps(SAMPLE))
+        dpa["transfers"]["mechanisms"]["FR"] = "sccs"
+        dpa["transfers"]["mechanisms"]["US"] = "sccs"
+        dpa["subprocessors"][0]["transfer_mechanism"] = "sccs"
+        graph = build_transfer_evidence_graph(dpa, build_packet(dpa))
+        controls = {edge["edge_id"]: edge["control_refs"] for edge in graph["edges"]}
+        self.assertIn("transfer.impact_assessment", controls["processor-direct-to-us"])
+        self.assertNotIn("transfer.impact_assessment", controls["processor-direct-to-fr"])
+        self.assertNotIn("transfer.impact_assessment", controls["subprocessor-1-to-fr"])
+
     def test_null_subprocessor_country_adds_no_jurisdiction(self):
         # The packet reads a null country as no country; the graph used to add a node "NONE".
         dpa = json.loads(json.dumps(SAMPLE))
