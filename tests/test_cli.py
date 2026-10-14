@@ -79,6 +79,46 @@ class CliExitCodes(unittest.TestCase):
         self.assertEqual(out, "")
         self.assertIn("Traceback", err)
 
+    def test_null_transfers_section_gets_the_same_exit_with_or_without_out(self):
+        # A null section counts as not recorded. The graph used to read it with dict methods,
+        # so only a run with --out failed (exit 3), after the packet files were written.
+        dpa = json.loads(SAMPLE_PATH.read_text(encoding="utf-8"))
+        dpa["transfers"] = None
+        path = self._write(dpa)
+        out_dir = Path(self.tmp.name) / "out"
+        self.assertEqual(_run(["--input", path, "--quiet"])[0], 2)
+        code, _, err = _run(["--input", path, "--quiet", "--out", str(out_dir)])
+        self.assertEqual(code, 2)
+        self.assertEqual(err, "")
+        self.assertTrue((out_dir / "transfer-evidence-graph.json").exists())
+
+    def test_null_agreement_falls_back_to_the_default_title(self):
+        dpa = json.loads(SAMPLE_PATH.read_text(encoding="utf-8"))
+        dpa["agreement"] = None
+        code, out, err = _run(["--input", self._write(dpa)])
+        self.assertEqual(code, 2)
+        self.assertEqual(err, "")
+        self.assertTrue(out.startswith("# Data Processing Agreement review packet\n"))
+
+    def test_agreement_that_is_not_a_string_exits_3_with_a_message(self):
+        dpa = json.loads(SAMPLE_PATH.read_text(encoding="utf-8"))
+        dpa["agreement"] = ["Synthetic DPA"]
+        code, out, err = _run(["--input", self._write(dpa)])
+        self.assertEqual(code, 3)
+        self.assertEqual(out, "")
+        self.assertIn("agreement must be a string", err)
+        self.assertNotIn("Traceback", err)
+
+    def test_failure_while_building_the_graph_writes_no_output(self):
+        out_dir = Path(self.tmp.name) / "out"
+        with mock.patch(
+            "dpa_review.cli.build_transfer_evidence_graph", side_effect=RuntimeError("boom")
+        ):
+            code, out, _ = _run(["--input", str(SAMPLE_PATH), "--out", str(out_dir)])
+        self.assertEqual(code, 3)
+        self.assertEqual(out, "")
+        self.assertFalse(out_dir.exists())
+
     def test_usage_error_exits_3_not_2(self):
         code, _, err = _run([])
         self.assertEqual(code, 3)

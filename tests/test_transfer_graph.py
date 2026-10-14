@@ -71,6 +71,36 @@ class TransferEvidenceGraphTests(unittest.TestCase):
         self.assertEqual(edge["status"], "block")
         self.assertIn(edge["control_refs"][0], {f.rule_id for f in packet.findings})
 
+    def test_null_subprocessor_country_adds_no_jurisdiction(self):
+        # The packet reads a null country as no country; the graph used to add a node "NONE".
+        dpa = json.loads(json.dumps(SAMPLE))
+        dpa["subprocessors"][1]["country"] = None
+        graph = build_transfer_evidence_graph(dpa, build_packet(dpa))
+        self.assertNotIn("NONE", {node["label"] for node in graph["nodes"]})
+        self.assertNotIn("subprocessor-2-to-none", {edge["edge_id"] for edge in graph["edges"]})
+
+    def test_null_values_read_as_omitted(self):
+        dpa = json.loads(json.dumps(SAMPLE))
+        dpa["controller"] = None
+        dpa["subprocessors"][0]["purpose"] = None
+        dpa["subprocessors"][1]["transfer_mechanism"] = None
+        graph = build_transfer_evidence_graph(dpa, build_packet(dpa))
+        labels = {node["label"] for node in graph["nodes"]}
+        self.assertIn("Controller", labels)
+        self.assertNotIn("None", labels)
+        hosting = next(node for node in graph["nodes"] if node["label"] == "EU Hosting SARL")
+        self.assertEqual(hosting["purpose"], "")
+        edge = next(e for e in graph["edges"] if e["edge_id"] == "subprocessor-2-to-us")
+        self.assertEqual(edge["mechanism"], "none")
+
+    def test_null_transfers_section_builds_a_graph(self):
+        dpa = json.loads(json.dumps(SAMPLE))
+        dpa["transfers"] = None
+        graph = build_transfer_evidence_graph(dpa, build_packet(dpa))
+        self.assertFalse(
+            any(e["relationship"] == "direct_transfer_to" for e in graph["edges"])
+        )
+
     def test_graph_is_deterministic_and_renders_mermaid(self):
         first = build_transfer_evidence_graph(SAMPLE, build_packet(SAMPLE))
         second = build_transfer_evidence_graph(SAMPLE, build_packet(SAMPLE))

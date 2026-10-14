@@ -132,6 +132,11 @@ def _text(value: Any, field: str) -> str | None:
     raise InvalidInputError(f"{field} must be a string, got {value!r}.")
 
 
+def recorded_text(dpa: dict, path: str) -> str | None:
+    """The string at a dotted path, or None when it is omitted or null."""
+    return _text(_get(dpa, path), path)
+
+
 def _labels(dpa: dict, path: str, example: str) -> list[str]:
     """A list of non-empty strings, such as the categories of data subjects."""
     value = _get(dpa, path)
@@ -186,9 +191,24 @@ def transfer_mechanisms(dpa: dict) -> dict[str, str | None]:
     return _by_country(dpa, "transfers.mechanisms", _text, '{"US": "sccs"}')
 
 
+def subprocessors(dpa: dict) -> list[dict]:
+    """The sub-processor entries; an omitted or null list means none."""
+    return _objects(dpa, "subprocessors")
+
+
+def subprocessor_text(sp: dict, index: int, key: str) -> str | None:
+    """A string field of a sub-processor entry, or None when it is omitted or null."""
+    return _text(sp.get(key), f"subprocessors[{index}].{key}")
+
+
 def subprocessor_name(sp: dict, index: int) -> str:
     """The sub-processor's name, or its position in the list when it has none."""
-    return sp.get("name") or f"Sub-processor {index + 1}"
+    return subprocessor_text(sp, index, "name") or f"Sub-processor {index + 1}"
+
+
+def subprocessor_country(sp: dict, index: int) -> str:
+    """The sub-processor's country as an upper-case code, or "" when none is recorded."""
+    return (subprocessor_text(sp, index, "country") or "").upper()
 
 
 def subprocessor_rule_id(name: str) -> str:
@@ -196,7 +216,7 @@ def subprocessor_rule_id(name: str) -> str:
     return "transfer.subprocessor." + re.sub(r"[^a-z0-9_]+", "_", name.lower().replace(" ", "_")).strip("_")
 
 
-def _destinations(dpa: dict) -> list[str]:
+def transfer_destinations(dpa: dict) -> list[str]:
     """The direct transfer destinations as upper-case country codes, each listed once."""
     destinations = [country.upper() for country in _labels(dpa, "transfers.destinations", '["US"]')]
     repeated = sorted({country for country in destinations if destinations.count(country) > 1})
@@ -311,7 +331,7 @@ def check_processing_description(dpa: dict) -> list[Finding]:
 def check_subprocessors(dpa: dict) -> list[Finding]:
     findings: list[Finding] = []
     path = "art28_clauses.subprocessor_authorization"
-    auth = _text(_get(dpa, path), path) or "none"
+    auth = recorded_text(dpa, path) or "none"
     findings.append(
         Finding(
             rule_id="subprocessor.authorization",
@@ -356,7 +376,7 @@ def check_subprocessors(dpa: dict) -> list[Finding]:
 
 def check_breach_notification(dpa: dict) -> list[Finding]:
     processor_notifies = _recorded(dpa, "breach_notification.processor_notifies_controller")
-    timing = (_text(_get(dpa, "breach_notification.timing"), "breach_notification.timing") or "").lower()
+    timing = (recorded_text(dpa, "breach_notification.timing") or "").lower()
     acceptable_timing = "undue delay" in timing or "without delay" in timing
     status = "PRESENT" if (processor_notifies and acceptable_timing) else (
         "NEEDS_REVIEW" if processor_notifies else "MISSING"
@@ -670,9 +690,9 @@ def _transfer_remediation(
 
 def check_transfers(dpa: dict) -> list[Finding]:
     findings: list[Finding] = []
-    destinations = _destinations(dpa)
+    destinations = transfer_destinations(dpa)
     mechanisms = transfer_mechanisms(dpa)
-    subprocessors = _objects(dpa, "subprocessors")
+    entries = subprocessors(dpa)
     dpf_certified = _country_flags(dpa, "transfers.dpf_certified")
     dpf_covers_hr_data = _country_flags(dpa, "transfers.dpf_covers_hr_data")
     dpf_covers_non_hr_data = _country_flags(dpa, "transfers.dpf_covers_non_hr_data")
@@ -711,9 +731,9 @@ def check_transfers(dpa: dict) -> list[Finding]:
         )
 
     # Sub-processor located in a third country is itself a transfer.
-    for index, sp in enumerate(subprocessors):
+    for index, sp in enumerate(entries):
         for key in ("name", "country", "transfer_mechanism"):
-            _text(sp.get(key), f"subprocessors[{index}].{key}")
+            subprocessor_text(sp, index, key)
         flags = {
             key: bool(_flag(sp.get(key), f"subprocessors[{index}].{key}"))
             for key in (
@@ -723,7 +743,7 @@ def check_transfers(dpa: dict) -> list[Finding]:
                 "occasional_and_not_repetitive",
             )
         }
-        country = (sp.get("country") or "").upper()
+        country = subprocessor_country(sp, index)
         name = subprocessor_name(sp, index)
         if country and country not in EEA:
             status, severity, detail = assess_transfer(
@@ -760,7 +780,7 @@ def check_transfers(dpa: dict) -> list[Finding]:
         (mechanisms.get(c, "none") or "none").lower() in {"sccs", "bcr"} for c in destinations
     ) or any(
         (sp.get("transfer_mechanism") or "none").lower() in {"sccs", "bcr"}
-        for sp in subprocessors
+        for sp in entries
     )
     if relies_on_safeguards:
         findings.append(

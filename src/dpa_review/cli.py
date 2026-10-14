@@ -42,6 +42,10 @@ def _review(args: argparse.Namespace) -> int:
         raise InvalidInputError("the DPA input must be a JSON object.")
     packet = build_packet(dpa)
     markdown = render_markdown(packet)
+    # Built on every run, before anything is printed or written: the exit code then does not
+    # depend on --out, and a failure leaves no partial output behind.
+    transfer_graph = build_transfer_evidence_graph(dpa, packet)
+    graph_markdown = render_transfer_evidence_graph(transfer_graph)
 
     if not args.quiet:
         print(markdown)
@@ -53,15 +57,11 @@ def _review(args: argparse.Namespace) -> int:
         (out_dir / "review-packet.json").write_text(
             json.dumps(packet.to_dict(), indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
         )
-        transfer_graph = build_transfer_evidence_graph(dpa, packet)
         (out_dir / "transfer-evidence-graph.json").write_text(
             json.dumps(transfer_graph, indent=2, ensure_ascii=False) + "\n",
             encoding="utf-8",
         )
-        (out_dir / "transfer-evidence-graph.md").write_text(
-            render_transfer_evidence_graph(transfer_graph),
-            encoding="utf-8",
-        )
+        (out_dir / "transfer-evidence-graph.md").write_text(graph_markdown, encoding="utf-8")
 
     return EXIT_CODES[packet.review_state]
 
