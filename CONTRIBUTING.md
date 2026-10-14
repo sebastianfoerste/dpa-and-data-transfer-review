@@ -17,7 +17,7 @@ make test      # must pass before any PR
 make demo      # regenerate examples/ if rule output changed
 ```
 
-If a change alters rule output, regenerate and commit `examples/review-packet.md` and `examples/review-packet.json` in the same PR so the committed sample stays truthful.
+If a change alters rule output, run `make demo` and commit the regenerated `examples/` files (review packet and transfer evidence graph, md and json) in the same PR, and update the packet excerpt in the README, so the committed sample stays truthful. `make test` fails until they match. If the printed packet changes, also capture the real output with `make demo > docs/demo.txt 2>&1`, re-render `docs/demo.png` from that file (never edit or mock up the image), and record both files with `sha256sum demo.txt demo.png > demo.sha256` in `docs/`. `make test` fails until the text matches the demo and the recorded hashes match both files.
 
 ## Adding a rule
 

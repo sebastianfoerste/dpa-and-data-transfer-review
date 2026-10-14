@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from dpa_review.checks import Finding, run_all_checks
+from dpa_review.checks import Finding, recorded_text, run_all_checks
 
 DISCLAIMER = (
     "This is an automated first-pass review packet generated from a checklist of "
@@ -80,7 +80,7 @@ def build_packet(dpa: dict) -> ReviewPacket:
     )
     summary = _summarise(findings)
     state = _decide_state(summary)
-    title = dpa.get("agreement", "Data Processing Agreement") + " review packet"
+    title = (recorded_text(dpa, "agreement") or "Data Processing Agreement") + " review packet"
     return ReviewPacket(title=title, review_state=state, summary=summary, findings=findings)
 
 

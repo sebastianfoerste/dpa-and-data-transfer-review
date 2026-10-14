@@ -4,10 +4,19 @@ from __future__ import annotations
 
 import hashlib
 import json
-import re
 from typing import Any
 
-from dpa_review.checks import EEA
+from dpa_review.checks import (
+    EEA,
+    relies_on_art46_safeguard,
+    subprocessor_country,
+    subprocessor_name,
+    subprocessor_rule_id,
+    subprocessor_text,
+    subprocessors,
+    transfer_destinations,
+    transfer_mechanisms,
+)
 from dpa_review.review import OPEN_STATUSES, ReviewPacket
 
 SCHEMA = "dpa-review.transfer-evidence-graph.v1"
@@ -26,6 +35,16 @@ def _finding(packet: ReviewPacket, rule_id: str):
     return next((finding for finding in packet.findings if finding.rule_id == rule_id), None)
 
 
+def _label(value: Any, default: str) -> str:
+    """A label for a field no check reads: the default when it is omitted or null."""
+    return default if value is None else str(value)
+
+
+def _mechanism(value: str | None) -> str:
+    """A recorded transfer mechanism in lower case, or "none" when none is recorded."""
+    return (value or "none").lower()
+
+
 def _edge_status(findings: list[Any]) -> str:
     open_findings = [finding for finding in findings if finding and finding.status in OPEN_STATUSES]
     if any(finding.severity == "HIGH" for finding in open_findings):
@@ -41,8 +60,8 @@ def build_transfer_evidence_graph(
 ) -> dict[str, Any]:
     """Build a graph that exposes the weakest contractual or transfer-control link."""
 
-    controller = str(dpa.get("controller", "Controller"))
-    processor = str(dpa.get("processor", "Processor"))
+    controller = _label(dpa.get("controller"), "Controller")
+    processor = _label(dpa.get("processor"), "Processor")
     nodes: dict[str, dict[str, Any]] = {}
     edges: list[dict[str, Any]] = []
 
@@ -80,20 +99,18 @@ def build_transfer_evidence_graph(
     authorization = _finding(packet, "subprocessor.authorization")
     transfer_impact = _finding(packet, "transfer.impact_assessment")
     represented_destinations: set[str] = set()
-    for index, subprocessor in enumerate(dpa.get("subprocessors", []) or []):
-        name = str(subprocessor.get("name", f"Sub-processor {index + 1}"))
-        country = str(subprocessor.get("country", "")).upper()
+    # Read the input as the checks do, so that an omitted or null value means the same here.
+    for index, subprocessor in enumerate(subprocessors(dpa)):
+        name = subprocessor_name(subprocessor, index)
+        country = subprocessor_country(subprocessor, index)
         represented_destinations.add(country)
         subprocessor_id = add_node(
             "party",
             name,
             role="subprocessor",
-            purpose=str(subprocessor.get("purpose", "")),
+            purpose=_label(subprocessor.get("purpose"), ""),
         )
-        transfer_rule_id = (
-            "transfer.subprocessor."
-            + re.sub(r"[^a-z0-9_]+", "_", name.lower().replace(" ", "_")).strip("_")
-        )
+        transfer_rule_id = subprocessor_rule_id(name)
         transfer_finding = _finding(packet, transfer_rule_id)
         appointment_findings = [
             finding for finding in (authorization, flowdown, transfer_finding) if finding
@@ -112,12 +129,12 @@ def build_transfer_evidence_graph(
             }
         )
         if country:
-            mechanism = str(
-                subprocessor.get("transfer_mechanism", "none")
-            ).lower()
+            mechanism = _mechanism(
+                subprocessor_text(subprocessor, index, "transfer_mechanism")
+            )
             location_findings = [transfer_finding] if transfer_finding else []
             location_controls = [transfer_rule_id]
-            if mechanism in {"sccs", "bcr"} and transfer_impact:
+            if transfer_impact and relies_on_art46_safeguard(country, mechanism):
                 location_findings.append(transfer_impact)
                 location_controls.append(transfer_impact.rule_id)
             jurisdiction_id = add_node(
@@ -145,15 +162,14 @@ def build_transfer_evidence_graph(
                 }
             )
 
-    mechanisms = dpa.get("transfers", {}).get("mechanisms", {}) or {}
-    for country_value in dpa.get("transfers", {}).get("destinations", []) or []:
-        country = str(country_value).upper()
+    mechanisms = transfer_mechanisms(dpa)
+    for country in transfer_destinations(dpa):
         jurisdiction_id = add_node("jurisdiction", country, eea=country in EEA)
         finding = _finding(packet, f"transfer.{country.lower()}")
-        mechanism = str(mechanisms.get(country, "none")).lower()
+        mechanism = _mechanism(mechanisms.get(country))
         direct_findings = [finding] if finding else []
         direct_controls = [f"transfer.{country.lower()}"]
-        if mechanism in {"sccs", "bcr"} and transfer_impact:
+        if transfer_impact and relies_on_art46_safeguard(country, mechanism):
             direct_findings.append(transfer_impact)
             direct_controls.append(transfer_impact.rule_id)
         edges.append(
