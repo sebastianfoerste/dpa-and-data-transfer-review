@@ -26,3 +26,11 @@ target-version = "py310"
 [tool.ruff.lint]
 select = ["E", "F", "W", "B"]
 ignore = ["E501"]
+
+[tool.coverage.run]
+branch = true
+source = ["dpa_review"]
+
+[tool.coverage.report]
+fail_under = 90
+show_missing = true
