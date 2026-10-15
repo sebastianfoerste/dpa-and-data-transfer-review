@@ -1,0 +1,355 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/sebastianfoerste/dpa-and-data-transfer-review/main/schema/dpa.schema.json",
+  "title": "dpa-review input: a structured description of one Data Processing Agreement",
+  "description": "Generated from src/dpa_review/contract.py by `make docs`; docs/input-format.md explains every key. The CLI enforces this schema and, beyond it, a few cross-field rules: every transfers.mechanisms key is a listed destination, sub-processor names are unique ignoring case, spaces and punctuation, and every evidence key names a fact the input records. Input that breaks any of them exits 3.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "agreement": {
+      "description": "Name of the agreement, used as the packet title. No rule reads it.",
+      "type": "string"
+    },
+    "controller": {
+      "description": "Name of the controller. Labels the transfer evidence graph; no rule reads it.",
+      "type": "string"
+    },
+    "processor": {
+      "description": "Name of the processor. Labels the transfer evidence graph; no rule reads it.",
+      "type": "string"
+    },
+    "roles_defined": {
+      "description": "Whether the DPA defines the controller and processor roles. Recorded only: no rule reads it.",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "processing": {
+      "description": "The processing details GDPR Art. 28(3) requires the DPA to set out. Read by the processing.* rules.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "subject_matter": {
+          "description": "The subject matter of the processing is stated: true, or a short description. Rule processing.subject_matter.",
+          "type": [
+            "boolean",
+            "string",
+            "null"
+          ]
+        },
+        "duration": {
+          "description": "The duration of the processing is stated: true, or a short description. Rule processing.duration.",
+          "type": [
+            "boolean",
+            "string",
+            "null"
+          ]
+        },
+        "nature_and_purpose": {
+          "description": "The nature and purpose of the processing are stated: true, or a short description. Rule processing.nature_and_purpose.",
+          "type": [
+            "boolean",
+            "string",
+            "null"
+          ]
+        },
+        "data_types": {
+          "description": "The types of personal data processed. Rule processing.data_types: an empty or omitted list is MISSING.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string",
+            "pattern": "\\S"
+          }
+        },
+        "data_subjects": {
+          "description": "The categories of data subjects. Recorded only: no rule reads it.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string",
+            "pattern": "\\S"
+          }
+        }
+      }
+    },
+    "art28_clauses": {
+      "description": "The processor clauses GDPR Art. 28(2)-(4) require. Each flag is true when the DPA contains the clause; false, null or omitted when it was not found.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "process_on_documented_instructions": {
+          "description": "Art. 28(3)(a): the processor processes only on documented instructions. Rule art28.process_on_documented_instructions.",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "confidentiality_commitment": {
+          "description": "Art. 28(3)(b): persons authorised to process are bound to confidentiality. Rule art28.confidentiality_commitment.",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "security_measures_art32": {
+          "description": "Art. 28(3)(c): the processor takes the security measures of Art. 32. Rule art28.security_measures_art32.",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "subprocessor_authorization": {
+          "description": "Art. 28(2): \"specific\" (prior specific written authorisation), \"general\" (general written authorisation) or \"none\". Rule subprocessor.authorization: \"none\", null or omitted is MISSING.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "specific",
+            "general",
+            "none",
+            null
+          ]
+        },
+        "subprocessor_flowdown": {
+          "description": "Art. 28(4): the same data-protection obligations are imposed on every sub-processor. Rule subprocessor.flowdown.",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "assist_data_subject_requests": {
+          "description": "Art. 28(3)(e): the processor assists with data-subject requests. Rule art28.assist_data_subject_requests.",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "assist_security_breach": {
+          "description": "Art. 28(3)(f): the processor assists with security, breach and DPIA obligations (Art. 32-36). Rule art28.assist_security_breach.",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "delete_or_return_on_termination": {
+          "description": "Art. 28(3)(g): the processor deletes or returns the data at the end of the services. Rule art28.delete_or_return_on_termination.",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "audit_and_inspection_rights": {
+          "description": "Art. 28(3)(h): the processor allows and contributes to audits and inspections. Rule art28.audit_and_inspection_rights.",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        }
+      }
+    },
+    "breach_notification": {
+      "description": "Breach-notification terms (GDPR Art. 33(2)). Read by rule breach.processor_notifies.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "processor_notifies_controller": {
+          "description": "The processor notifies the controller of a personal-data breach. Rule breach.processor_notifies.",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "timing": {
+          "description": "The notice period as the DPA words it, e.g. \"without undue delay\". The rule passes only wording that contains \"undue delay\" or \"without delay\"; other wording goes to review.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "controller_notifies_authority_art33": {
+          "description": "The controller's own notice to the supervisory authority is addressed. Recorded only: no rule reads it.",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        }
+      }
+    },
+    "subprocessors": {
+      "description": "Every sub-processor the DPA names or authorises. Each one outside the EEA is checked as a transfer (rule transfer.subprocessor.<name>). Record [] when there are none.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "description": "The sub-processor's name. Names must differ, ignoring case, spaces and punctuation, because rule ids are derived from them.",
+            "type": "string",
+            "pattern": "\\S"
+          },
+          "country": {
+            "description": "Upper-case ISO 3166-1 alpha-2 code of the country where it processes the data, e.g. \"US\" (the United Kingdom is \"GB\", Greece is \"GR\").",
+            "type": "string",
+            "pattern": "^[A-Z]{2}$",
+            "not": {
+              "enum": [
+                "EL",
+                "EU",
+                "UK"
+              ]
+            }
+          },
+          "purpose": {
+            "description": "What the sub-processor does. Labels the graph; no rule reads it.",
+            "type": "string"
+          },
+          "transfer_mechanism": {
+            "description": "The Chapter V basis for a sub-processor outside the EEA. Null or omitted reads as none.",
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "none",
+              "adequacy",
+              "sccs",
+              "bcr",
+              "dpf",
+              "derogation_art49",
+              null
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "country"
+        ]
+      }
+    },
+    "transfers": {
+      "description": "Transfers of personal data that the processor makes directly to other countries.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "destinations": {
+          "description": "Upper-case ISO 3166-1 alpha-2 codes of every country the processor transfers personal data to directly; each is checked (rule transfer.<country>). Record [] when there are none.",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z]{2}$",
+            "not": {
+              "enum": [
+                "EL",
+                "EU",
+                "UK"
+              ]
+            }
+          },
+          "uniqueItems": true
+        },
+        "mechanisms": {
+          "description": "The Chapter V basis per destination, keyed by a country that destinations lists. A destination without an entry reads as none.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "propertyNames": {
+            "pattern": "^[A-Z]{2}$",
+            "not": {
+              "enum": [
+                "EL",
+                "EU",
+                "UK"
+              ]
+            }
+          },
+          "additionalProperties": {
+            "description": "The Chapter V basis for this destination.",
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "none",
+              "adequacy",
+              "sccs",
+              "bcr",
+              "dpf",
+              "derogation_art49",
+              null
+            ]
+          }
+        },
+        "transfer_impact_assessment": {
+          "description": "A transfer impact assessment is recorded. Read only when SCCs or BCR are relied on (rule transfer.impact_assessment).",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "destinations"
+      ]
+    },
+    "ccpa": {
+      "description": "California CCPA/CPRA terms, a secondary lens. Omitted reads as not recorded, which goes to review.",
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "service_provider_terms": {
+          "description": "Service-provider terms restricting the sale and retention of personal information are present. Rule ccpa.service_provider_terms.",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        }
+      }
+    },
+    "evidence": {
+      "description": "Where each recorded fact comes from in the DPA, keyed by the fact's path, e.g. {\"art28_clauses.subprocessor_flowdown\": {\"clause\": \"§ 7.2\", \"quote\": \"...\"}}. The packet prints it next to the findings that read the fact. A key must name a fact this input records.",
+      "type": [
+        "object",
+        "null"
+      ],
+      "propertyNames": {
+        "pattern": "^[A-Za-z0-9_]+(\\[[0-9]+\\])?(\\.[A-Za-z0-9_]+(\\[[0-9]+\\])?)*$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "description": "The clause and quote that support one recorded fact.",
+        "additionalProperties": false,
+        "minProperties": 1,
+        "properties": {
+          "clause": {
+            "description": "Where the fact is in the DPA, e.g. \"§ 7.2\" or \"Annex 3\".",
+            "type": "string",
+            "pattern": "\\S"
+          },
+          "quote": {
+            "description": "The DPA's own words, quoted verbatim.",
+            "type": "string",
+            "pattern": "\\S"
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "processing",
+    "art28_clauses",
+    "breach_notification",
+    "subprocessors",
+    "transfers"
+  ]
+}
