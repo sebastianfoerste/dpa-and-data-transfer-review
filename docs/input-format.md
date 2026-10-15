@@ -42,6 +42,7 @@ It is valid, and `BLOCKED`: it records no Art. 28 clause. [`data/sample_dpa.json
 
 ## Keys
 
+- `$schema` (string): The URL or path of schema/dpa.schema.json, so an editor can check and complete the file as you type. No rule reads it.
 - `agreement` (string): Name of the agreement, used as the packet title. No rule reads it.
 - `controller` (string): Name of the controller. Labels the transfer evidence graph; no rule reads it.
 - `processor` (string): Name of the processor. Labels the transfer evidence graph; no rule reads it.

@@ -6,6 +6,10 @@
   "type": "object",
   "additionalProperties": false,
   "properties": {
+    "$schema": {
+      "description": "The URL or path of schema/dpa.schema.json, so an editor can check and complete the file as you type. No rule reads it.",
+      "type": "string"
+    },
     "agreement": {
       "description": "Name of the agreement, used as the packet title. No rule reads it.",
       "type": "string"

@@ -47,6 +47,11 @@ class Conforming(unittest.TestCase):
     def test_optional_flags_may_be_null(self):
         self.assertEqual(messages(changed(art28_clauses__subprocessor_flowdown=None, ccpa=None)), [])
 
+    def test_a_schema_key_lets_editors_attach_the_schema(self):
+        self.assertEqual(messages({"$schema": "../schema/dpa.schema.json", **SAMPLE}), [])
+        self.assertIn("$schema must be a string, got 1.", messages({"$schema": 1, **SAMPLE}))
+        self.assertIn("unknown key 'schema'; did you mean '$schema'?", messages({"schema": "x", **SAMPLE}))
+
     def test_validate_raises_with_every_violation(self):
         with self.assertRaises(ContractError) as caught:
             validate({})
@@ -192,7 +197,9 @@ class JsonSchemaAgreesWithTheContract(unittest.TestCase):
         jsonschema.Draft202012Validator.check_schema(json_schema())
 
     def test_conforming_inputs_validate(self):
-        inputs = [SAMPLE] + [load(path) for path in sorted(FIXTURES.glob("*.json")) if path.name != "expected.json"]
+        inputs = [SAMPLE, {"$schema": "../schema/dpa.schema.json", **SAMPLE}] + [
+            load(path) for path in sorted(FIXTURES.glob("*.json")) if path.name != "expected.json"
+        ]
         for dpa in inputs:
             if violations(dpa):
                 continue
@@ -208,6 +215,7 @@ class JsonSchemaAgreesWithTheContract(unittest.TestCase):
             changed(transfers__mechanisms__US="SCCs"),
             changed(agreement=None),
             changed(evidence={"ccpa": {}}),
+            {"$schema": 1, **SAMPLE},
         ]
         for dpa in bad:
             with self.subTest(dpa=json.dumps(dpa)[:60]):

@@ -49,6 +49,7 @@ FACT_PATH_PATTERN = r"^[A-Za-z0-9_]+(\[[0-9]+\])?(\.[A-Za-z0-9_]+(\[[0-9]+\])?)*
 _COUNTRY = re.compile(COUNTRY_PATTERN)
 _FACT_PATH = re.compile(FACT_PATH_PATTERN)
 _FACT_PATH_PART = re.compile(r"([A-Za-z0-9_]+)((?:\[[0-9]+\])?)")
+_PLAIN_KEY = re.compile(r"\$?[A-Za-z0-9_]+")  # printed as is in a path; other keys are quoted
 
 # A path into the input: object keys and list indexes, e.g. ("subprocessors", 1, "country").
 KeyPath = tuple[Union[str, int], ...]
@@ -85,6 +86,12 @@ def _flag(description: str) -> Field:
 _ART28 = "true when the DPA contains the clause; false, null or omitted when it was not found."
 
 CONTRACT: dict[str, Field] = {
+    "$schema": Field(
+        "text",
+        "The URL or path of schema/dpa.schema.json, so an editor can check and complete the file as you "
+        "type. No rule reads it.",
+        nullable=False,
+    ),
     "agreement": Field("text", "Name of the agreement, used as the packet title. No rule reads it.", nullable=False),
     "controller": Field("text", "Name of the controller. Labels the transfer evidence graph; no rule reads it.", nullable=False),
     "processor": Field("text", "Name of the processor. Labels the transfer evidence graph; no rule reads it.", nullable=False),
@@ -281,7 +288,7 @@ def format_path(path: KeyPath) -> str:
     for part in path:
         if isinstance(part, int):
             text += f"[{part}]"
-        elif _FACT_PATH_PART.fullmatch(part) and "[" not in part:
+        elif _PLAIN_KEY.fullmatch(part):
             text += f".{part}" if text else part
         else:
             text += f"[{json.dumps(part, ensure_ascii=False)}]"
