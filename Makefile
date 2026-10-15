@@ -1,7 +1,7 @@
 PYTHON ?= python3
 PYTHONPATH := src
 
-.PHONY: install test demo clean
+.PHONY: install test lint demo clean
 
 install:
 	@echo "No third-party dependencies. Pure standard library."
@@ -9,6 +9,9 @@ install:
 
 test:
 	@PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m unittest discover -s tests -t . -q
+
+lint:
+	@ruff check .
 
 demo:
 	@PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m dpa_review.cli --input data/sample_dpa.json --out examples
