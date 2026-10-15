@@ -70,6 +70,13 @@ class UsageErrors(unittest.TestCase):
                 self.assertNotIn("Traceback", result.stderr)
 
 
+class Version(unittest.TestCase):
+    def test_version(self):
+        result = _run("--version")
+        self.assertEqual(result.returncode, 0)
+        self.assertRegex(result.stdout, r"^dpa-review \d+\.\d+\.\d+\n$")
+
+
 class ReviewExitCodes(unittest.TestCase):
     def test_sample_dpa_is_blocked(self):
         result = _run("--input", str(SAMPLE), "--quiet")
