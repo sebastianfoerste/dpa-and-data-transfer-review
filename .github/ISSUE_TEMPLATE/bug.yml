@@ -1,0 +1,60 @@
+name: Bug report
+description: The CLI crashes, exits with an unexpected code, or writes a wrong or unstable packet.
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        If an input comes out with a better review state than its facts warrant (a fail-open gate), please do not open an issue. Report it privately, as SECURITY.md describes.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Command
+      description: The exact command you ran.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: input
+    attributes:
+      label: Synthetic input that reproduces it
+      description: The smallest DPA description that shows the problem.
+      render: json
+    validations:
+      required: true
+  - type: input
+    id: expected
+    attributes:
+      label: Expected review state and exit code
+      placeholder: NEEDS_REVIEW, exit 1
+  - type: input
+    id: actual
+    attributes:
+      label: Actual review state and exit code
+      placeholder: BLOCKED, exit 2
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The output of `dpa-review --version`, or the commit you ran (`git rev-parse --short HEAD`).
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Python version and operating system
+      placeholder: Python 3.12, Ubuntu 24.04
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Before you submit
+      options:
+        - label: The input is synthetic. It contains no real client data, privileged material or personal data.
+          required: true

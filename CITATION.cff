@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+message: If you use or refer to this software, please cite it using these metadata.
+type: software
+title: "dpa-and-data-transfer-review: deterministic, cited GDPR Art. 28 and Chapter V transfer checks"
+abstract: >-
+  A standard-library Python command-line tool that checks a structured description of a Data
+  Processing Agreement for the elements GDPR Art. 28(2)-(4) and Art. 33(2) require, and assesses
+  the Chapter V basis of every international transfer, per destination and per sub-processor. It
+  writes a cited review packet with a visible review state and a gating exit code. It is not legal
+  advice, and all bundled data is synthetic.
+authors:
+  - family-names: Förste
+    given-names: Sebastian
+repository-code: "https://github.com/sebastianfoerste/dpa-and-data-transfer-review"
+url: "https://github.com/sebastianfoerste/dpa-and-data-transfer-review"
+license: MIT
+version: 0.1.0
+keywords:
+  - gdpr
+  - dsgvo
+  - data processing agreement
+  - avv
+  - international data transfers
+  - standard contractual clauses
+  - legal engineering
+  - compliance as code

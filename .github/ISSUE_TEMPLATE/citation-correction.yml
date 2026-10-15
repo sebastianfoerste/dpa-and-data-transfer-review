@@ -1,0 +1,56 @@
+name: Citation correction
+description: A finding cites the wrong article, decision or guideline, or the reference data is out of date.
+title: "[Citation] "
+labels: ["citation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Citation fixes are the most valuable contribution to this repository. Please point to the primary source (EUR-Lex, the European Commission, the EDPB, the CJEU or the statute itself), not to a summary of it.
+  - type: input
+    id: rule-id
+    attributes:
+      label: Rule id
+      description: As printed in the review packet or listed in docs/rules.md. Write "reference data" for the EEA or adequacy lists.
+      placeholder: subprocessor.flowdown
+    validations:
+      required: true
+  - type: input
+    id: current-citation
+    attributes:
+      label: Current citation
+      description: What the finding cites today.
+      placeholder: GDPR Art. 28(4)
+    validations:
+      required: true
+  - type: input
+    id: proposed-citation
+    attributes:
+      label: Proposed citation
+      description: The article, decision or guideline the finding should cite.
+    validations:
+      required: true
+  - type: input
+    id: source-url
+    attributes:
+      label: Primary-source URL
+      description: A link to the official text that supports the proposed citation.
+      placeholder: https://eur-lex.europa.eu/eli/reg/2016/679/oj
+    validations:
+      required: true
+  - type: textarea
+    id: explanation
+    attributes:
+      label: Why the current citation is wrong
+      description: Quote the passage of the primary source that matters. Say whether the severity or the review state should change too.
+    validations:
+      required: true
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Before you submit
+      options:
+        - label: I checked the primary source myself, not only a commentary or a summary.
+          required: true
+        - label: This issue contains no real client data, privileged material or personal data.
+          required: true
