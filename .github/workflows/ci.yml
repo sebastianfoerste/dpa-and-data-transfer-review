@@ -71,3 +71,47 @@ jobs:
           python -m pip install coverage==7.16.2 jsonschema==4.26.0
           make coverage
           python -m coverage report --format=markdown >> "$GITHUB_STEP_SUMMARY"
+
+  action:
+    # Runs the composite action from this checkout the way a consumer's workflow would: the
+    # BLOCKED sample must fail the step, and a register of fixtures must report its worst state.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Review the sample, which is BLOCKED
+        id: sample
+        uses: ./
+        continue-on-error: true
+        with:
+          input: data/sample_dpa.json
+          out: ${{ runner.temp }}/sample
+          sarif: ${{ runner.temp }}/sample.sarif
+          annotate: "false"
+      - name: Build a register from the fixtures that decide a review state
+        run: |
+          mkdir "$RUNNER_TEMP/register"
+          jq -r 'to_entries[] | select(.value.exit_code != 3) | .key' tests/fixtures/expected.json |
+            while read -r name; do cp "tests/fixtures/$name" "$RUNNER_TEMP/register/"; done
+      - name: Review the register
+        id: register
+        uses: ./
+        with:
+          input: ${{ runner.temp }}/register
+          out: ${{ runner.temp }}/register-out
+          fail-on: never
+          annotate: "false"
+      - name: Check the outcomes
+        env:
+          SAMPLE_OUTCOME: ${{ steps.sample.outcome }}
+          REGISTER_STATE: ${{ steps.register.outputs.review-state }}
+          REGISTER_EXIT: ${{ steps.register.outputs.exit-code }}
+          REGISTER_SUMMARY: ${{ steps.register.outputs.summary }}
+        run: |
+          test "$SAMPLE_OUTCOME" = failure
+          jq -e '.review_state == "BLOCKED"' "$RUNNER_TEMP/sample/review-packet.json"
+          jq -e '.version == "2.1.0" and (.runs[0].results | length) == 3' "$RUNNER_TEMP/sample.sarif"
+          test "$REGISTER_STATE" = BLOCKED
+          test "$REGISTER_EXIT" = 0
+          grep -q "Worst review state: BLOCKED" "$REGISTER_SUMMARY"
