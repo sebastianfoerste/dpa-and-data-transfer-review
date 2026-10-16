@@ -1,0 +1,63 @@
+name: Rule request
+description: Propose a new deterministic check, with its legal basis.
+title: "[Rule] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Every rule checks whether one citeable element is recorded in the structured description of a DPA. It must give the same result for the same input and carry a specific, verifiable citation. It does not interpret free text. See CONTRIBUTING.md.
+  - type: textarea
+    id: requirement
+    attributes:
+      label: What the rule checks
+      description: The single, observable element of a DPA the rule looks for, and when it passes.
+    validations:
+      required: true
+  - type: input
+    id: citation
+    attributes:
+      label: Legal basis
+      description: The article, decision or guideline the finding would cite.
+      placeholder: GDPR Art. 28(3), second subparagraph
+    validations:
+      required: true
+  - type: input
+    id: source-url
+    attributes:
+      label: Primary-source URL
+      description: A link to the official text.
+    validations:
+      required: true
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Proposed severity when the element is missing
+      description: An open HIGH finding blocks the packet (exit 2). Other open findings need a lawyer's review.
+      options:
+        - HIGH
+        - MEDIUM
+        - LOW
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: input-fact
+    attributes:
+      label: The fact it would read
+      description: An existing key from docs/input-format.md, or the new key it needs, with its type.
+    validations:
+      required: true
+  - type: textarea
+    id: example
+    attributes:
+      label: Synthetic example
+      description: A small, synthetic DPA description that the rule should flag.
+      render: json
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Before you submit
+      options:
+        - label: This issue contains no real client data, privileged material or personal data.
+          required: true

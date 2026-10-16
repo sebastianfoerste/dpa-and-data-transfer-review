@@ -59,6 +59,24 @@ class InputErrors(unittest.TestCase):
             self.assertEqual(list(Path(out).iterdir()), [])
 
 
+class UsageErrors(unittest.TestCase):
+    def test_usage_errors_exit_3_not_a_review_state(self):
+        # argparse exits 2 on a usage error, which a pipeline would read as BLOCKED.
+        for args in ((), ("--input", str(SAMPLE), "--no-such-flag")):
+            with self.subTest(args=args):
+                result = _run(*args)
+                self.assertEqual(result.returncode, 3)
+                self.assertIn("usage:", result.stderr)
+                self.assertNotIn("Traceback", result.stderr)
+
+
+class Version(unittest.TestCase):
+    def test_version(self):
+        result = _run("--version")
+        self.assertEqual(result.returncode, 0)
+        self.assertRegex(result.stdout, r"^dpa-review \d+\.\d+\.\d+\n$")
+
+
 class ReviewExitCodes(unittest.TestCase):
     def test_sample_dpa_is_blocked(self):
         result = _run("--input", str(SAMPLE), "--quiet")

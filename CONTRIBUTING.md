@@ -29,3 +29,7 @@ If a change alters rule output, regenerate and commit `examples/review-packet.md
 ## Reporting an issue
 
 Good issues are specific: the rule, the citation you think is wrong, and the corrected reference. Citation fixes are the most valuable contribution here.
+
+The issue forms ask for exactly that: a [citation correction](https://github.com/sebastianfoerste/dpa-and-data-transfer-review/issues/new?template=citation-correction.yml), a [rule request](https://github.com/sebastianfoerste/dpa-and-data-transfer-review/issues/new?template=rule-request.yml) or a [bug report](https://github.com/sebastianfoerste/dpa-and-data-transfer-review/issues/new?template=bug.yml). An input that comes out with a better review state than its facts warrant is a security issue: report it privately, as [SECURITY.md](SECURITY.md) describes.
+
+Everyone taking part is expected to follow the [Code of Conduct](CODE_OF_CONDUCT.md).

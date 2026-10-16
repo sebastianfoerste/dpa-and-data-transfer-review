@@ -1,0 +1,47 @@
+{
+  "agreement": "Synthetic DPA: no Art. 28(2) sub-processor authorisation",
+  "controller": "Example Controller GmbH (synthetic)",
+  "processor": "Example Processor SE (synthetic)",
+  "processing": {
+    "subject_matter": "Hosting and support of the controller's CRM system",
+    "duration": "The term of the main services agreement",
+    "nature_and_purpose": "Storage, backup and support access to provide the CRM service",
+    "data_types": [
+      "contact data",
+      "contract data"
+    ],
+    "data_subjects": [
+      "customers",
+      "prospects"
+    ]
+  },
+  "art28_clauses": {
+    "process_on_documented_instructions": true,
+    "confidentiality_commitment": true,
+    "security_measures_art32": true,
+    "subprocessor_authorization": "none",
+    "subprocessor_flowdown": true,
+    "assist_data_subject_requests": true,
+    "assist_security_breach": true,
+    "delete_or_return_on_termination": true,
+    "audit_and_inspection_rights": true
+  },
+  "breach_notification": {
+    "processor_notifies_controller": true,
+    "timing": "without undue delay"
+  },
+  "subprocessors": [
+    {
+      "name": "Example Hosting GmbH",
+      "country": "DE",
+      "purpose": "hosting"
+    }
+  ],
+  "transfers": {
+    "destinations": [],
+    "transfer_impact_assessment": false
+  },
+  "ccpa": {
+    "service_provider_terms": true
+  }
+}

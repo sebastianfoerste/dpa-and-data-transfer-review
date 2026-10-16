@@ -1,0 +1,86 @@
+{
+  "01-eea-only.json": {
+    "checks": "Every Art. 28 clause present, one sub-processor in Germany, no direct transfers; three facts carry evidence quotes.",
+    "review_state": "CLEARED_FOR_REVIEW",
+    "exit_code": 0,
+    "open_rules": [],
+    "legal_review_note": ""
+  },
+  "02-adequacy-only.json": {
+    "checks": "Direct transfers to Japan and Switzerland and a UK sub-processor, all on adequacy decisions.",
+    "review_state": "CLEARED_FOR_REVIEW",
+    "exit_code": 0,
+    "open_rules": [],
+    "legal_review_note": ""
+  },
+  "03-sccs-with-tia.json": {
+    "checks": "A direct transfer to the US on SCCs, with a transfer impact assessment recorded.",
+    "review_state": "NEEDS_REVIEW",
+    "exit_code": 1,
+    "open_rules": ["transfer.us"],
+    "legal_review_note": ""
+  },
+  "04-sccs-without-tia.json": {
+    "checks": "The same SCC transfer to the US, without a transfer impact assessment.",
+    "review_state": "NEEDS_REVIEW",
+    "exit_code": 1,
+    "open_rules": ["transfer.impact_assessment", "transfer.us"],
+    "legal_review_note": ""
+  },
+  "05-dpf-us-importer.json": {
+    "checks": "A direct transfer to a US importer certified under the EU-US Data Privacy Framework.",
+    "review_state": "NEEDS_REVIEW",
+    "exit_code": 1,
+    "open_rules": ["transfer.us"],
+    "legal_review_note": "The finding labels the DPF \"an approved certification / framework (Art. 46)\" and asks for a transfer impact assessment; the DPF is an Art. 45 adequacy decision (Implementing Decision (EU) 2023/1795). Draft PR #4 changes this."
+  },
+  "06-art49-derogation.json": {
+    "checks": "A direct transfer to India on an Art. 49 derogation.",
+    "review_state": "NEEDS_REVIEW",
+    "exit_code": 1,
+    "open_rules": ["transfer.in"],
+    "legal_review_note": "The input cannot say whether the transfer is occasional or ongoing, so a systematic transfer on an Art. 49 derogation is only NEEDS_REVIEW (MEDIUM). EDPB Guidelines 2/2018 read the derogations restrictively. Draft PR #4 blocks non-occasional derogation transfers."
+  },
+  "07-vague-breach-timing.json": {
+    "checks": "The processor notifies breaches \"within a reasonable time\" instead of without undue delay.",
+    "review_state": "BLOCKED",
+    "exit_code": 2,
+    "open_rules": ["breach.processor_notifies"],
+    "legal_review_note": "Any timing wording without \"undue delay\" or \"without delay\" (also \"within 24 hours\") is an open HIGH finding and blocks the packet. Confirm that this is the intended threshold."
+  },
+  "08-no-subprocessor-authorisation.json": {
+    "checks": "The DPA gives no prior specific or general written authorisation for sub-processors.",
+    "review_state": "BLOCKED",
+    "exit_code": 2,
+    "open_rules": ["subprocessor.authorization"],
+    "legal_review_note": ""
+  },
+  "09-third-country-subprocessor-chain.json": {
+    "checks": "Sub-processors in Germany, in the US on SCCs, and in India with no transfer mechanism.",
+    "review_state": "BLOCKED",
+    "exit_code": 2,
+    "open_rules": ["transfer.subprocessor.example_analytics_pvt_ltd", "transfer.subprocessor.example_support_inc"],
+    "legal_review_note": ""
+  },
+  "10-brazil-adequacy.json": {
+    "checks": "A direct transfer to Brazil recorded as relying on adequacy.",
+    "review_state": "BLOCKED",
+    "exit_code": 2,
+    "open_rules": ["transfer.br"],
+    "legal_review_note": "Brazil is not in the adequacy reference data, so this is an open HIGH finding. The competitive review reports that the Commission's adequacy list has included Brazil since January 2026; the reference data needs a dated, sourced update."
+  },
+  "11-misspelt-transfers-key.json": {
+    "checks": "\"transfer\" instead of \"transfers\", with every sub-processor in the EEA: the fail-open input that used to come out CLEARED_FOR_REVIEW with exit 0.",
+    "review_state": null,
+    "exit_code": 3,
+    "errors": ["unknown key 'transfer'; did you mean 'transfers'?", "missing required key 'transfers'"],
+    "legal_review_note": ""
+  },
+  "12-string-false-flag.json": {
+    "checks": "Flow-down recorded as the string \"false\", which a truthiness check would read as present.",
+    "review_state": null,
+    "exit_code": 3,
+    "errors": ["art28_clauses.subprocessor_flowdown must be true or false, got 'false'"],
+    "legal_review_note": ""
+  }
+}
