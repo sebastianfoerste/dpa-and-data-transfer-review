@@ -96,7 +96,6 @@ class ReviewExitCodes(unittest.TestCase):
         self.assertEqual(result.stderr, "")
 
 
-
 def _run_in_process(argv):
     out, err = io.StringIO(), io.StringIO()
     with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
@@ -187,10 +186,16 @@ class CliExitCodes(unittest.TestCase):
     def test_null_agreement_exits_3_with_a_message(self):
         dpa = json.loads(SAMPLE_PATH.read_text(encoding="utf-8"))
         dpa["agreement"] = None
-        code, out, err = _run_in_process(["--input", self._write(dpa)])
+        path = self._write(dpa)
+        code, out, err = _run_in_process(["--input", path])
         self.assertEqual(code, 3)
         self.assertEqual(out, "")
         self.assertIn("agreement cannot be null", err)
+        out_dir = Path(self.tmp.name) / "out"
+        code, out, err = _run_in_process(["--input", path, "--out", str(out_dir)])
+        self.assertEqual((code, out), (3, ""))
+        self.assertIn("agreement cannot be null", err)
+        self.assertFalse(out_dir.exists())
 
     def test_agreement_that_is_not_a_string_exits_3_with_a_message(self):
         dpa = json.loads(SAMPLE_PATH.read_text(encoding="utf-8"))

@@ -106,8 +106,8 @@ def input_format() -> str:
         "the code to use instead (`GB`, `GR`, a member state).",
         "- Every key of `transfers.mechanisms`, and of the other per-country objects under `transfers`, must "
         "be a country that `transfers.destinations` lists.",
-        "- Sub-processor names must differ, ignoring case, spaces and punctuation, because rule ids are "
-        "derived from them.",
+        "- Sub-processor names must contain a letter or digit and must differ, ignoring case, spaces and "
+        "punctuation, because rule ids are derived from them.",
         "- Every `evidence` key must name a fact the input records.",
         "",
         "A flag that is `false`, `null` or omitted reads as \"the DPA does not contain this\", so a clause "

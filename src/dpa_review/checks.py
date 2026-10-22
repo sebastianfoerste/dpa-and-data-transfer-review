@@ -235,8 +235,14 @@ def subprocessor_country(sp: dict, index: int) -> str:
 
 
 def subprocessor_rule_id(name: str) -> str:
-    """Rule id of a sub-processor transfer finding; the transfer graph looks findings up by it."""
-    return "transfer.subprocessor." + re.sub(r"[^a-z0-9_]+", "_", name.lower().replace(" ", "_")).strip("_")
+    """Rule id of a sub-processor transfer finding; the transfer graph looks findings up by it.
+
+    Letters and digits of every script are kept, in lower case, so "Müller Inc" and "Möller Inc",
+    or two names written in Chinese, get distinct ids. Each space becomes "_", and every other run
+    of characters that are not letters, digits or "_" becomes one "_". The input contract refuses
+    two sub-processor names that would share an id, and a name that would give an empty one.
+    """
+    return "transfer.subprocessor." + re.sub(r"\W+", "_", name.lower().replace(" ", "_")).strip("_")
 
 
 def transfer_destinations(dpa: dict) -> list[str]:

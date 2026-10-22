@@ -71,6 +71,28 @@ class TransferEvidenceGraphTests(unittest.TestCase):
         self.assertEqual(edge["status"], "block")
         self.assertIn(edge["control_refs"][0], {f.rule_id for f in packet.findings})
 
+    def test_each_sub_processor_edge_carries_its_own_status(self):
+        # Names that differ only in a non-ASCII letter used to share a rule id, so the edge of the
+        # sub-processor on SCCs was reported as blocked with the other one's MISSING finding.
+        for first, second in (("Müller Inc", "Möller Inc"), ("百度", "腾讯")):
+            with self.subTest(names=(first, second)):
+                dpa = json.loads(json.dumps(SAMPLE))
+                dpa["transfers"]["transfer_impact_assessment"] = True
+                dpa["subprocessors"] = [
+                    {"name": first, "country": "CN", "transfer_mechanism": "sccs"},
+                    {"name": second, "country": "CN"},
+                ]
+                packet = build_packet(dpa)
+                graph = build_transfer_evidence_graph(dpa, packet)
+                edges = {e["edge_id"]: e for e in graph["edges"]}
+                on_sccs, without_basis = edges["subprocessor-1-to-cn"], edges["subprocessor-2-to-cn"]
+                self.assertEqual(on_sccs["status"], "review")
+                self.assertEqual(without_basis["status"], "block")
+                self.assertNotEqual(on_sccs["control_refs"][0], without_basis["control_refs"][0])
+                statuses = {f.rule_id: f.status for f in packet.findings}
+                self.assertEqual(statuses[on_sccs["control_refs"][0]], "NEEDS_REVIEW")
+                self.assertEqual(statuses[without_basis["control_refs"][0]], "MISSING")
+
     def test_assessment_attaches_only_to_transfers_outside_the_eea(self):
         dpa = json.loads(json.dumps(SAMPLE))
         dpa["transfers"]["mechanisms"]["FR"] = "sccs"

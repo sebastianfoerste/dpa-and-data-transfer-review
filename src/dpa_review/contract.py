@@ -26,7 +26,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any, Union
 
-from dpa_review.checks import VALID_TRANSFER_MECHANISMS
+from dpa_review.checks import VALID_TRANSFER_MECHANISMS, subprocessor_rule_id
 
 SCHEMA_ID = (
     "https://raw.githubusercontent.com/sebastianfoerste/dpa-and-data-transfer-review/"
@@ -219,8 +219,8 @@ CONTRACT: dict[str, Field] = {
         fields={
             "name": Field(
                 "name",
-                "The sub-processor's name. Names must differ, ignoring case, spaces and punctuation, "
-                "because rule ids are derived from them.",
+                "The sub-processor's name. Names must contain a letter or digit and must differ, ignoring "
+                "case, spaces and punctuation, because rule ids are derived from them.",
                 required=True,
                 hint="give every sub-processor a name",
             ),
@@ -549,7 +549,9 @@ def _country_problem(value: Any) -> str:
     if value in NOT_ISO_COUNTRIES:
         return f"is not an ISO 3166-1 alpha-2 country code; use {NOT_ISO_COUNTRIES[value]}"
     if not _COUNTRY.fullmatch(value):
-        # The rules compare codes exactly, so "us" would not find the "US" mechanism.
+        # The rules upper-case codes before comparing them, but the contract's own checks (a destination
+        # listed twice, a per-country key for an unlisted destination) and evidence paths compare codes
+        # as written, so the contract accepts one spelling.
         return f"must be upper case: use {value.upper()!r}"
     return ""
 
@@ -561,7 +563,8 @@ def _check_country(value: Any, path: KeyPath, out: list[Violation]) -> None:
 
 
 def _name_key(name: str) -> str:
-    # Coarser than any rule-id derivation, so two names that pass here never share a rule id.
+    # Names are compared on this key (case, spaces and punctuation ignored) and on the rule id each
+    # one gives (checks.subprocessor_rule_id), so two names that pass never share a rule id.
     return "".join(ch for ch in name.casefold() if ch.isalnum())
 
 
@@ -601,23 +604,45 @@ def _check_cross_field(dpa: dict, out: list[Violation]) -> None:
     subprocessors = dpa.get("subprocessors")
     if isinstance(subprocessors, list):
         names: dict[str, int] = {}
+        rule_ids: dict[str, int] = {}
         for index, entry in enumerate(subprocessors):
             name = entry.get("name") if isinstance(entry, dict) else None
             if not isinstance(name, str) or not name.strip():
+                continue
+            where = ("subprocessors", index, "name")
+            rule_id = subprocessor_rule_id(name)
+            if rule_id == subprocessor_rule_id(""):
+                out.append(
+                    Violation(
+                        where,
+                        f"subprocessors[{index}].name {name!r} contains no letter or digit, so no rule id "
+                        "can be derived from it; record the sub-processor's name as the DPA gives it.",
+                    )
+                )
                 continue
             key = _name_key(name)
             if key in names:
                 first = names[key]
                 out.append(
                     Violation(
-                        ("subprocessors", index, "name"),
+                        where,
                         f"subprocessors[{index}].name {name!r} repeats subprocessors[{first}].name "
                         f"{subprocessors[first]['name']!r} (names are compared without case, spaces and "
                         "punctuation); give each entry a distinct name, such as one that adds its country.",
                     )
                 )
-            else:
-                names[key] = index
+            elif rule_id in rule_ids:
+                first = rule_ids[rule_id]
+                out.append(
+                    Violation(
+                        where,
+                        f"subprocessors[{index}].name {name!r} gives the rule id {rule_id}, as "
+                        f"subprocessors[{first}].name {subprocessors[first]['name']!r} does; give each entry "
+                        "a distinct name, such as one that adds its country.",
+                    )
+                )
+            names.setdefault(key, index)
+            rule_ids.setdefault(rule_id, index)
     evidence = dpa.get("evidence")
     if isinstance(evidence, dict):
         known: list[str] | None = None

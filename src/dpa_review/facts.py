@@ -19,13 +19,14 @@ from dpa_review.contract import KeyPath, format_path, parse_fact_path
 
 _ART28_FLAGS = "art28."
 _SUBPROCESSOR_TRANSFER = "transfer.subprocessor."
-# Facts a transfer rule reads per destination, keyed by country under `transfers`.
+# Facts a transfer rule reads per destination, keyed by country under `transfers`: the mechanism,
+# and the facts that only the named mechanism reads.
 _PER_COUNTRY = (
-    "mechanisms",
-    "dpf_certified",
-    "dpf_covers_hr_data",
-    "dpf_covers_non_hr_data",
-    "occasional_and_not_repetitive",
+    ("mechanisms", None),
+    ("dpf_certified", "dpf"),
+    ("dpf_covers_hr_data", "dpf"),
+    ("dpf_covers_non_hr_data", "dpf"),
+    ("occasional_and_not_repetitive", "derogation_art49"),
 )
 # Whether each type of data is transferred: read for a dpf transfer, whose certification must cover it.
 _DATA_TRANSFERRED = (("processing", "includes_hr_data"), ("processing", "includes_non_hr_data"))
@@ -84,9 +85,13 @@ def rule_facts(dpa: dict, rule_id: str) -> list[KeyPath]:
             if str(country).lower() == code
         ]
         mechanism = None
-        for name in _PER_COUNTRY:
+        for name, read_for in _PER_COUNTRY:
             recorded = transfers.get(name)
             if not isinstance(recorded, dict):
+                continue
+            # A dpf_* or derogation fact recorded beside another mechanism is not read by the rule,
+            # so it is not this finding's evidence.
+            if read_for and (not isinstance(mechanism, str) or mechanism.lower() != read_for):
                 continue
             for key, value in recorded.items():
                 if key.lower() == code:

@@ -220,7 +220,7 @@
         "additionalProperties": false,
         "properties": {
           "name": {
-            "description": "The sub-processor's name. Names must differ, ignoring case, spaces and punctuation, because rule ids are derived from them.",
+            "description": "The sub-processor's name. Names must contain a letter or digit and must differ, ignoring case, spaces and punctuation, because rule ids are derived from them.",
             "type": "string",
             "pattern": "\\S"
           },

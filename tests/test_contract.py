@@ -6,6 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from dpa_review.checks import run_all_checks
 from dpa_review.contract import ContractError, json_schema, schema_text, validate, violations
 from dpa_review.review import build_packet
 from tests.helpers import FIXTURES, ROOT, SAMPLE_PATH, load, run_cli
@@ -182,6 +183,35 @@ class Countries(unittest.TestCase):
         dpa = changed()
         dpa["subprocessors"].append({"name": "support tools, llc", "country": "US"})
         self.assertTrue(any("repeats subprocessors[1].name" in m for m in messages(dpa)))
+
+    def test_names_that_differ_only_outside_ascii_keep_distinct_rule_ids(self):
+        # Every non-ASCII letter used to become "_", so the contract accepted these pairs as
+        # distinct while both entries got the same rule id (or, for CJK names, an empty one).
+        for first, second in (("Müller Inc", "Möller Inc"), ("百度", "腾讯")):
+            with self.subTest(names=(first, second)):
+                dpa = changed(subprocessors=[
+                    {"name": first, "country": "CN", "transfer_mechanism": "sccs"},
+                    {"name": second, "country": "CN"},
+                ])
+                self.assertEqual(messages(dpa), [])
+                rule_ids = [f.rule_id for f in run_all_checks(dpa) if f.rule_id.startswith("transfer.subprocessor.")]
+                self.assertEqual(len(rule_ids), 2)
+                self.assertEqual(len(set(rule_ids)), 2, rule_ids)
+                self.assertTrue(all(rule_id != "transfer.subprocessor." for rule_id in rule_ids), rule_ids)
+
+    def test_names_that_give_the_same_rule_id_are_refused(self):
+        # Case folding turns U+0345 into a letter, so the name keys differ, but the rule id drops it.
+        dpa = changed(subprocessors=[{"name": "Acme", "country": "US"}, {"name": "Acme\u0345", "country": "US"}])
+        found = messages(dpa)
+        self.assertEqual(len(found), 1, found)
+        self.assertIn("gives the rule id transfer.subprocessor.acme, as subprocessors[0].name 'Acme' does", found[0])
+
+    def test_a_name_without_a_letter_or_digit_is_refused(self):
+        for name in ("***", "___", "—"):
+            with self.subTest(name=name):
+                found = messages(changed(subprocessors__1__name=name))
+                self.assertEqual(len(found), 1, found)
+                self.assertIn("contains no letter or digit, so no rule id can be derived from it", found[0])
 
 
 class Evidence(unittest.TestCase):

@@ -20,7 +20,7 @@ error: dpa.json breaks the input contract, so no review state was decided (2 pro
 - A description (`processing.subject_matter`, `processing.duration`, `processing.nature_and_purpose`) that reads as yes or no, such as `"false"`, is refused: record yes/no as a JSON boolean.
 - Country codes are upper-case ISO 3166-1 alpha-2 codes. `UK`, `EL` and `EU` are refused with the code to use instead (`GB`, `GR`, a member state).
 - Every key of `transfers.mechanisms`, and of the other per-country objects under `transfers`, must be a country that `transfers.destinations` lists.
-- Sub-processor names must differ, ignoring case, spaces and punctuation, because rule ids are derived from them.
+- Sub-processor names must contain a letter or digit and must differ, ignoring case, spaces and punctuation, because rule ids are derived from them.
 - Every `evidence` key must name a fact the input records.
 
 A flag that is `false`, `null` or omitted reads as "the DPA does not contain this", so a clause you could not find fails closed.
@@ -95,7 +95,7 @@ Required, a list of objects. Every sub-processor the DPA names or authorises. Ea
 
 | Key | Type | Required | Meaning |
 | --- | --- | --- | --- |
-| `subprocessors[].name` | non-empty string | yes | The sub-processor's name. Names must differ, ignoring case, spaces and punctuation, because rule ids are derived from them. |
+| `subprocessors[].name` | non-empty string | yes | The sub-processor's name. Names must contain a letter or digit and must differ, ignoring case, spaces and punctuation, because rule ids are derived from them. |
 | `subprocessors[].country` | country code | yes | Upper-case ISO 3166-1 alpha-2 code of the country where it processes the data, e.g. "US" (the United Kingdom is "GB", Greece is "GR"). |
 | `subprocessors[].purpose` | string | no | What the sub-processor does. Labels the graph; no rule reads it. |
 | `subprocessors[].transfer_mechanism` | one of `none`, `adequacy`, `sccs`, `bcr`, `dpf`, `derogation_art49`, or null | no | The Chapter V basis for a sub-processor outside the EEA. Null or omitted reads as none. |

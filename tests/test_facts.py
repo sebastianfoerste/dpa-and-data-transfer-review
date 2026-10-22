@@ -58,6 +58,31 @@ class RuleFacts(unittest.TestCase):
         self.assertIn("transfer.subprocessor.support_tools_llc", rule_ids)
         self.assertEqual(rule_facts(dpa, "transfer.subprocessor.support_tools_llc"), [("subprocessors", 1)])
 
+    def test_each_sub_processor_rule_reads_only_its_own_entry(self):
+        # "Müller Inc" and "Möller Inc" used to share a rule id, so each finding read both entries.
+        dpa = load(SAMPLE_PATH)
+        dpa["subprocessors"] = [
+            {"name": "Müller Inc", "country": "CN", "transfer_mechanism": "sccs"},
+            {"name": "Möller Inc", "country": "CN"},
+        ]
+        self.assertEqual(rule_facts(dpa, "transfer.subprocessor.müller_inc"), [("subprocessors", 0)])
+        self.assertEqual(rule_facts(dpa, "transfer.subprocessor.möller_inc"), [("subprocessors", 1)])
+
+    def test_facts_of_another_mechanism_are_not_read(self):
+        # The SCC rule does not read a DPF certification or a derogation fact recorded beside it.
+        dpa = load(SAMPLE_PATH)
+        dpa["transfers"]["mechanisms"]["US"] = "sccs"
+        dpa["transfers"]["dpf_certified"] = {"US": True}
+        dpa["transfers"]["occasional_and_not_repetitive"] = {"US": True}
+        dpa["evidence"] = {"transfers.dpf_certified.US": {"clause": "Annex 4"}}
+        self.assertEqual(
+            rule_facts(dpa, "transfer.us"),
+            [("transfers", "destinations", 1), ("transfers", "mechanisms", "US")],
+        )
+        self.assertEqual(evidence_for(dpa, "transfer.us"), [])
+        dpa["transfers"]["mechanisms"]["US"] = "derogation_art49"
+        self.assertEqual(rule_facts(dpa, "transfer.us")[-1], ("transfers", "occasional_and_not_repetitive", "US"))
+
 
 class EvidenceInThePacket(unittest.TestCase):
     def setUp(self):
