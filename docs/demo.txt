@@ -44,4 +44,4 @@ Checks: 21, present 18, missing 3, needs-review 0, open high 3, open medium 0
 
 _This is an automated first-pass review packet generated from a checklist of deterministic rules. It is not legal advice, does not create a lawyer-client relationship, and must be reviewed by a qualified lawyer before any decision. All data in the bundled example is synthetic._
 
-make: *** [Makefile:14: demo] Error 2
+make: *** [Makefile:22: demo] Error 2

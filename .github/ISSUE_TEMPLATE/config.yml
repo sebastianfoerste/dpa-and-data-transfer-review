@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Report a security issue privately
+    url: https://github.com/sebastianfoerste/dpa-and-data-transfer-review/security/policy
+    about: A fail-open gate, or anything else SECURITY.md lists. Please do not open a public issue for it.

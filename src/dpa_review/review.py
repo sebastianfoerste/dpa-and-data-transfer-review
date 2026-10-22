@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from dpa_review.checks import Finding, recorded_text, run_all_checks
+from dpa_review.facts import evidence_for
 
 DISCLAIMER = (
     "This is an automated first-pass review packet generated from a checklist of "
@@ -24,6 +25,8 @@ class ReviewPacket:
     review_state: str            # BLOCKED | NEEDS_REVIEW | CLEARED_FOR_REVIEW
     summary: dict[str, int]
     findings: list[Finding]
+    # rule_id -> the clauses and quotes the input records for the facts that rule read.
+    evidence: dict[str, list[dict[str, str]]] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -31,8 +34,14 @@ class ReviewPacket:
             "review_state": self.review_state,
             "summary": self.summary,
             "disclaimer": DISCLAIMER,
-            "findings": [f.to_dict() for f in self.findings],
+            "findings": [self._finding_dict(f) for f in self.findings],
         }
+
+    def _finding_dict(self, finding: Finding) -> dict[str, Any]:
+        data = finding.to_dict()
+        if finding.rule_id in self.evidence:
+            data["evidence"] = self.evidence[finding.rule_id]
+        return data
 
 
 def _summarise(findings: list[Finding]) -> dict[str, int]:
@@ -81,7 +90,8 @@ def build_packet(dpa: dict) -> ReviewPacket:
     summary = _summarise(findings)
     state = _decide_state(summary)
     title = (recorded_text(dpa, "agreement") or "Data Processing Agreement") + " review packet"
-    return ReviewPacket(title=title, review_state=state, summary=summary, findings=findings)
+    evidence = {f.rule_id: found for f in findings if (found := evidence_for(dpa, f.rule_id))}
+    return ReviewPacket(title=title, review_state=state, summary=summary, findings=findings, evidence=evidence)
 
 
 _STATE_BANNER = {
@@ -91,6 +101,21 @@ _STATE_BANNER = {
 }
 
 _STATUS_MARK = {"PRESENT": "[ok]", "MISSING": "[missing]", "NEEDS_REVIEW": "[review]"}
+
+
+def _cell(text: str) -> str:
+    """Input text made safe for one Markdown table cell."""
+    return " ".join(text.split()).replace("|", "\\|")
+
+
+def _source(packet: ReviewPacket, finding: Finding) -> str:
+    """The recorded clause and quote for a finding, as one table cell."""
+    parts = []
+    for item in packet.evidence.get(finding.rule_id, []):
+        clause, quote = item.get("clause"), item.get("quote")
+        text = f'{clause}: "{quote}"' if clause and quote else clause or f'"{quote}"'
+        parts.append(_cell(text))
+    return "<br>".join(parts) or "not recorded"
 
 
 def render_markdown(packet: ReviewPacket) -> str:
@@ -107,26 +132,38 @@ def render_markdown(packet: ReviewPacket) -> str:
         f"missing {s['missing']}, needs-review {s['needs_review']}, "
         f"open high {s['high_open']}, open medium {s['medium_open']}"
     )
+    # The source column appears only when the input records evidence (clause and quote).
+    sourced = bool(packet.evidence)
+    if sourced:
+        lines.append("")
+        lines.append(
+            f"Evidence: a clause or quote from the DPA is recorded for {len(packet.evidence)} of "
+            f"{s['total']} checks."
+        )
     lines.append("")
 
     open_findings = [f for f in packet.findings if f.status in OPEN_STATUSES]
     if open_findings:
         lines.append("## Open findings")
         lines.append("")
-        lines.append("| Severity | Status | Finding | Citation | Remediation |")
-        lines.append("| --- | --- | --- | --- | --- |")
+        lines.append("| Severity | Status | Finding | Citation | Remediation |" + (" Source in the DPA |" if sourced else ""))
+        lines.append("| --- | --- | --- | --- | --- |" + (" --- |" if sourced else ""))
         for f in open_findings:
             lines.append(
                 f"| {f.severity} | {_STATUS_MARK[f.status]} | {f.title} | {f.citation} | {f.remediation or 'n/a'} |"
+                + (f" {_source(packet, f)} |" if sourced else "")
             )
         lines.append("")
 
     lines.append("## Full checklist")
     lines.append("")
-    lines.append("| Severity | Status | Finding | Citation |")
-    lines.append("| --- | --- | --- | --- |")
+    lines.append("| Severity | Status | Finding | Citation |" + (" Source in the DPA |" if sourced else ""))
+    lines.append("| --- | --- | --- | --- |" + (" --- |" if sourced else ""))
     for f in packet.findings:
-        lines.append(f"| {f.severity} | {_STATUS_MARK[f.status]} | {f.title} | {f.citation} |")
+        lines.append(
+            f"| {f.severity} | {_STATUS_MARK[f.status]} | {f.title} | {f.citation} |"
+            + (f" {_source(packet, f)} |" if sourced else "")
+        )
     lines.append("")
     lines.append("---")
     lines.append("")

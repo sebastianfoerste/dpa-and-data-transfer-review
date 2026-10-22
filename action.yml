@@ -1,0 +1,60 @@
+name: DPA review gate
+description: Deterministic, cited GDPR Art. 28 and Chapter V checks over DPA descriptions kept in Git. Fails the step when a DPA is BLOCKED.
+author: Sebastian Förste
+branding:
+  icon: shield
+  color: blue
+
+inputs:
+  input:
+    description: A DPA description (a JSON file), or a directory whose *.json files are reviewed as a register.
+    required: true
+  out:
+    description: Directory for the review packets and, for a register, register-summary.md and .json.
+    required: false
+    default: dpa-review
+  fail-on:
+    description: >-
+      Lowest review state that fails the step: blocked (any open HIGH finding), needs_review, or never.
+      Input that cannot be read or that breaks the input contract always fails it.
+    required: false
+    default: blocked
+  sarif:
+    description: Path of a SARIF 2.1.0 log to write, for github/codeql-action/upload-sarif. Empty writes none.
+    required: false
+    default: ""
+  annotate:
+    description: Annotate each open finding on the line of the DPA file that decided it (true or false).
+    required: false
+    default: "true"
+
+outputs:
+  review-state:
+    description: The worst review state found (BLOCKED, NEEDS_REVIEW or CLEARED_FOR_REVIEW); empty when none was decided.
+    value: ${{ steps.review.outputs.review-state }}
+  exit-code:
+    description: The exit code of dpa-review after fail-on (2 BLOCKED, 1 NEEDS_REVIEW, 0 passed, 3 no review state decided).
+    value: ${{ steps.review.outputs.exit-code }}
+  out:
+    description: The directory the review packets were written to.
+    value: ${{ steps.review.outputs.out }}
+  summary:
+    description: Path of the Markdown review packet, or of the register summary; empty when no review state was decided.
+    value: ${{ steps.review.outputs.summary }}
+  sarif:
+    description: Path of the SARIF log, when one was written.
+    value: ${{ steps.review.outputs.sarif }}
+
+runs:
+  using: composite
+  steps:
+    - id: review
+      shell: bash
+      # Inputs reach the script as environment variables, never as shell code.
+      env:
+        DPA_REVIEW_INPUT: ${{ inputs.input }}
+        DPA_REVIEW_OUT: ${{ inputs.out }}
+        DPA_REVIEW_FAIL_ON: ${{ inputs.fail-on }}
+        DPA_REVIEW_SARIF: ${{ inputs.sarif }}
+        DPA_REVIEW_ANNOTATE: ${{ inputs.annotate }}
+      run: python3 "$GITHUB_ACTION_PATH/scripts/github_action.py"
