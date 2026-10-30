@@ -10,6 +10,7 @@ Every rule `dpa-review` runs, generated from the rules in [`src/dpa_review/check
 | `processing.duration` | Processing description: duration of the processing | GDPR Art. 28(3) | MEDIUM | MISSING (MEDIUM) | `processing.duration` |
 | `processing.nature_and_purpose` | Processing description: nature and purpose of the processing | GDPR Art. 28(3) | MEDIUM | MISSING (MEDIUM) | `processing.nature_and_purpose` |
 | `processing.data_types` | Processing description: categories of personal data | GDPR Art. 28(3) | MEDIUM | MISSING (MEDIUM) | `processing.data_types` |
+| `processing.data_subjects` | Processing description: categories of data subjects | GDPR Art. 28(3) | MEDIUM | MISSING (MEDIUM) | `processing.data_subjects` |
 | `art28.process_on_documented_instructions` | Processing only on documented instructions | GDPR Art. 28(3)(a) | HIGH | MISSING (HIGH) | `art28_clauses.process_on_documented_instructions` |
 | `art28.confidentiality_commitment` | Confidentiality commitment for authorised persons | GDPR Art. 28(3)(b) | HIGH | MISSING (HIGH) | `art28_clauses.confidentiality_commitment` |
 | `art28.security_measures_art32` | Security of processing (technical & organisational measures) | GDPR Art. 28(3)(c) / Art. 32 | HIGH | MISSING (HIGH) | `art28_clauses.security_measures_art32` |

@@ -200,6 +200,7 @@ def _probe(present: bool) -> dict:
             "duration": present,
             "nature_and_purpose": present,
             "data_types": ["contact data"] if present else [],
+            "data_subjects": ["customers"] if present else [],
         },
         "art28_clauses": {**flags, "subprocessor_authorization": "general" if present else "none"},
         "breach_notification": {"processor_notifies_controller": present, "timing": "without undue delay"},

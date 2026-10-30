@@ -2,7 +2,7 @@
 
 # Conformance suite
 
-20 synthetic DPA descriptions in [`tests/fixtures/`](../tests/fixtures/), each with the review state, exit code and open rules the CLI must produce, recorded in [`expected.json`](../tests/fixtures/expected.json). [`tests/test_conformance.py`](../tests/test_conformance.py) runs every fixture through the CLI on every push, on Python 3.10 to 3.13, and fails on any difference.
+21 synthetic DPA descriptions in [`tests/fixtures/`](../tests/fixtures/), each with the review state, exit code and open rules the CLI must produce, recorded in [`expected.json`](../tests/fixtures/expected.json). [`tests/test_conformance.py`](../tests/test_conformance.py) runs every fixture through the CLI on every push, on Python 3.10 to 3.13, and fails on any difference.
 
 The fixtures freeze what the rules do today. Where a result looks legally questionable it is flagged below for review rather than changed: a rule change needs a lawyer's sign-off and a deliberate update of the expected result.
 
@@ -28,6 +28,7 @@ The fixtures freeze what the rules do today. Where a result looks legally questi
 | [`18-description-not-specified.json`](../tests/fixtures/18-description-not-specified.json) | The duration of the processing recorded as the string "Not specified", an absence marker that a truthiness check would read as a stated description. | refused (no state) | 3 | n/a |
 | [`19-description-tbd.json`](../tests/fixtures/19-description-tbd.json) | The nature and purpose of the processing recorded as the string "TBD", an absence marker that a truthiness check would read as a stated description. | refused (no state) | 3 | n/a |
 | [`20-description-blank.json`](../tests/fixtures/20-description-blank.json) | The subject matter of the processing recorded as a blank string, which states nothing but used to read as a stated description. | refused (no state) | 3 | n/a |
+| [`21-no-data-subjects.json`](../tests/fixtures/21-no-data-subjects.json) | Fixture 01 without processing.data_subjects: the DPA lists no categories of data subjects, which GDPR Art. 28(3) requires the contract to set out. | `NEEDS_REVIEW` | 1 | `processing.data_subjects` |
 
 ## ⚑ Flagged for legal review
 

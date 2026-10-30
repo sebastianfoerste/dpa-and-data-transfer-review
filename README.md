@@ -39,7 +39,7 @@ The sample DPA contains three deliberately planted defects. The tool catches all
 
 > BLOCKED: open high-severity findings must be resolved before this DPA can be relied on.
 
-Checks: 20, present 17, missing 3, needs-review 0, open high 3, open medium 0
+Checks: 21, present 18, missing 3, needs-review 0, open high 3, open medium 0
 
 ## Open findings
 
@@ -77,7 +77,7 @@ A legal team or reviewer at an AI SaaS company can use this as a privacy review 
 | Area | Citation | What the rule looks for |
 | --- | --- | --- |
 | Mandatory processor clauses | GDPR Art. 28(3)(a)-(h) | Documented instructions, confidentiality, security, assistance, deletion/return, audit rights |
-| Processing description | GDPR Art. 28(3) | Subject matter, duration, nature/purpose, categories of data |
+| Processing description | GDPR Art. 28(3) | Subject matter, duration, nature/purpose, categories of personal data, categories of data subjects |
 | Sub-processor authorisation | GDPR Art. 28(2) | Specific or general written authorisation |
 | Sub-processor flow-down | GDPR Art. 28(4) | Equivalent obligations imposed on sub-processors |
 | Breach notification | GDPR Art. 33(2) | Processor-to-controller notice, "without undue delay" |

@@ -39,7 +39,7 @@ A flag that is `false`, `null` or omitted reads as "the DPA does not contain thi
 }
 ```
 
-It is valid, and `BLOCKED`: it records no Art. 28 clause. [`data/sample_dpa.json`](../data/sample_dpa.json) is a complete example, and [`tests/fixtures/`](../tests/fixtures/) holds 20 more.
+It is valid, and `BLOCKED`: it records no Art. 28 clause. [`data/sample_dpa.json`](../data/sample_dpa.json) is a complete example, and [`tests/fixtures/`](../tests/fixtures/) holds 21 more.
 
 ## Keys
 
@@ -59,7 +59,7 @@ Required, an object. The processing details GDPR Art. 28(3) requires the DPA to 
 | `processing.duration` | string or boolean, or null | no | The duration of the processing is stated: true, or a short description; false, null or omitted when it is not stated. A blank string, or "false", "no", "none", "n/a", "unknown", "not specified" or "tbd" in any case, is refused. Rule processing.duration. |
 | `processing.nature_and_purpose` | string or boolean, or null | no | The nature and purpose of the processing are stated: true, or a short description; false, null or omitted when it is not stated. A blank string, or "false", "no", "none", "n/a", "unknown", "not specified" or "tbd" in any case, is refused. Rule processing.nature_and_purpose. |
 | `processing.data_types` | list of strings, or null | no | The types of personal data processed. Rule processing.data_types: an empty or omitted list is MISSING. |
-| `processing.data_subjects` | list of strings, or null | no | The categories of data subjects. Recorded only: no rule reads it. |
+| `processing.data_subjects` | list of strings, or null | no | The categories of data subjects. Rule processing.data_subjects: an empty or omitted list is MISSING. |
 
 ### `art28_clauses`
 

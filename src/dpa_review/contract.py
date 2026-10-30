@@ -141,7 +141,8 @@ CONTRACT: dict[str, Field] = {
             ),
             "data_subjects": Field(
                 "labels",
-                "The categories of data subjects. Recorded only: no rule reads it.",
+                "The categories of data subjects. Rule processing.data_subjects: an empty or omitted "
+                "list is MISSING.",
                 example='["customer end users"]',
             ),
         },

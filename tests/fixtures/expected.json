@@ -138,5 +138,12 @@
     "exit_code": 3,
     "errors": ["processing.subject_matter must be a description (a string) or true/false, got '   '"],
     "legal_review_note": ""
+  },
+  "21-no-data-subjects.json": {
+    "checks": "Fixture 01 without processing.data_subjects: the DPA lists no categories of data subjects, which GDPR Art. 28(3) requires the contract to set out.",
+    "review_state": "NEEDS_REVIEW",
+    "exit_code": 1,
+    "open_rules": ["processing.data_subjects"],
+    "legal_review_note": ""
   }
 }

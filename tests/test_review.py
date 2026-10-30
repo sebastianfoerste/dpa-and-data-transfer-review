@@ -2,11 +2,13 @@
 
 import json
 import random
+import tempfile
 import unittest
 from pathlib import Path
 
-from dpa_review.review import build_packet, render_markdown
+from dpa_review.review import OPEN_STATUSES, build_packet, render_markdown
 from dpa_review.checks import assess_transfer
+from tests.helpers import run_cli
 
 ROOT = Path(__file__).resolve().parents[1]
 SAMPLE = json.loads((ROOT / "data" / "sample_dpa.json").read_text(encoding="utf-8"))
@@ -141,6 +143,54 @@ class ProcessingDescriptions(unittest.TestCase):
                         finding = _by_id(packet, f"processing.{key}")
                         self.assertEqual((finding.status, finding.severity), ("MISSING", "MEDIUM"))
                         self.assertEqual(packet.review_state, "NEEDS_REVIEW")
+
+
+class DataSubjectCategories(unittest.TestCase):
+    """Rule processing.data_subjects: GDPR Art. 28(3), first subparagraph, has the contract set out
+    the categories of data subjects. Fixture 01 records every other fact, so this rule alone decides
+    whether it clears."""
+
+    def with_data_subjects(self, value):
+        dpa = json.loads(json.dumps(EEA_ONLY))
+        if value is DELETE:
+            del dpa["processing"]["data_subjects"]
+        else:
+            dpa["processing"]["data_subjects"] = value
+        return dpa
+
+    def test_listed_categories_are_present(self):
+        for name, dpa, listed in (
+            ("sample", SAMPLE, "customer end users"),
+            ("fixture 01", EEA_ONLY, "customers, prospects"),
+        ):
+            with self.subTest(input=name):
+                finding = _by_id(build_packet(dpa), "processing.data_subjects")
+                self.assertEqual((finding.status, finding.severity), ("PRESENT", "MEDIUM"))
+                self.assertEqual(finding.citation, "GDPR Art. 28(3)")
+                self.assertIn(listed, finding.detail)
+                self.assertEqual(finding.remediation, "")
+        self.assertEqual(build_packet(EEA_ONLY).review_state, "CLEARED_FOR_REVIEW")
+
+    def test_omitted_null_or_empty_is_missing(self):
+        for label, value in (("omitted", DELETE), ("null", None), ("empty list", [])):
+            with self.subTest(data_subjects=label):
+                packet = build_packet(self.with_data_subjects(value))
+                finding = _by_id(packet, "processing.data_subjects")
+                self.assertEqual((finding.status, finding.severity), ("MISSING", "MEDIUM"))
+                self.assertEqual(finding.citation, "GDPR Art. 28(3)")
+                self.assertTrue(finding.remediation)
+                self.assertEqual(packet.review_state, "NEEDS_REVIEW")
+                opened = [f.rule_id for f in packet.findings if f.status in OPEN_STATUSES]
+                self.assertEqual(opened, ["processing.data_subjects"])
+
+    def test_the_cli_exits_1_without_categories(self):
+        for label, value in (("omitted", DELETE), ("null", None), ("empty list", [])):
+            with self.subTest(data_subjects=label), tempfile.TemporaryDirectory() as tmp:
+                source = Path(tmp) / "dpa.json"
+                source.write_text(json.dumps(self.with_data_subjects(value)), encoding="utf-8")
+                for fail_on in ((), ("--fail-on", "needs_review")):
+                    code, stdout, stderr = run_cli("--input", source, "--quiet", *fail_on)
+                    self.assertEqual((code, stdout, stderr), (1, "", ""))
 
 
 if __name__ == "__main__":
