@@ -17,7 +17,15 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from dpa_review.checks import ABSENCE_MARKERS, ADEQUACY, EEA, assess_transfer, run_all_checks  # noqa: E402
+from dpa_review.checks import (  # noqa: E402
+    ABSENCE_MARKERS,
+    ADEQUACY,
+    EEA,
+    SUBPROCESSOR_TRANSFER,
+    assess_transfer,
+    run_all_checks,
+    subprocessor_rule_id,
+)
 from dpa_review.contract import CONTRACT, MECHANISMS, Field, format_path, schema_text  # noqa: E402
 from dpa_review.facts import rule_facts  # noqa: E402
 
@@ -205,10 +213,14 @@ def _probe(present: bool) -> dict:
     }
 
 
+# The rule id of the probe's sub-processor, "<name>", shown with its placeholder.
+_SUBPROCESSOR_RULE = SUBPROCESSOR_TRANSFER + "<name>"
+
+
 def _reads(rule_id: str, dpa: dict) -> str:
     if rule_id == "transfer.<country>":
         return "`transfers.destinations`, `transfers.mechanisms.<COUNTRY>`"
-    if rule_id == "transfer.subprocessor.<name>":
+    if rule_id == _SUBPROCESSOR_RULE:
         return "`subprocessors[].country`, `subprocessors[].transfer_mechanism`"
     return ", ".join(f"`{format_path(path)}`" for path in rule_facts(dpa, rule_id))
 
@@ -233,6 +245,8 @@ def rules() -> str:
     ]
     for finding in run_all_checks(present):
         rule_id = finding.rule_id
+        if rule_id == subprocessor_rule_id("<name>"):
+            rule_id = _SUBPROCESSOR_RULE
         if rule_id.startswith("transfer.") and rule_id != "transfer.impact_assessment":
             severity, absent_status = "by transfer basis, see below", "see below"
         else:
@@ -252,8 +266,10 @@ def rules() -> str:
         "## Transfer rules by basis",
         "",
         "`transfer.<country>` checks each direct destination and `transfer.subprocessor.<name>` each "
-        "sub-processor outside the EEA. Both use the same assessment of the country and the recorded "
-        "mechanism (status and severity):",
+        "sub-processor outside the EEA. In the rule id, `<name>` is the sub-processor's name in lower "
+        "case (Unicode case folding), with each run of characters other than letters and digits "
+        f"replaced by one underscore: \"Support Tools, LLC\" gives `{subprocessor_rule_id('Support Tools, LLC')}`. "
+        "Both rules use the same assessment of the country and the recorded mechanism (status and severity):",
         "",
         "| Destination | " + " | ".join(f"`{mechanism}`" for mechanism in MECHANISMS) + " |",
         "| --- |" + " --- |" * len(MECHANISMS),

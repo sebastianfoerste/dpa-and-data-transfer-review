@@ -527,7 +527,8 @@ def _check_country(value: Any, path: KeyPath, out: list[Violation]) -> None:
 
 
 def _name_key(name: str) -> str:
-    # Coarser than any rule-id derivation, so two names that pass here never share a rule id.
+    # Coarser than checks.subprocessor_rule_id, whose id without its underscores ends in this key,
+    # so two names that pass here never share a rule id.
     return "".join(ch for ch in name.casefold() if ch.isalnum())
 
 

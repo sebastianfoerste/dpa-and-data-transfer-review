@@ -248,6 +248,23 @@ def check_breach_notification(dpa: dict) -> list[Finding]:
 
 # --- Chapter V international transfers (Art. 44-49) ---------------------------
 
+SUBPROCESSOR_TRANSFER = "transfer.subprocessor."
+
+
+def subprocessor_rule_id(name: Any) -> str:
+    """The rule id of the transfer check for the sub-processor with this name.
+
+    The name is case-folded, and each run of characters other than letters and digits becomes one
+    underscore, with none at either end: "Support Tools, LLC" gives
+    transfer.subprocessor.support_tools_llc. The check, the fact mapping (facts.py) and the
+    transfer graph all take the id from here, so a finding, its evidence and its graph edge name
+    the same rule. Without its underscores the id ends in the key the input contract compares
+    names by (contract._name_key), so two names the contract accepts together never share an id.
+    """
+    words = "".join(ch if ch.isalnum() else " " for ch in str(name).casefold()).split()
+    return SUBPROCESSOR_TRANSFER + "_".join(words)
+
+
 def assess_transfer(country: str, mechanism: str | None) -> tuple[str, str, str]:
     """Return (status, severity, detail) for a single destination country."""
     country = (country or "").upper()
@@ -301,7 +318,7 @@ def check_transfers(dpa: dict) -> list[Finding]:
             status, severity, detail = assess_transfer(country, sp.get("transfer_mechanism"))
             findings.append(
                 Finding(
-                    rule_id=f"transfer.subprocessor.{sp.get('name', 'unknown').lower().replace(' ', '_')}",
+                    rule_id=subprocessor_rule_id(sp.get("name", "unknown")),
                     title=f"Sub-processor transfer: {sp.get('name', 'unknown')} ({country})",
                     citation="GDPR Art. 28(4) / Art. 44-46",
                     severity=severity,

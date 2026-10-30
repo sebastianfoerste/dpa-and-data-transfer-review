@@ -196,9 +196,7 @@
       "target": "jurisdiction:501c26b2571a",
       "relationship": "processes_in",
       "status": "pass",
-      "control_refs": [
-        "transfer.subprocessor.eu_hosting_sarl"
-      ],
+      "control_refs": [],
       "citation_refs": [],
       "mechanism": "none"
     },
@@ -322,5 +320,5 @@
   "source_dpa_sha256": "39314dc6ac5d3d63c2d07dab52ab93fd50d7f246194b669ee41d9b4d72af0c66",
   "review_gate": "The graph is a deterministic reviewer aid. It does not validate a transfer mechanism, approve a sub-processor, or execute a transfer.",
   "external_actions_allowed": false,
-  "graph_sha256": "e2954b2184c0bad1ddb79a8173574fe54451963c18e8bfc7df7f25f37afbf3a9"
+  "graph_sha256": "b86c066b70578c5c5b2b914f37e7597df3e8e6aaaa7cc266c40264ad6edaf329"
 }

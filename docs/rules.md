@@ -27,7 +27,7 @@ Every rule `dpa-review` runs, generated from the rules in [`src/dpa_review/check
 
 ## Transfer rules by basis
 
-`transfer.<country>` checks each direct destination and `transfer.subprocessor.<name>` each sub-processor outside the EEA. Both use the same assessment of the country and the recorded mechanism (status and severity):
+`transfer.<country>` checks each direct destination and `transfer.subprocessor.<name>` each sub-processor outside the EEA. In the rule id, `<name>` is the sub-processor's name in lower case (Unicode case folding), with each run of characters other than letters and digits replaced by one underscore: "Support Tools, LLC" gives `transfer.subprocessor.support_tools_llc`. Both rules use the same assessment of the country and the recorded mechanism (status and severity):
 
 | Destination | `none` | `adequacy` | `sccs` | `bcr` | `dpf` | `derogation_art49` |
 | --- | --- | --- | --- | --- | --- | --- |

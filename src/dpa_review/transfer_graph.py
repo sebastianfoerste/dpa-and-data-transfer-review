@@ -4,13 +4,20 @@ from __future__ import annotations
 
 import hashlib
 import json
-import re
 from typing import Any
 
-from dpa_review.checks import EEA
+from dpa_review.checks import EEA, subprocessor_rule_id
 from dpa_review.review import OPEN_STATUSES, ReviewPacket, markdown_text, one_line
 
 SCHEMA = "dpa-review.transfer-evidence-graph.v1"
+
+# The graph status each packet review state allows at best, and the order of the graph statuses.
+_GRAPH_STATUS_FOR_PACKET = {
+    "BLOCKED": "BLOCKED",
+    "NEEDS_REVIEW": "NEEDS_REVIEW",
+    "CLEARED_FOR_REVIEW": "READY_FOR_LAWYER_REVIEW",
+}
+_GRAPH_STATUS_RANK = {"READY_FOR_LAWYER_REVIEW": 0, "NEEDS_REVIEW": 1, "BLOCKED": 2}
 
 
 def _canonical_sha256(payload: Any) -> str:
@@ -26,13 +33,25 @@ def _finding(packet: ReviewPacket, rule_id: str):
     return next((finding for finding in packet.findings if finding.rule_id == rule_id), None)
 
 
-def _edge_status(findings: list[Any]) -> str:
-    open_findings = [finding for finding in findings if finding and finding.status in OPEN_STATUSES]
+def _edge_status(packet: ReviewPacket, control_refs: list[str]) -> str:
+    """The status of an edge from the packet findings its controls name.
+
+    A control the packet has no finding for is no evidence that the link passes, so the edge goes
+    to review: the graph fails closed when its rule ids and the packet's ever drift apart.
+    """
+    findings = [_finding(packet, rule_id) for rule_id in control_refs]
+    open_findings = [finding for finding in findings if finding is not None and finding.status in OPEN_STATUSES]
     if any(finding.severity == "HIGH" for finding in open_findings):
         return "block"
-    if open_findings:
+    if open_findings or any(finding is None for finding in findings):
         return "review"
     return "pass"
+
+
+def _citations(packet: ReviewPacket, control_refs: list[str]) -> list[str]:
+    return sorted(
+        {finding.citation for rule_id in control_refs if (finding := _finding(packet, rule_id)) is not None}
+    )
 
 
 def build_transfer_evidence_graph(
@@ -59,26 +78,26 @@ def build_transfer_evidence_graph(
     controller_id = add_node("party", controller, role="controller")
     processor_id = add_node("party", processor, role="processor")
 
-    art28_findings = [
-        finding
+    art28_controls = sorted(
+        finding.rule_id
         for finding in packet.findings
         if finding.rule_id.startswith(("processing.", "art28.", "breach."))
-    ]
+    )
     edges.append(
         {
             "edge_id": "controller-to-processor",
             "source": controller_id,
             "target": processor_id,
             "relationship": "appoints_processor",
-            "status": _edge_status(art28_findings),
-            "control_refs": sorted(finding.rule_id for finding in art28_findings),
-            "citation_refs": sorted({finding.citation for finding in art28_findings}),
+            "status": _edge_status(packet, art28_controls),
+            "control_refs": art28_controls,
+            "citation_refs": _citations(packet, art28_controls),
         }
     )
 
-    flowdown = _finding(packet, "subprocessor.flowdown")
-    authorization = _finding(packet, "subprocessor.authorization")
-    transfer_impact = _finding(packet, "transfer.impact_assessment")
+    # Each edge names the controls the packet decides it by. checks.check_transfers raises the
+    # transfer impact assessment finding whenever a recorded mechanism is SCCs or BCR.
+    transfer_impact = "transfer.impact_assessment"
     represented_destinations: set[str] = set()
     for index, subprocessor in enumerate(dpa.get("subprocessors", []) or []):
         name = str(subprocessor.get("name", f"Sub-processor {index + 1}"))
@@ -90,36 +109,31 @@ def build_transfer_evidence_graph(
             role="subprocessor",
             purpose=str(subprocessor.get("purpose", "")),
         )
-        transfer_rule_id = (
-            "transfer.subprocessor."
-            + re.sub(r"[^a-z0-9_]+", "_", name.lower().replace(" ", "_")).strip("_")
+        # A sub-processor outside the EEA is a transfer, which the packet checks under this id. One
+        # inside the EEA is not, so the packet raises no transfer finding for it and its edges name
+        # no transfer control.
+        transfer_controls = (
+            [subprocessor_rule_id(subprocessor.get("name", "unknown"))] if country not in EEA else []
         )
-        transfer_finding = _finding(packet, transfer_rule_id)
-        appointment_findings = [
-            finding for finding in (authorization, flowdown, transfer_finding) if finding
-        ]
+        appointment_controls = ["subprocessor.authorization", "subprocessor.flowdown", *transfer_controls]
         edges.append(
             {
                 "edge_id": f"processor-to-subprocessor-{index + 1}",
                 "source": processor_id,
                 "target": subprocessor_id,
                 "relationship": "appoints_subprocessor",
-                "status": _edge_status(appointment_findings),
-                "control_refs": [finding.rule_id for finding in appointment_findings],
-                "citation_refs": sorted(
-                    {finding.citation for finding in appointment_findings}
-                ),
+                "status": _edge_status(packet, appointment_controls),
+                "control_refs": appointment_controls,
+                "citation_refs": _citations(packet, appointment_controls),
             }
         )
         if country:
             mechanism = str(
                 subprocessor.get("transfer_mechanism", "none")
             ).lower()
-            location_findings = [transfer_finding] if transfer_finding else []
-            location_controls = [transfer_rule_id]
-            if mechanism in {"sccs", "bcr"} and transfer_impact:
-                location_findings.append(transfer_impact)
-                location_controls.append(transfer_impact.rule_id)
+            location_controls = list(transfer_controls)
+            if transfer_controls and mechanism in {"sccs", "bcr"}:
+                location_controls.append(transfer_impact)
             jurisdiction_id = add_node(
                 "jurisdiction",
                 country,
@@ -131,16 +145,9 @@ def build_transfer_evidence_graph(
                     "source": subprocessor_id,
                     "target": jurisdiction_id,
                     "relationship": "processes_in",
-                    "status": _edge_status(location_findings),
+                    "status": _edge_status(packet, location_controls),
                     "control_refs": location_controls,
-                    "citation_refs": (
-                        sorted(
-                            {
-                                finding.citation
-                                for finding in location_findings
-                            }
-                        )
-                    ),
+                    "citation_refs": _citations(packet, location_controls),
                     "mechanism": mechanism,
                 }
             )
@@ -149,24 +156,19 @@ def build_transfer_evidence_graph(
     for country_value in dpa.get("transfers", {}).get("destinations", []) or []:
         country = str(country_value).upper()
         jurisdiction_id = add_node("jurisdiction", country, eea=country in EEA)
-        finding = _finding(packet, f"transfer.{country.lower()}")
         mechanism = str(mechanisms.get(country, "none")).lower()
-        direct_findings = [finding] if finding else []
         direct_controls = [f"transfer.{country.lower()}"]
-        if mechanism in {"sccs", "bcr"} and transfer_impact:
-            direct_findings.append(transfer_impact)
-            direct_controls.append(transfer_impact.rule_id)
+        if mechanism in {"sccs", "bcr"}:
+            direct_controls.append(transfer_impact)
         edges.append(
             {
                 "edge_id": f"processor-direct-to-{country.lower()}",
                 "source": processor_id,
                 "target": jurisdiction_id,
                 "relationship": "direct_transfer_to",
-                "status": _edge_status(direct_findings),
+                "status": _edge_status(packet, direct_controls),
                 "control_refs": direct_controls,
-                "citation_refs": sorted(
-                    {item.citation for item in direct_findings}
-                ),
+                "citation_refs": _citations(packet, direct_controls),
                 "mechanism": mechanism,
                 "also_used_by_subprocessor": country in represented_destinations,
             }
@@ -219,12 +221,19 @@ def build_transfer_evidence_graph(
             item["control_ref"],
         )
     )
-    status = (
+    edge_status = (
         "BLOCKED"
         if any(edge["status"] == "block" for edge in ordered_edges)
         else "NEEDS_REVIEW"
         if any(edge["status"] == "review" for edge in ordered_edges)
         else "READY_FOR_LAWYER_REVIEW"
+    )
+    # Never better than the packet: an open finding no edge carries, such as the sub-processor
+    # authorisation of a DPA that names no sub-processor, still holds the graph at the packet's state.
+    status = max(
+        edge_status,
+        _GRAPH_STATUS_FOR_PACKET.get(packet.review_state, "BLOCKED"),
+        key=_GRAPH_STATUS_RANK.__getitem__,
     )
     payload = {
         "schema": SCHEMA,
