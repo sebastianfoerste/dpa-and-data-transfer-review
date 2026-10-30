@@ -111,7 +111,7 @@ jobs:
         run: |
           test "$SAMPLE_OUTCOME" = failure
           jq -e '.review_state == "BLOCKED"' "$RUNNER_TEMP/sample/review-packet.json"
-          jq -e '.version == "2.1.0" and (.runs[0].results | length) == 3' "$RUNNER_TEMP/sample.sarif"
+          jq -e '.version == "2.1.0" and (.runs[0].results | length) == 4' "$RUNNER_TEMP/sample.sarif"
           test "$REGISTER_STATE" = BLOCKED
           test "$REGISTER_EXIT" = 0
           grep -q "Worst review state: BLOCKED" "$REGISTER_SUMMARY"

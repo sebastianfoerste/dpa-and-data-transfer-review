@@ -54,7 +54,13 @@ class SamplePacket(unittest.TestCase):
     def test_planted_flowdown_defect_is_caught(self):
         finding = _by_id(self.packet, "subprocessor.flowdown")
         self.assertEqual(finding.status, "MISSING")
-        self.assertEqual(finding.citation, "GDPR Art. 28(4)")
+        self.assertEqual(finding.citation, "GDPR Art. 28(4) read with Art. 28(3)(d)")
+
+    def test_general_authorisation_without_change_notice_is_caught(self):
+        # The sample authorises sub-processors generally and records no change-notice and
+        # objection mechanism, which reads as not found.
+        finding = _by_id(self.packet, "subprocessor.change_notice_and_objection")
+        self.assertEqual((finding.status, finding.severity), ("MISSING", "HIGH"))
 
     def test_overall_state_is_blocked(self):
         # Open HIGH findings must block the packet, the equivalent of "marked for rejection".
@@ -77,6 +83,7 @@ class CuredPacket(unittest.TestCase):
     def test_fixing_defects_clears_high_findings(self):
         cured = json.loads(json.dumps(SAMPLE))
         cured["art28_clauses"]["subprocessor_flowdown"] = True
+        cured["art28_clauses"]["subprocessor_change_notice_and_objection"] = True
         cured["transfers"]["mechanisms"]["US"] = "sccs"
         cured["transfers"]["transfer_impact_assessment"] = True
         cured["subprocessors"][1]["transfer_mechanism"] = "sccs"
@@ -191,6 +198,91 @@ class DataSubjectCategories(unittest.TestCase):
                 for fail_on in ((), ("--fail-on", "needs_review")):
                     code, stdout, stderr = run_cli("--input", source, "--quiet", *fail_on)
                     self.assertEqual((code, stdout, stderr), (1, "", ""))
+
+
+# The rule, flag and citations decided for DPA-07, written out here rather than read from the code under test.
+NOTICE_RULE = "subprocessor.change_notice_and_objection"
+NOTICE_FLAG = "subprocessor_change_notice_and_objection"
+AUTHORISATION_CITATION = "GDPR Art. 28(2) read with Art. 28(3)(d)"
+FLOWDOWN_CITATION = "GDPR Art. 28(4) read with Art. 28(3)(d)"
+
+
+class SubprocessorChangeNotice(unittest.TestCase):
+    """Rule subprocessor.change_notice_and_objection. Under a general written authorisation, GDPR
+    Art. 28(2), second sentence, has the processor inform the controller of any intended addition or
+    replacement of other processors, giving the controller the opportunity to object, and Art.
+    28(3)(d) has the contract stipulate that the processor respects the conditions of Art. 28(2) and
+    (4). Fixture 01 records every other fact, so this rule alone decides whether it clears."""
+
+    def authorised(self, authorisation, notice=DELETE):
+        dpa = json.loads(json.dumps(EEA_ONLY))
+        dpa["art28_clauses"]["subprocessor_authorization"] = authorisation
+        if notice is not DELETE:
+            dpa["art28_clauses"][NOTICE_FLAG] = notice
+        return dpa
+
+    def test_general_with_notice_and_objection_is_present(self):
+        packet = build_packet(self.authorised("general", True))
+        finding = _by_id(packet, NOTICE_RULE)
+        self.assertEqual((finding.status, finding.severity), ("PRESENT", "HIGH"))
+        self.assertEqual(finding.citation, AUTHORISATION_CITATION)
+        self.assertEqual(finding.remediation, "")
+        self.assertEqual(packet.review_state, "CLEARED_FOR_REVIEW")
+
+    def test_general_without_notice_and_objection_is_missing_and_blocks(self):
+        # Answer to question 4: an omitted flag reads like every other omitted clause flag, as not found.
+        for label, notice in (("false", False), ("null", None), ("omitted", DELETE)):
+            with self.subTest(flag=label):
+                packet = build_packet(self.authorised("general", notice))
+                finding = _by_id(packet, NOTICE_RULE)
+                self.assertEqual((finding.status, finding.severity), ("MISSING", "HIGH"))
+                self.assertEqual(finding.citation, AUTHORISATION_CITATION)
+                self.assertTrue(finding.remediation)
+                self.assertEqual(packet.review_state, "BLOCKED")
+                opened = [f.rule_id for f in packet.findings if f.status in OPEN_STATUSES]
+                self.assertEqual(opened, [NOTICE_RULE])
+                self.assertEqual(_by_id(packet, "subprocessor.authorization").status, "PRESENT")
+
+    def test_the_cli_exits_2_without_notice_and_objection(self):
+        for label, notice in (("false", False), ("omitted", DELETE)):
+            with self.subTest(flag=label), tempfile.TemporaryDirectory() as tmp:
+                source = Path(tmp) / "dpa.json"
+                source.write_text(json.dumps(self.authorised("general", notice)), encoding="utf-8")
+                for fail_on in ((), ("--fail-on", "blocked"), ("--fail-on", "needs_review")):
+                    code, stdout, stderr = run_cli("--input", source, "--quiet", *fail_on)
+                    self.assertEqual((code, stdout, stderr), (2, "", ""))
+
+    def test_specific_or_no_authorisation_is_unaffected(self):
+        for authorisation, status, state in (
+            ("specific", "PRESENT", "CLEARED_FOR_REVIEW"),
+            ("none", "MISSING", "BLOCKED"),
+        ):
+            for notice in (True, False, None, DELETE):
+                with self.subTest(authorisation=authorisation, flag=notice):
+                    packet = build_packet(self.authorised(authorisation, notice))
+                    self.assertNotIn(NOTICE_RULE, {f.rule_id for f in packet.findings})
+                    self.assertEqual(_by_id(packet, "subprocessor.authorization").status, status)
+                    self.assertEqual(packet.review_state, state)
+
+    def test_authorisation_and_flowdown_cite_art_28_3_d(self):
+        packet = build_packet(EEA_ONLY)
+        self.assertEqual(_by_id(packet, "subprocessor.authorization").citation, AUTHORISATION_CITATION)
+        self.assertEqual(_by_id(packet, "subprocessor.flowdown").citation, FLOWDOWN_CITATION)
+
+    def test_evidence_for_the_flag_attaches_to_the_finding(self):
+        fixture = ROOT / "tests" / "fixtures" / "22-general-authorisation-with-notice.json"
+        dpa = json.loads(fixture.read_text(encoding="utf-8"))
+        evidence = build_packet(dpa).evidence[NOTICE_RULE]
+        self.assertIn(f"art28_clauses.{NOTICE_FLAG}", [item["fact"] for item in evidence])
+
+    def test_the_contract_takes_the_flag_as_true_or_false(self):
+        for value in ("yes", "false", 1):
+            with self.subTest(value=value), tempfile.TemporaryDirectory() as tmp:
+                source = Path(tmp) / "dpa.json"
+                source.write_text(json.dumps(self.authorised("general", value)), encoding="utf-8")
+                code, stdout, stderr = run_cli("--input", source, "--quiet")
+                self.assertEqual((code, stdout), (3, ""))
+                self.assertIn(f"art28_clauses.{NOTICE_FLAG} must be true or false", stderr)
 
 
 if __name__ == "__main__":

@@ -30,7 +30,7 @@ make demo      # writes examples/review-packet.md and .json, prints the packet
 
 ## What the demo produces
 
-The sample DPA contains three deliberately planted defects. The tool catches all three, marks them `HIGH`, and **blocks** the packet (exit code `2`):
+The sample DPA contains three deliberately planted defects, and its general sub-processor authorisation records no notice of changes with an opportunity to object. The tool catches all four, marks them `HIGH`, and **blocks** the packet (exit code `2`):
 
 ```
 # Synthetic SaaS Data Processing Agreement review packet
@@ -39,13 +39,14 @@ The sample DPA contains three deliberately planted defects. The tool catches all
 
 > BLOCKED: open high-severity findings must be resolved before this DPA can be relied on.
 
-Checks: 21, present 18, missing 3, needs-review 0, open high 3, open medium 0
+Checks: 22, present 18, missing 4, needs-review 0, open high 4, open medium 0
 
 ## Open findings
 
 | Severity | Status | Finding | Citation | Remediation |
 | --- | --- | --- | --- | --- |
-| HIGH | [missing] | Sub-processor flow-down of data-protection obligations | GDPR Art. 28(4) | Add a clause imposing materially equivalent obligations on every sub-processor (Art. 28(4)). |
+| HIGH | [missing] | Notice of sub-processor changes and opportunity to object | GDPR Art. 28(2) read with Art. 28(3)(d) | Add a clause under which the processor informs the controller of any intended addition or replacement of a sub-processor, giving the controller the opportunity to object (Art. 28(2)). |
+| HIGH | [missing] | Sub-processor flow-down of data-protection obligations | GDPR Art. 28(4) read with Art. 28(3)(d) | Add a clause imposing materially equivalent obligations on every sub-processor (Art. 28(4)). |
 | HIGH | [missing] | Sub-processor transfer: Support Tools LLC (US) | GDPR Art. 28(4) / Art. 44-46 | Confirm the transfer mechanism covering Support Tools LLC in US. |
 | HIGH | [missing] | International transfer to US | GDPR Art. 44-46 | Document a valid Art. 46 safeguard for US (or an Art. 49 derogation) and record the basis. |
 ```
@@ -76,10 +77,10 @@ A legal team or reviewer at an AI SaaS company can use this as a privacy review 
 
 | Area | Citation | What the rule looks for |
 | --- | --- | --- |
-| Mandatory processor clauses | GDPR Art. 28(3)(a)-(h) | Documented instructions, confidentiality, security, assistance, deletion/return, audit rights |
+| Mandatory processor clauses | GDPR Art. 28(3)(a)-(c), (e)-(h) | Documented instructions, confidentiality, security, assistance, deletion/return, audit rights |
 | Processing description | GDPR Art. 28(3) | Subject matter, duration, nature/purpose, categories of personal data, categories of data subjects |
-| Sub-processor authorisation | GDPR Art. 28(2) | Specific or general written authorisation |
-| Sub-processor flow-down | GDPR Art. 28(4) | Equivalent obligations imposed on sub-processors |
+| Sub-processor authorisation | GDPR Art. 28(2) read with Art. 28(3)(d) | Specific or general written authorisation; under general authorisation, notice of intended changes with an opportunity to object |
+| Sub-processor flow-down | GDPR Art. 28(4) read with Art. 28(3)(d) | Equivalent obligations imposed on sub-processors |
 | Breach notification | GDPR Art. 33(2) | Processor-to-controller notice, "without undue delay" |
 | International transfers | GDPR Art. 44-46 | EEA vs adequacy (Art. 45) vs SCCs/BCR (Art. 46) vs Art. 49 derogations, per destination **and** per sub-processor |
 | Transfer impact assessment | GDPR Art. 46 (CJEU C-311/18) | Recorded TIA where Art. 46 safeguards are relied on |

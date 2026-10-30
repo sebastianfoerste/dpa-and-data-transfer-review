@@ -120,7 +120,7 @@ class Annotations(Step):
     def test_one_annotation_per_open_finding_on_its_line(self):
         _, stdout, _, _, _ = self.step(input=SAMPLE_PATH)
         commands = stdout.splitlines()
-        self.assertEqual(len(commands), 3)
+        self.assertEqual(len(commands), 4)
         lines = SAMPLE_PATH.read_text(encoding="utf-8").splitlines()
         for command in commands:
             match = re.fullmatch(r"::error file=([^,]+),line=(\d+),title=([^:]+)::(.+)", command)
@@ -229,7 +229,7 @@ class Sarif(Step):
         self.assertEqual((code, outputs["sarif"]), (2, str(path)))
         log = json.loads(path.read_text(encoding="utf-8"))
         self.assertEqual(log["version"], "2.1.0")
-        self.assertEqual(len(log["runs"][0]["results"]), 3)
+        self.assertEqual(len(log["runs"][0]["results"]), 4)
 
     def test_no_sarif_unless_asked(self):
         _, _, _, outputs, _ = self.step(input=SAMPLE_PATH)

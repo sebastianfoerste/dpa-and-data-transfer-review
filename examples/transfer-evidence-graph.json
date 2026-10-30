@@ -8,7 +8,7 @@
     "blocked_edges": 5,
     "review_edges": 0,
     "pass_edges": 5,
-    "open_remediation_items": 3
+    "open_remediation_items": 4
   },
   "nodes": [
     {
@@ -150,11 +150,12 @@
       "status": "block",
       "control_refs": [
         "subprocessor.authorization",
+        "subprocessor.change_notice_and_objection",
         "subprocessor.flowdown"
       ],
       "citation_refs": [
-        "GDPR Art. 28(2)",
-        "GDPR Art. 28(4)"
+        "GDPR Art. 28(2) read with Art. 28(3)(d)",
+        "GDPR Art. 28(4) read with Art. 28(3)(d)"
       ]
     },
     {
@@ -165,13 +166,14 @@
       "status": "block",
       "control_refs": [
         "subprocessor.authorization",
+        "subprocessor.change_notice_and_objection",
         "subprocessor.flowdown",
         "transfer.subprocessor.support_tools_llc"
       ],
       "citation_refs": [
-        "GDPR Art. 28(2)",
-        "GDPR Art. 28(4)",
-        "GDPR Art. 28(4) / Art. 44-46"
+        "GDPR Art. 28(2) read with Art. 28(3)(d)",
+        "GDPR Art. 28(4) / Art. 44-46",
+        "GDPR Art. 28(4) read with Art. 28(3)(d)"
       ]
     },
     {
@@ -182,13 +184,14 @@
       "status": "block",
       "control_refs": [
         "subprocessor.authorization",
+        "subprocessor.change_notice_and_objection",
         "subprocessor.flowdown",
         "transfer.subprocessor.analytics_kk"
       ],
       "citation_refs": [
-        "GDPR Art. 28(2)",
-        "GDPR Art. 28(4)",
-        "GDPR Art. 28(4) / Art. 44-46"
+        "GDPR Art. 28(2) read with Art. 28(3)(d)",
+        "GDPR Art. 28(4) / Art. 44-46",
+        "GDPR Art. 28(4) read with Art. 28(3)(d)"
       ]
     },
     {
@@ -245,6 +248,7 @@
       "relationship": "appoints_subprocessor",
       "control_refs": [
         "subprocessor.authorization",
+        "subprocessor.change_notice_and_objection",
         "subprocessor.flowdown"
       ]
     },
@@ -254,6 +258,7 @@
       "relationship": "appoints_subprocessor",
       "control_refs": [
         "subprocessor.authorization",
+        "subprocessor.change_notice_and_objection",
         "subprocessor.flowdown",
         "transfer.subprocessor.support_tools_llc"
       ]
@@ -264,6 +269,7 @@
       "relationship": "appoints_subprocessor",
       "control_refs": [
         "subprocessor.authorization",
+        "subprocessor.change_notice_and_objection",
         "subprocessor.flowdown",
         "transfer.subprocessor.analytics_kk"
       ]
@@ -279,10 +285,24 @@
   ],
   "remediation_queue": [
     {
+      "control_ref": "subprocessor.change_notice_and_objection",
+      "severity": "HIGH",
+      "status": "MISSING",
+      "citation": "GDPR Art. 28(2) read with Art. 28(3)(d)",
+      "affected_edges": [
+        "processor-to-subprocessor-1",
+        "processor-to-subprocessor-2",
+        "processor-to-subprocessor-3"
+      ],
+      "reviewer_role": "Privacy Counsel",
+      "required_evidence": "Add a clause under which the processor informs the controller of any intended addition or replacement of a sub-processor, giving the controller the opportunity to object (Art. 28(2)).",
+      "decision_state": "open"
+    },
+    {
       "control_ref": "subprocessor.flowdown",
       "severity": "HIGH",
       "status": "MISSING",
-      "citation": "GDPR Art. 28(4)",
+      "citation": "GDPR Art. 28(4) read with Art. 28(3)(d)",
       "affected_edges": [
         "processor-to-subprocessor-1",
         "processor-to-subprocessor-2",
@@ -321,5 +341,5 @@
   "source_dpa_sha256": "39314dc6ac5d3d63c2d07dab52ab93fd50d7f246194b669ee41d9b4d72af0c66",
   "review_gate": "The graph is a deterministic reviewer aid. It does not validate a transfer mechanism, approve a sub-processor, or execute a transfer.",
   "external_actions_allowed": false,
-  "graph_sha256": "8b67427ddc13c48a9cce444564dfae6da2aac9538d10dbed327d2f3850936508"
+  "graph_sha256": "7bb14ee5df4a8148358ed8c9028e15c03c3764265a86d6b4cecb436b467cb7b6"
 }

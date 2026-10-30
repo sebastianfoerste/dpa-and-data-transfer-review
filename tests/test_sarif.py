@@ -58,15 +58,23 @@ class OpenFindings(Structure, unittest.TestCase):
 
     def test_one_result_per_open_finding(self):
         self.assertEqual(
-            set(self.results), {"subprocessor.flowdown", "transfer.subprocessor.support_tools_llc", "transfer.us"}
+            set(self.results),
+            {
+                "subprocessor.change_notice_and_objection",
+                "subprocessor.flowdown",
+                "transfer.subprocessor.support_tools_llc",
+                "transfer.us",
+            },
         )
         for result in self.results.values():
-            self.assertEqual(result["level"], "error")  # all three are HIGH
+            self.assertEqual(result["level"], "error")  # all four are HIGH
             self.assertEqual(result["properties"]["review_state"], "BLOCKED")
             self.assertIn("Citation: GDPR Art.", result["message"]["text"])
 
     def test_results_point_at_the_line_that_decided_them(self):
         expected = {
+            # The sample omits the change-notice flag, so the result points at the general authorisation.
+            "subprocessor.change_notice_and_objection": '"subprocessor_authorization"',
             "subprocessor.flowdown": '"subprocessor_flowdown"',
             "transfer.subprocessor.support_tools_llc": "Support Tools LLC",
             "transfer.us": '"destinations"',

@@ -145,5 +145,26 @@
     "exit_code": 1,
     "open_rules": ["processing.data_subjects"],
     "legal_review_note": ""
+  },
+  "22-general-authorisation-with-notice.json": {
+    "checks": "Fixture 01 with general written sub-processor authorisation and a recorded clause under which the processor informs the controller of intended additions or replacements of sub-processors and the controller can object.",
+    "review_state": "CLEARED_FOR_REVIEW",
+    "exit_code": 0,
+    "open_rules": [],
+    "legal_review_note": ""
+  },
+  "23-general-authorisation-notice-false.json": {
+    "checks": "Fixture 01 with general written sub-processor authorisation and the change-notice and objection clause recorded as not found (false), which GDPR Art. 28(2), second sentence, read with Art. 28(3)(d) requires under general authorisation.",
+    "review_state": "BLOCKED",
+    "exit_code": 2,
+    "open_rules": ["subprocessor.change_notice_and_objection"],
+    "legal_review_note": ""
+  },
+  "24-general-authorisation-notice-omitted.json": {
+    "checks": "Fixture 01 with general written sub-processor authorisation and no change-notice and objection flag at all: an omitted clause flag reads as not found, as every other one does.",
+    "review_state": "BLOCKED",
+    "exit_code": 2,
+    "open_rules": ["subprocessor.change_notice_and_objection"],
+    "legal_review_note": ""
   }
 }

@@ -39,6 +39,7 @@ def renamed_sample(name: str, cured: bool = False) -> dict:
     dpa["subprocessors"][1]["name"] = name
     if cured:
         dpa["art28_clauses"]["subprocessor_flowdown"] = True
+        dpa["art28_clauses"]["subprocessor_change_notice_and_objection"] = True
         dpa["transfers"]["mechanisms"]["US"] = "sccs"
         dpa["transfers"]["transfer_impact_assessment"] = True
     return dpa
@@ -63,10 +64,11 @@ class TransferEvidenceGraphTests(unittest.TestCase):
         )
         self.assertFalse(graph["external_actions_allowed"])
         self.assertEqual(len(graph["graph_sha256"]), 64)
-        self.assertEqual(graph["summary"]["open_remediation_items"], 3)
+        self.assertEqual(graph["summary"]["open_remediation_items"], 4)
         self.assertEqual(
             {item["control_ref"] for item in graph["remediation_queue"]},
             {
+                "subprocessor.change_notice_and_objection",
                 "subprocessor.flowdown",
                 "transfer.subprocessor.support_tools_llc",
                 "transfer.us",
@@ -79,6 +81,7 @@ class TransferEvidenceGraphTests(unittest.TestCase):
     def test_cured_transfer_chain_removes_blocked_edges(self):
         cured = json.loads(json.dumps(SAMPLE))
         cured["art28_clauses"]["subprocessor_flowdown"] = True
+        cured["art28_clauses"]["subprocessor_change_notice_and_objection"] = True
         cured["transfers"]["mechanisms"]["US"] = "sccs"
         cured["transfers"]["transfer_impact_assessment"] = True
         cured["subprocessors"][1]["transfer_mechanism"] = "sccs"
@@ -178,8 +181,32 @@ class GraphNeverBetterThanThePacket(unittest.TestCase):
         self.assertEqual((location["status"], location["control_refs"], location["citation_refs"]), ("pass", [], []))
         self.assertEqual(
             edge(graph, "processor-to-subprocessor-1")["control_refs"],
-            ["subprocessor.authorization", "subprocessor.flowdown"],
+            ["subprocessor.authorization", "subprocessor.change_notice_and_objection", "subprocessor.flowdown"],
         )
+
+    def test_general_authorisation_puts_the_change_notice_rule_on_each_appointment(self):
+        # Under general authorisation the packet checks the change-notice and objection clause, which
+        # governs every sub-processor appointment; under specific authorisation it raises no such finding.
+        notice = "subprocessor.change_notice_and_objection"
+        for authorisation, flag, status, queue, graph_status in (
+            ("general", False, "block", [notice], "BLOCKED"),
+            ("general", True, "pass", [], "READY_FOR_LAWYER_REVIEW"),
+            ("specific", False, "pass", [], "READY_FOR_LAWYER_REVIEW"),
+        ):
+            with self.subTest(authorisation=authorisation, flag=flag):
+                dpa = load(FIXTURES / "01-eea-only.json")
+                dpa["art28_clauses"]["subprocessor_authorization"] = authorisation
+                dpa["art28_clauses"]["subprocessor_change_notice_and_objection"] = flag
+                packet = build_packet(dpa)
+                graph = build_transfer_evidence_graph(dpa, packet)
+                appointment = edge(graph, "processor-to-subprocessor-1")
+                expected_controls = ["subprocessor.authorization", "subprocessor.flowdown"]
+                if authorisation == "general":
+                    expected_controls.insert(1, notice)
+                self.assertEqual(appointment["control_refs"], expected_controls)
+                self.assertEqual(appointment["status"], status)
+                self.assertEqual([item["control_ref"] for item in graph["remediation_queue"]], queue)
+                self.assertEqual(graph["graph_status"], graph_status)
 
     def test_every_fixture(self):
         inputs = {"data/sample_dpa.json": SAMPLE}

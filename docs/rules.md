@@ -18,8 +18,9 @@ Every rule `dpa-review` runs, generated from the rules in [`src/dpa_review/check
 | `art28.assist_security_breach` | Assistance with security, breach, DPIA obligations | GDPR Art. 28(3)(f) | HIGH | MISSING (HIGH) | `art28_clauses.assist_security_breach` |
 | `art28.delete_or_return_on_termination` | Deletion or return of data on termination | GDPR Art. 28(3)(g) | HIGH | MISSING (HIGH) | `art28_clauses.delete_or_return_on_termination` |
 | `art28.audit_and_inspection_rights` | Audit and inspection rights | GDPR Art. 28(3)(h) | HIGH | MISSING (HIGH) | `art28_clauses.audit_and_inspection_rights` |
-| `subprocessor.authorization` | Sub-processor authorisation | GDPR Art. 28(2) | HIGH | MISSING (HIGH) | `art28_clauses.subprocessor_authorization` |
-| `subprocessor.flowdown` | Sub-processor flow-down of data-protection obligations | GDPR Art. 28(4) | HIGH | MISSING (HIGH) | `art28_clauses.subprocessor_flowdown` |
+| `subprocessor.authorization` | Sub-processor authorisation | GDPR Art. 28(2) read with Art. 28(3)(d) | HIGH | MISSING (HIGH) | `art28_clauses.subprocessor_authorization` |
+| `subprocessor.change_notice_and_objection` | Notice of sub-processor changes and opportunity to object | GDPR Art. 28(2) read with Art. 28(3)(d) | HIGH | MISSING (HIGH); checked only when the sub-processor authorisation is "general" | `art28_clauses.subprocessor_authorization`, `art28_clauses.subprocessor_change_notice_and_objection` |
+| `subprocessor.flowdown` | Sub-processor flow-down of data-protection obligations | GDPR Art. 28(4) read with Art. 28(3)(d) | HIGH | MISSING (HIGH) | `art28_clauses.subprocessor_flowdown` |
 | `breach.processor_notifies` | Personal-data breach notification to controller | GDPR Art. 33(2) | HIGH | MISSING (HIGH) | `breach_notification.processor_notifies_controller`, `breach_notification.timing` |
 | `transfer.<country>` | International transfer to &lt;COUNTRY&gt; | GDPR Art. 44-46 | by transfer basis, see below | see below | `transfers.destinations`, `transfers.mechanisms.<COUNTRY>` |
 | `transfer.subprocessor.<name>` | Sub-processor transfer: &lt;name&gt; (&lt;COUNTRY&gt;) | GDPR Art. 28(4) / Art. 44-46 | by transfer basis, see below | see below | `subprocessors[].country`, `subprocessors[].transfer_mechanism` |

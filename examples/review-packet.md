@@ -4,13 +4,14 @@
 
 > BLOCKED: open high-severity findings must be resolved before this DPA can be relied on.
 
-Checks: 21, present 18, missing 3, needs-review 0, open high 3, open medium 0
+Checks: 22, present 18, missing 4, needs-review 0, open high 4, open medium 0
 
 ## Open findings
 
 | Severity | Status | Finding | Citation | Remediation |
 | --- | --- | --- | --- | --- |
-| HIGH | [missing] | Sub-processor flow-down of data-protection obligations | GDPR Art. 28(4) | Add a clause imposing materially equivalent obligations on every sub-processor (Art. 28(4)). |
+| HIGH | [missing] | Notice of sub-processor changes and opportunity to object | GDPR Art. 28(2) read with Art. 28(3)(d) | Add a clause under which the processor informs the controller of any intended addition or replacement of a sub-processor, giving the controller the opportunity to object (Art. 28(2)). |
+| HIGH | [missing] | Sub-processor flow-down of data-protection obligations | GDPR Art. 28(4) read with Art. 28(3)(d) | Add a clause imposing materially equivalent obligations on every sub-processor (Art. 28(4)). |
 | HIGH | [missing] | Sub-processor transfer: Support Tools LLC (US) | GDPR Art. 28(4) / Art. 44-46 | Confirm the transfer mechanism covering Support Tools LLC in US. |
 | HIGH | [missing] | International transfer to US | GDPR Art. 44-46 | Document a valid Art. 46 safeguard for US (or an Art. 49 derogation) and record the basis. |
 
@@ -18,7 +19,8 @@ Checks: 21, present 18, missing 3, needs-review 0, open high 3, open medium 0
 
 | Severity | Status | Finding | Citation |
 | --- | --- | --- | --- |
-| HIGH | [missing] | Sub-processor flow-down of data-protection obligations | GDPR Art. 28(4) |
+| HIGH | [missing] | Notice of sub-processor changes and opportunity to object | GDPR Art. 28(2) read with Art. 28(3)(d) |
+| HIGH | [missing] | Sub-processor flow-down of data-protection obligations | GDPR Art. 28(4) read with Art. 28(3)(d) |
 | HIGH | [missing] | Sub-processor transfer: Support Tools LLC (US) | GDPR Art. 28(4) / Art. 44-46 |
 | HIGH | [missing] | International transfer to US | GDPR Art. 44-46 |
 | HIGH | [ok] | Assistance with data-subject rights requests | GDPR Art. 28(3)(e) |
@@ -29,7 +31,7 @@ Checks: 21, present 18, missing 3, needs-review 0, open high 3, open medium 0
 | HIGH | [ok] | Processing only on documented instructions | GDPR Art. 28(3)(a) |
 | HIGH | [ok] | Security of processing (technical & organisational measures) | GDPR Art. 28(3)(c) / Art. 32 |
 | HIGH | [ok] | Personal-data breach notification to controller | GDPR Art. 33(2) |
-| HIGH | [ok] | Sub-processor authorisation | GDPR Art. 28(2) |
+| HIGH | [ok] | Sub-processor authorisation | GDPR Art. 28(2) read with Art. 28(3)(d) |
 | MEDIUM | [ok] | Processing description: categories of data subjects | GDPR Art. 28(3) |
 | MEDIUM | [ok] | Processing description: categories of personal data | GDPR Art. 28(3) |
 | MEDIUM | [ok] | Processing description: duration of the processing | GDPR Art. 28(3) |

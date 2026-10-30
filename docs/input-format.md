@@ -39,7 +39,7 @@ A flag that is `false`, `null` or omitted reads as "the DPA does not contain thi
 }
 ```
 
-It is valid, and `BLOCKED`: it records no Art. 28 clause. [`data/sample_dpa.json`](../data/sample_dpa.json) is a complete example, and [`tests/fixtures/`](../tests/fixtures/) holds 21 more.
+It is valid, and `BLOCKED`: it records no Art. 28 clause. [`data/sample_dpa.json`](../data/sample_dpa.json) is a complete example, and [`tests/fixtures/`](../tests/fixtures/) holds 24 more.
 
 ## Keys
 
@@ -70,7 +70,8 @@ Required, an object. The processor clauses GDPR Art. 28(2)-(4) require. Each fla
 | `art28_clauses.process_on_documented_instructions` | boolean, or null | no | Art. 28(3)(a): the processor processes only on documented instructions. Rule art28.process_on_documented_instructions. |
 | `art28_clauses.confidentiality_commitment` | boolean, or null | no | Art. 28(3)(b): persons authorised to process are bound to confidentiality. Rule art28.confidentiality_commitment. |
 | `art28_clauses.security_measures_art32` | boolean, or null | no | Art. 28(3)(c): the processor takes the security measures of Art. 32. Rule art28.security_measures_art32. |
-| `art28_clauses.subprocessor_authorization` | one of `specific`, `general`, `none`, or null | no | Art. 28(2): "specific" (prior specific written authorisation), "general" (general written authorisation) or "none". Rule subprocessor.authorization: "none", null or omitted is MISSING. |
+| `art28_clauses.subprocessor_authorization` | one of `specific`, `general`, `none`, or null | no | Art. 28(2): "specific" (prior specific written authorisation), "general" (general written authorisation) or "none". Rule subprocessor.authorization: "none", null or omitted is MISSING. "general" also runs rule subprocessor.change_notice_and_objection. |
+| `art28_clauses.subprocessor_change_notice_and_objection` | boolean, or null | no | Art. 28(2), second sentence, read with Art. 28(3)(d): under general written authorisation, the processor informs the controller of any intended addition or replacement of a sub-processor, giving the controller the opportunity to object. Read only when subprocessor_authorization is "general" (rule subprocessor.change_notice_and_objection). |
 | `art28_clauses.subprocessor_flowdown` | boolean, or null | no | Art. 28(4): the same data-protection obligations are imposed on every sub-processor. Rule subprocessor.flowdown. |
 | `art28_clauses.assist_data_subject_requests` | boolean, or null | no | Art. 28(3)(e): the processor assists with data-subject requests. Rule art28.assist_data_subject_requests. |
 | `art28_clauses.assist_security_breach` | boolean, or null | no | Art. 28(3)(f): the processor assists with security, breach and DPIA obligations (Art. 32-36). Rule art28.assist_security_breach. |

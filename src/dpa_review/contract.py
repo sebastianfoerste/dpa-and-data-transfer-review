@@ -169,8 +169,14 @@ CONTRACT: dict[str, Field] = {
                 "choice",
                 'Art. 28(2): "specific" (prior specific written authorisation), "general" (general '
                 'written authorisation) or "none". Rule subprocessor.authorization: "none", null or '
-                "omitted is MISSING.",
+                'omitted is MISSING. "general" also runs rule subprocessor.change_notice_and_objection.',
                 options=AUTHORISATIONS,
+            ),
+            "subprocessor_change_notice_and_objection": _flag(
+                "Art. 28(2), second sentence, read with Art. 28(3)(d): under general written authorisation, "
+                "the processor informs the controller of any intended addition or replacement of a "
+                "sub-processor, giving the controller the opportunity to object. Read only when "
+                'subprocessor_authorization is "general" (rule subprocessor.change_notice_and_objection).'
             ),
             "subprocessor_flowdown": _flag(
                 "Art. 28(4): the same data-protection obligations are imposed on every sub-processor. "

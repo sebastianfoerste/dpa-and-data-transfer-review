@@ -13,7 +13,7 @@ import bisect
 import json
 import re
 
-from dpa_review.checks import SUBPROCESSOR_TRANSFER, subprocessor_rule_id
+from dpa_review.checks import CHANGE_NOTICE_RULE, SUBPROCESSOR_TRANSFER, subprocessor_rule_id
 from dpa_review.contract import KeyPath, format_path, parse_fact_path
 
 _ART28_FLAGS = "art28."
@@ -27,6 +27,12 @@ def rule_facts(dpa: dict, rule_id: str) -> list[KeyPath]:
         return [("processing", rule_id.split(".", 1)[1])]
     if rule_id == "subprocessor.authorization":
         return [("art28_clauses", "subprocessor_authorization")]
+    if rule_id == CHANGE_NOTICE_RULE:
+        # The authorisation decides whether the rule runs; the flag decides its status.
+        return [
+            ("art28_clauses", "subprocessor_authorization"),
+            ("art28_clauses", "subprocessor_change_notice_and_objection"),
+        ]
     if rule_id == "subprocessor.flowdown":
         return [("art28_clauses", "subprocessor_flowdown")]
     if rule_id == "breach.processor_notifies":

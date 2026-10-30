@@ -192,6 +192,11 @@ def check_processing_description(dpa: dict) -> list[Finding]:
 
 # --- Sub-processor authorisation and flow-down (Art. 28(2) and 28(4)) --------
 
+# Art. 28(3)(d) has the contract stipulate that the processor respects the conditions of Art. 28(2)
+# and 28(4) for engaging another processor, so the rules below cite those paragraphs read with it.
+CHANGE_NOTICE_RULE = "subprocessor.change_notice_and_objection"
+
+
 def check_subprocessors(dpa: dict) -> list[Finding]:
     findings: list[Finding] = []
     auth = _get(dpa, "art28_clauses.subprocessor_authorization", "none")
@@ -199,7 +204,7 @@ def check_subprocessors(dpa: dict) -> list[Finding]:
         Finding(
             rule_id="subprocessor.authorization",
             title="Sub-processor authorisation",
-            citation="GDPR Art. 28(2)",
+            citation="GDPR Art. 28(2) read with Art. 28(3)(d)",
             severity="HIGH",
             status="PRESENT" if auth in {"specific", "general"} else "MISSING",
             detail=(
@@ -213,12 +218,41 @@ def check_subprocessors(dpa: dict) -> list[Finding]:
             ),
         )
     )
+    if auth == "general":
+        # Art. 28(2), second sentence: under general written authorisation the processor informs the
+        # controller of intended additions or replacements, giving it the opportunity to object. Read
+        # only then; false, null or omitted reads as not found, like every other clause flag.
+        notice = bool(_get(dpa, "art28_clauses.subprocessor_change_notice_and_objection", False))
+        findings.append(
+            Finding(
+                rule_id=CHANGE_NOTICE_RULE,
+                title="Notice of sub-processor changes and opportunity to object",
+                citation="GDPR Art. 28(2) read with Art. 28(3)(d)",
+                severity="HIGH",
+                status="PRESENT" if notice else "MISSING",
+                detail=(
+                    "Under the general authorisation, the DPA has the processor inform the controller of "
+                    "intended additions or replacements of sub-processors, giving the controller the "
+                    "opportunity to object."
+                    if notice
+                    else "Sub-processor authorisation is 'general', but no clause was found under which the "
+                    "processor informs the controller of intended additions or replacements of "
+                    "sub-processors, giving the controller the opportunity to object."
+                ),
+                remediation=(
+                    "" if notice
+                    else "Add a clause under which the processor informs the controller of any intended "
+                    "addition or replacement of a sub-processor, giving the controller the opportunity to "
+                    "object (Art. 28(2))."
+                ),
+            )
+        )
     flowdown = bool(_get(dpa, "art28_clauses.subprocessor_flowdown", False))
     findings.append(
         Finding(
             rule_id="subprocessor.flowdown",
             title="Sub-processor flow-down of data-protection obligations",
-            citation="GDPR Art. 28(4)",
+            citation="GDPR Art. 28(4) read with Art. 28(3)(d)",
             severity="HIGH",
             status="PRESENT" if flowdown else "MISSING",
             detail=(

@@ -121,7 +121,7 @@
           ]
         },
         "subprocessor_authorization": {
-          "description": "Art. 28(2): \"specific\" (prior specific written authorisation), \"general\" (general written authorisation) or \"none\". Rule subprocessor.authorization: \"none\", null or omitted is MISSING.",
+          "description": "Art. 28(2): \"specific\" (prior specific written authorisation), \"general\" (general written authorisation) or \"none\". Rule subprocessor.authorization: \"none\", null or omitted is MISSING. \"general\" also runs rule subprocessor.change_notice_and_objection.",
           "type": [
             "string",
             "null"
@@ -131,6 +131,13 @@
             "general",
             "none",
             null
+          ]
+        },
+        "subprocessor_change_notice_and_objection": {
+          "description": "Art. 28(2), second sentence, read with Art. 28(3)(d): under general written authorisation, the processor informs the controller of any intended addition or replacement of a sub-processor, giving the controller the opportunity to object. Read only when subprocessor_authorization is \"general\" (rule subprocessor.change_notice_and_objection).",
+          "type": [
+            "boolean",
+            "null"
           ]
         },
         "subprocessor_flowdown": {

@@ -2,19 +2,28 @@
   "title": "Synthetic SaaS Data Processing Agreement review packet",
   "review_state": "BLOCKED",
   "summary": {
-    "total": 21,
+    "total": 22,
     "present": 18,
-    "missing": 3,
+    "missing": 4,
     "needs_review": 0,
-    "high_open": 3,
+    "high_open": 4,
     "medium_open": 0
   },
   "disclaimer": "This is an automated first-pass review packet generated from a checklist of deterministic rules. It is not legal advice, does not create a lawyer-client relationship, and must be reviewed by a qualified lawyer before any decision. All data in the bundled example is synthetic.",
   "findings": [
     {
+      "rule_id": "subprocessor.change_notice_and_objection",
+      "title": "Notice of sub-processor changes and opportunity to object",
+      "citation": "GDPR Art. 28(2) read with Art. 28(3)(d)",
+      "severity": "HIGH",
+      "status": "MISSING",
+      "detail": "Sub-processor authorisation is 'general', but no clause was found under which the processor informs the controller of intended additions or replacements of sub-processors, giving the controller the opportunity to object.",
+      "remediation": "Add a clause under which the processor informs the controller of any intended addition or replacement of a sub-processor, giving the controller the opportunity to object (Art. 28(2))."
+    },
+    {
       "rule_id": "subprocessor.flowdown",
       "title": "Sub-processor flow-down of data-protection obligations",
-      "citation": "GDPR Art. 28(4)",
+      "citation": "GDPR Art. 28(4) read with Art. 28(3)(d)",
       "severity": "HIGH",
       "status": "MISSING",
       "detail": "The DPA does not flow the same data-protection obligations down to sub-processors.",
@@ -113,7 +122,7 @@
     {
       "rule_id": "subprocessor.authorization",
       "title": "Sub-processor authorisation",
-      "citation": "GDPR Art. 28(2)",
+      "citation": "GDPR Art. 28(2) read with Art. 28(3)(d)",
       "severity": "HIGH",
       "status": "PRESENT",
       "detail": "Sub-processor authorisation is 'general'.",

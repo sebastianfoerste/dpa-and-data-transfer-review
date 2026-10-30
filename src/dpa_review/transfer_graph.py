@@ -6,7 +6,7 @@ import hashlib
 import json
 from typing import Any
 
-from dpa_review.checks import EEA, subprocessor_rule_id
+from dpa_review.checks import CHANGE_NOTICE_RULE, EEA, subprocessor_rule_id
 from dpa_review.review import OPEN_STATUSES, ReviewPacket, markdown_text, one_line
 
 SCHEMA = "dpa-review.transfer-evidence-graph.v1"
@@ -98,6 +98,12 @@ def build_transfer_evidence_graph(
     # Each edge names the controls the packet decides it by. checks.check_transfers raises the
     # transfer impact assessment finding whenever a recorded mechanism is SCCs or BCR.
     transfer_impact = "transfer.impact_assessment"
+    # Under general authorisation checks.check_subprocessors also checks the change-notice and
+    # objection clause, which governs every appointment.
+    clauses = dpa.get("art28_clauses")
+    authorisation_controls = ["subprocessor.authorization"]
+    if isinstance(clauses, dict) and clauses.get("subprocessor_authorization") == "general":
+        authorisation_controls.append(CHANGE_NOTICE_RULE)
     represented_destinations: set[str] = set()
     for index, subprocessor in enumerate(dpa.get("subprocessors", []) or []):
         name = str(subprocessor.get("name", f"Sub-processor {index + 1}"))
@@ -115,7 +121,7 @@ def build_transfer_evidence_graph(
         transfer_controls = (
             [subprocessor_rule_id(subprocessor.get("name", "unknown"))] if country not in EEA else []
         )
-        appointment_controls = ["subprocessor.authorization", "subprocessor.flowdown", *transfer_controls]
+        appointment_controls = [*authorisation_controls, "subprocessor.flowdown", *transfer_controls]
         edges.append(
             {
                 "edge_id": f"processor-to-subprocessor-{index + 1}",

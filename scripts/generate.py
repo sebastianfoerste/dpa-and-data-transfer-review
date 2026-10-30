@@ -20,6 +20,7 @@ sys.path.insert(0, str(ROOT / "src"))
 from dpa_review.checks import (  # noqa: E402
     ABSENCE_MARKERS,
     ADEQUACY,
+    CHANGE_NOTICE_RULE,
     EEA,
     SUBPROCESSOR_TRANSFER,
     assess_transfer,
@@ -228,7 +229,12 @@ def _reads(rule_id: str, dpa: dict) -> str:
 
 def rules() -> str:
     present, absent = _probe(True), _probe(False)
-    when_absent = {finding.rule_id: finding for finding in run_all_checks(absent)}
+    # The change-notice rule runs only under general authorisation, which the absent probe does not
+    # record; a second absent probe with "general" supplies it, and the first probe wins elsewhere.
+    absent_general = _probe(False)
+    absent_general["art28_clauses"]["subprocessor_authorization"] = "general"
+    when_absent = {finding.rule_id: finding for finding in run_all_checks(absent_general)}
+    when_absent.update({finding.rule_id: finding for finding in run_all_checks(absent)})
     lines = [
         GENERATED_NOTE,
         "",
@@ -258,6 +264,8 @@ def rules() -> str:
             )
         if rule_id == "transfer.impact_assessment":
             absent_status += "; checked only when SCCs or BCR are relied on"
+        if rule_id == CHANGE_NOTICE_RULE:
+            absent_status += '; checked only when the sub-processor authorisation is "general"'
         lines.append(
             f"| `{rule_id}` | {_cell(finding.title)} | {_cell(finding.citation)} | {severity} "
             f"| {absent_status} | {_reads(rule_id, present)} |"
