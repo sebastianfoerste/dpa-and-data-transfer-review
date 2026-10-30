@@ -10,7 +10,9 @@ with exit 3:
 
 * an unknown key, at any level, is refused, with the closest known key as a suggestion;
 * a required section or key that is missing or null is refused;
-* a value of the wrong JSON type is refused, so the string "false" is not read as present;
+* a value of the wrong JSON type is refused, so the string "false" in a flag is not read as present;
+* a processing description that is blank or only an absence marker, such as "not specified" or
+  "false" in any case, is refused, so it is not read as a stated description;
 * a few cross-field rules that JSON Schema cannot express are checked as well.
 
 `json_schema()` writes the same contract out as JSON Schema (schema/dpa.schema.json, regenerated
@@ -26,7 +28,12 @@ import re
 from dataclasses import dataclass, field
 from typing import Any, Union
 
-from dpa_review.checks import VALID_TRANSFER_MECHANISMS
+from dpa_review.checks import (
+    ABSENCE_MARKER_PATTERN,
+    ABSENCE_MARKERS,
+    VALID_TRANSFER_MECHANISMS,
+    is_absence_marker,
+)
 
 SCHEMA_ID = (
     "https://raw.githubusercontent.com/sebastianfoerste/dpa-and-data-transfer-review/"
@@ -60,7 +67,8 @@ class Field:
     """One key of the contract.
 
     kind is one of: flag (a JSON boolean), text (a string), name (a non-empty string),
-    description (a string or a boolean), country (a two-letter code), choice (one of
+    description (a boolean, or a string that is neither blank nor an absence marker such as
+    "n/a"), country (a two-letter code), choice (one of
     `options`), labels (a list of non-empty strings), countries (a list of country codes),
     section (an object with `fields`), entries (a list of objects with `fields`),
     by_country (an object keyed by country code, each value a `value`), evidence (the
@@ -84,6 +92,11 @@ def _flag(description: str) -> Field:
 
 
 _ART28 = "true when the DPA contains the clause; false, null or omitted when it was not found."
+_MARKERS = ", ".join(f'"{marker}"' for marker in ABSENCE_MARKERS[:-1]) + f' or "{ABSENCE_MARKERS[-1]}"'
+_DESCRIPTION = (
+    "false, null or omitted when it is not stated. A blank string, or " + _MARKERS + " in any case, "
+    "is refused."
+)
 
 CONTRACT: dict[str, Field] = {
     "$schema": Field(
@@ -104,17 +117,21 @@ CONTRACT: dict[str, Field] = {
         fields={
             "subject_matter": Field(
                 "description",
-                "The subject matter of the processing is stated: true, or a short description. "
-                "Rule processing.subject_matter.",
+                "The subject matter of the processing is stated: true, or a short description; "
+                + _DESCRIPTION
+                + " Rule processing.subject_matter.",
             ),
             "duration": Field(
                 "description",
-                "The duration of the processing is stated: true, or a short description. Rule processing.duration.",
+                "The duration of the processing is stated: true, or a short description; "
+                + _DESCRIPTION
+                + " Rule processing.duration.",
             ),
             "nature_and_purpose": Field(
                 "description",
-                "The nature and purpose of the processing are stated: true, or a short description. "
-                "Rule processing.nature_and_purpose.",
+                "The nature and purpose of the processing are stated: true, or a short description; "
+                + _DESCRIPTION
+                + " Rule processing.nature_and_purpose.",
             ),
             "data_types": Field(
                 "labels",
@@ -408,6 +425,16 @@ def _check(value: Any, spec: Field, path: KeyPath, out: list[Violation]) -> None
     elif kind == "description":
         if not isinstance(value, (bool, str)):
             refuse("a description (a string) or true/false")
+        elif isinstance(value, str) and is_absence_marker(value):
+            # Read as text, "not specified" would make the rule PRESENT and could clear the packet.
+            out.append(
+                Violation(
+                    path,
+                    f"{where} must be a description (a string) or true/false, got {value!r}, which is blank "
+                    f"or an absence marker ({', '.join(ABSENCE_MARKERS)}) and states nothing; record false "
+                    "when the DPA does not state it.",
+                )
+            )
     elif kind == "country":
         _check_country(value, path, out)
     elif kind == "choice":
@@ -629,6 +656,8 @@ def _schema(spec: Field) -> dict[str, Any]:
         schema.update(type=_types(spec, "string"), pattern=r"\S")
     elif kind == "description":
         schema["type"] = _types(spec, "boolean", "string")
+        # "type": "string" inside "not" keeps true and false valid: the pattern refuses strings only.
+        schema["not"] = {"type": "string", "pattern": ABSENCE_MARKER_PATTERN}
     elif kind == "country":
         schema.update(type=_types(spec, "string"), **_COUNTRY_SCHEMA)
     elif kind == "choice":

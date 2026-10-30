@@ -82,5 +82,61 @@
     "exit_code": 3,
     "errors": ["art28_clauses.subprocessor_flowdown must be true or false, got 'false'"],
     "legal_review_note": ""
+  },
+  "13-description-false.json": {
+    "checks": "The subject matter of the processing recorded as the string \"false\", an absence marker that a truthiness check would read as a stated description.",
+    "review_state": null,
+    "exit_code": 3,
+    "errors": ["processing.subject_matter must be a description (a string) or true/false, got 'false'"],
+    "legal_review_note": ""
+  },
+  "14-description-no.json": {
+    "checks": "The duration of the processing recorded as the string \"no\", an absence marker that a truthiness check would read as a stated description.",
+    "review_state": null,
+    "exit_code": 3,
+    "errors": ["processing.duration must be a description (a string) or true/false, got 'no'"],
+    "legal_review_note": ""
+  },
+  "15-description-none.json": {
+    "checks": "The nature and purpose of the processing recorded as the string \"none\", an absence marker that a truthiness check would read as a stated description.",
+    "review_state": null,
+    "exit_code": 3,
+    "errors": ["processing.nature_and_purpose must be a description (a string) or true/false, got 'none'"],
+    "legal_review_note": ""
+  },
+  "16-description-n-a.json": {
+    "checks": "The subject matter of the processing recorded as the string \"N/A\", an absence marker that a truthiness check would read as a stated description.",
+    "review_state": null,
+    "exit_code": 3,
+    "errors": ["processing.subject_matter must be a description (a string) or true/false, got 'N/A'"],
+    "legal_review_note": ""
+  },
+  "17-description-unknown.json": {
+    "checks": "The duration of the processing recorded as the string \"unknown\", an absence marker that a truthiness check would read as a stated description.",
+    "review_state": null,
+    "exit_code": 3,
+    "errors": ["processing.duration must be a description (a string) or true/false, got 'unknown'"],
+    "legal_review_note": ""
+  },
+  "18-description-not-specified.json": {
+    "checks": "The duration of the processing recorded as the string \"Not specified\", an absence marker that a truthiness check would read as a stated description.",
+    "review_state": null,
+    "exit_code": 3,
+    "errors": ["processing.duration must be a description (a string) or true/false, got 'Not specified'"],
+    "legal_review_note": ""
+  },
+  "19-description-tbd.json": {
+    "checks": "The nature and purpose of the processing recorded as the string \"TBD\", an absence marker that a truthiness check would read as a stated description.",
+    "review_state": null,
+    "exit_code": 3,
+    "errors": ["processing.nature_and_purpose must be a description (a string) or true/false, got 'TBD'"],
+    "legal_review_note": ""
+  },
+  "20-description-blank.json": {
+    "checks": "The subject matter of the processing recorded as a blank string, which states nothing but used to read as a stated description.",
+    "review_state": null,
+    "exit_code": 3,
+    "errors": ["processing.subject_matter must be a description (a string) or true/false, got '   '"],
+    "legal_review_note": ""
   }
 }

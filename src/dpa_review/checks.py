@@ -8,6 +8,7 @@ present, missing, or needs human review. This is a review packet, never legal ad
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, asdict
 from typing import Any, Callable
 
@@ -93,6 +94,37 @@ def check_art28_core(dpa: dict) -> list[Finding]:
 
 # --- Processing description (Art. 28(3) opening / Art. 30) --------------------
 
+# Strings that record a processing description as absent or unknown instead of stating it. A
+# description that is one of them (trimmed, in any case) or a blank string states nothing: the
+# input contract refuses it with exit 3, and the rules below read it as not stated, never as
+# PRESENT. Only these whole values are caught; any other wording is read as a description.
+ABSENCE_MARKERS = ("false", "no", "none", "n/a", "unknown", "not specified", "tbd")
+# _any_case copies every character other than a letter unescaped into the pattern.
+assert all(re.fullmatch("[a-z/ ]+", marker) for marker in ABSENCE_MARKERS), "escape the new marker"
+
+
+def _any_case(word: str) -> str:
+    # "no" -> "[Nn][Oo]": case-insensitive without a regex flag, which a JSON Schema pattern cannot carry.
+    return "".join(f"[{ch.upper()}{ch.lower()}]" if ch.isalpha() else ch for ch in word)
+
+
+# A blank string, or one absence marker with any whitespace around it. schema/dpa.schema.json
+# refuses description strings with the same pattern, so the schema and the CLI agree.
+ABSENCE_MARKER_PATTERN = r"^\s*(?:" + "|".join(_any_case(marker) for marker in ABSENCE_MARKERS) + r")?\s*$"
+_ABSENCE_MARKER = re.compile(ABSENCE_MARKER_PATTERN)
+
+
+def is_absence_marker(value: str) -> bool:
+    """True for a blank string or an absence marker such as " N/A ", which states no description."""
+    return _ABSENCE_MARKER.search(value) is not None
+
+
+def _description_stated(value: Any) -> bool:
+    if isinstance(value, str):
+        return not is_absence_marker(value)
+    return bool(value)
+
+
 def check_processing_description(dpa: dict) -> list[Finding]:
     required = {
         "subject_matter": "subject matter of the processing",
@@ -101,7 +133,7 @@ def check_processing_description(dpa: dict) -> list[Finding]:
     }
     findings: list[Finding] = []
     for key, label in required.items():
-        present = bool(_get(dpa, f"processing.{key}", False))
+        present = _description_stated(_get(dpa, f"processing.{key}", False))
         findings.append(
             Finding(
                 rule_id=f"processing.{key}",

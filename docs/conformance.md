@@ -2,7 +2,7 @@
 
 # Conformance suite
 
-12 synthetic DPA descriptions in [`tests/fixtures/`](../tests/fixtures/), each with the review state, exit code and open rules the CLI must produce, recorded in [`expected.json`](../tests/fixtures/expected.json). [`tests/test_conformance.py`](../tests/test_conformance.py) runs every fixture through the CLI on every push, on Python 3.10 to 3.13, and fails on any difference.
+20 synthetic DPA descriptions in [`tests/fixtures/`](../tests/fixtures/), each with the review state, exit code and open rules the CLI must produce, recorded in [`expected.json`](../tests/fixtures/expected.json). [`tests/test_conformance.py`](../tests/test_conformance.py) runs every fixture through the CLI on every push, on Python 3.10 to 3.13, and fails on any difference.
 
 The fixtures freeze what the rules do today. Where a result looks legally questionable it is flagged below for review rather than changed: a rule change needs a lawyer's sign-off and a deliberate update of the expected result.
 
@@ -20,6 +20,14 @@ The fixtures freeze what the rules do today. Where a result looks legally questi
 | [`10-brazil-adequacy.json`](../tests/fixtures/10-brazil-adequacy.json) ⚑ | A direct transfer to Brazil recorded as relying on adequacy. | `BLOCKED` | 2 | `transfer.br` |
 | [`11-misspelt-transfers-key.json`](../tests/fixtures/11-misspelt-transfers-key.json) | "transfer" instead of "transfers", with every sub-processor in the EEA: the fail-open input that used to come out CLEARED_FOR_REVIEW with exit 0. | refused (no state) | 3 | n/a |
 | [`12-string-false-flag.json`](../tests/fixtures/12-string-false-flag.json) | Flow-down recorded as the string "false", which a truthiness check would read as present. | refused (no state) | 3 | n/a |
+| [`13-description-false.json`](../tests/fixtures/13-description-false.json) | The subject matter of the processing recorded as the string "false", an absence marker that a truthiness check would read as a stated description. | refused (no state) | 3 | n/a |
+| [`14-description-no.json`](../tests/fixtures/14-description-no.json) | The duration of the processing recorded as the string "no", an absence marker that a truthiness check would read as a stated description. | refused (no state) | 3 | n/a |
+| [`15-description-none.json`](../tests/fixtures/15-description-none.json) | The nature and purpose of the processing recorded as the string "none", an absence marker that a truthiness check would read as a stated description. | refused (no state) | 3 | n/a |
+| [`16-description-n-a.json`](../tests/fixtures/16-description-n-a.json) | The subject matter of the processing recorded as the string "N/A", an absence marker that a truthiness check would read as a stated description. | refused (no state) | 3 | n/a |
+| [`17-description-unknown.json`](../tests/fixtures/17-description-unknown.json) | The duration of the processing recorded as the string "unknown", an absence marker that a truthiness check would read as a stated description. | refused (no state) | 3 | n/a |
+| [`18-description-not-specified.json`](../tests/fixtures/18-description-not-specified.json) | The duration of the processing recorded as the string "Not specified", an absence marker that a truthiness check would read as a stated description. | refused (no state) | 3 | n/a |
+| [`19-description-tbd.json`](../tests/fixtures/19-description-tbd.json) | The nature and purpose of the processing recorded as the string "TBD", an absence marker that a truthiness check would read as a stated description. | refused (no state) | 3 | n/a |
+| [`20-description-blank.json`](../tests/fixtures/20-description-blank.json) | The subject matter of the processing recorded as a blank string, which states nothing but used to read as a stated description. | refused (no state) | 3 | n/a |
 
 ## ⚑ Flagged for legal review
 

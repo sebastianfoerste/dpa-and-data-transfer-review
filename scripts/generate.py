@@ -17,7 +17,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from dpa_review.checks import ADEQUACY, EEA, assess_transfer, run_all_checks  # noqa: E402
+from dpa_review.checks import ABSENCE_MARKERS, ADEQUACY, EEA, assess_transfer, run_all_checks  # noqa: E402
 from dpa_review.contract import CONTRACT, MECHANISMS, Field, format_path, schema_text  # noqa: E402
 from dpa_review.facts import rule_facts  # noqa: E402
 
@@ -92,6 +92,12 @@ def input_format() -> str:
         "- A required section or key that is missing or `null` is refused. Record an absence explicitly "
         "(`[]`, `false`, `\"none\"`) instead of leaving the key out.",
         "- A value of the wrong JSON type is refused: the string `\"false\"` is not a boolean.",
+        "- A processing description (`processing.subject_matter`, `processing.duration`, "
+        "`processing.nature_and_purpose`) that is blank, or that is only "
+        + ", ".join(f"`{marker}`" for marker in ABSENCE_MARKERS[:-1])
+        + f" or `{ABSENCE_MARKERS[-1]}` in any case and with any surrounding whitespace, is refused: it "
+        "states nothing, but would read as a stated description. Record `false` when the DPA does not "
+        "state it. Only these whole values are refused; any other wording is read as a description.",
         "- Country codes are upper-case ISO 3166-1 alpha-2 codes. `UK`, `EL` and `EU` are refused with "
         "the code to use instead (`GB`, `GR`, a member state).",
         "- Every key of `transfers.mechanisms` must be a country that `transfers.destinations` lists.",
@@ -110,7 +116,7 @@ def input_format() -> str:
         "",
         "It is valid, and `BLOCKED`: it records no Art. 28 clause. "
         "[`data/sample_dpa.json`](../data/sample_dpa.json) is a complete example, and "
-        "[`tests/fixtures/`](../tests/fixtures/) holds twelve more.",
+        f"[`tests/fixtures/`](../tests/fixtures/) holds {len(load_expected())} more.",
         "",
         "## Keys",
         "",

@@ -17,6 +17,7 @@ error: dpa.json breaks the input contract, so no review state was decided (2 pro
 - An unknown key, at any level, is refused, with the closest known key as a suggestion.
 - A required section or key that is missing or `null` is refused. Record an absence explicitly (`[]`, `false`, `"none"`) instead of leaving the key out.
 - A value of the wrong JSON type is refused: the string `"false"` is not a boolean.
+- A processing description (`processing.subject_matter`, `processing.duration`, `processing.nature_and_purpose`) that is blank, or that is only `false`, `no`, `none`, `n/a`, `unknown`, `not specified` or `tbd` in any case and with any surrounding whitespace, is refused: it states nothing, but would read as a stated description. Record `false` when the DPA does not state it. Only these whole values are refused; any other wording is read as a description.
 - Country codes are upper-case ISO 3166-1 alpha-2 codes. `UK`, `EL` and `EU` are refused with the code to use instead (`GB`, `GR`, a member state).
 - Every key of `transfers.mechanisms` must be a country that `transfers.destinations` lists.
 - Sub-processor names must differ, ignoring case, spaces and punctuation, because rule ids are derived from them.
@@ -38,7 +39,7 @@ A flag that is `false`, `null` or omitted reads as "the DPA does not contain thi
 }
 ```
 
-It is valid, and `BLOCKED`: it records no Art. 28 clause. [`data/sample_dpa.json`](../data/sample_dpa.json) is a complete example, and [`tests/fixtures/`](../tests/fixtures/) holds twelve more.
+It is valid, and `BLOCKED`: it records no Art. 28 clause. [`data/sample_dpa.json`](../data/sample_dpa.json) is a complete example, and [`tests/fixtures/`](../tests/fixtures/) holds 20 more.
 
 ## Keys
 
@@ -54,9 +55,9 @@ Required, an object. The processing details GDPR Art. 28(3) requires the DPA to 
 
 | Key | Type | Required | Meaning |
 | --- | --- | --- | --- |
-| `processing.subject_matter` | string or boolean, or null | no | The subject matter of the processing is stated: true, or a short description. Rule processing.subject_matter. |
-| `processing.duration` | string or boolean, or null | no | The duration of the processing is stated: true, or a short description. Rule processing.duration. |
-| `processing.nature_and_purpose` | string or boolean, or null | no | The nature and purpose of the processing are stated: true, or a short description. Rule processing.nature_and_purpose. |
+| `processing.subject_matter` | string or boolean, or null | no | The subject matter of the processing is stated: true, or a short description; false, null or omitted when it is not stated. A blank string, or "false", "no", "none", "n/a", "unknown", "not specified" or "tbd" in any case, is refused. Rule processing.subject_matter. |
+| `processing.duration` | string or boolean, or null | no | The duration of the processing is stated: true, or a short description; false, null or omitted when it is not stated. A blank string, or "false", "no", "none", "n/a", "unknown", "not specified" or "tbd" in any case, is refused. Rule processing.duration. |
+| `processing.nature_and_purpose` | string or boolean, or null | no | The nature and purpose of the processing are stated: true, or a short description; false, null or omitted when it is not stated. A blank string, or "false", "no", "none", "n/a", "unknown", "not specified" or "tbd" in any case, is refused. Rule processing.nature_and_purpose. |
 | `processing.data_types` | list of strings, or null | no | The types of personal data processed. Rule processing.data_types: an empty or omitted list is MISSING. |
 | `processing.data_subjects` | list of strings, or null | no | The categories of data subjects. Recorded only: no rule reads it. |
 

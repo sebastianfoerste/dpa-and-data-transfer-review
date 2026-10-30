@@ -2,6 +2,7 @@
 
 import copy
 import json
+import random
 import tempfile
 import unittest
 from pathlib import Path
@@ -165,6 +166,88 @@ class Evidence(unittest.TestCase):
                 self.assertTrue(messages(changed(evidence={"ccpa": item})))
 
 
+# The absence markers decided for DPA-01, written out here rather than read from the code under test.
+ABSENCE_MARKERS = ("false", "no", "none", "n/a", "unknown", "not specified", "tbd")
+DESCRIPTION_KEYS = ("subject_matter", "duration", "nature_and_purpose")
+
+
+def with_description(key, value):
+    """Fixture 01, which is CLEARED_FOR_REVIEW, with one processing description replaced."""
+    dpa = load(FIXTURES / "01-eea-only.json")
+    dpa["processing"][key] = value
+    return dpa
+
+
+def any_case_and_padding(marker, rng):
+    """`marker` in a random mix of upper and lower case, with random whitespace around it."""
+
+    def pad():
+        return "".join(rng.choice(" \t\n\r ") for _ in range(rng.randrange(3)))
+
+    return pad() + "".join(rng.choice((ch.upper(), ch.lower())) for ch in marker) + pad()
+
+
+class AbsenceMarkers(unittest.TestCase):
+    """A processing description that is blank or only marks the element as absent or unknown states
+    nothing. Read as text, "not specified" came out PRESENT, CLEARED_FOR_REVIEW and exit 0."""
+
+    def test_each_marker_and_a_blank_string_is_refused(self):
+        for key in DESCRIPTION_KEYS:
+            for marker in ABSENCE_MARKERS + ("", "   "):
+                with self.subTest(key=key, marker=marker):
+                    found = messages(with_description(key, marker))
+                    self.assertEqual(len(found), 1, found)
+                    self.assertTrue(
+                        found[0].startswith(
+                            f"processing.{key} must be a description (a string) or true/false, got {marker!r}"
+                        ),
+                        found,
+                    )
+                    self.assertIn("record false when the DPA does not state it", found[0])
+
+    def test_case_and_surrounding_whitespace_do_not_matter(self):
+        for marker in ("FALSE", "No", " none ", "N/A", "\tUnknown\n", "Not Specified", "TBD", " tbd"):
+            with self.subTest(marker=marker):
+                self.assertTrue(messages(with_description("duration", marker)))
+
+    def test_every_case_and_padding_variant_is_refused(self):
+        # Property test: no spelling of a marker in any case, with any surrounding whitespace, passes.
+        rng = random.Random(28)
+        for key in DESCRIPTION_KEYS:
+            for marker in ABSENCE_MARKERS + ("",):
+                for _ in range(25):
+                    value = any_case_and_padding(marker, rng)
+                    with self.subTest(key=key, value=value):
+                        self.assertTrue(messages(with_description(key, value)))
+
+    def test_descriptions_and_booleans_stay_valid(self):
+        values = (
+            True,
+            False,
+            None,
+            "The term of the main services agreement",
+            "No fixed end date: the term of the main services agreement",
+            "Hosting only; none of the data is sold",
+        )
+        for key in DESCRIPTION_KEYS:
+            for value in values:
+                with self.subTest(key=key, value=value):
+                    self.assertEqual(messages(with_description(key, value)), [])
+
+    def test_the_cli_refuses_each_marker_with_exit_3(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "dpa.json"
+            for key in DESCRIPTION_KEYS:
+                for marker in ABSENCE_MARKERS + ("", "   "):
+                    path.write_text(json.dumps(with_description(key, marker)), encoding="utf-8")
+                    for fail_on in ("needs_review", "blocked"):
+                        with self.subTest(key=key, marker=marker, fail_on=fail_on):
+                            code, stdout, stderr = run_cli("--input", path, "--quiet", "--fail-on", fail_on)
+                            self.assertEqual(code, 3, stderr)
+                            self.assertEqual(stdout, "")
+                            self.assertIn("no review state was decided", stderr)
+
+
 class CommandLine(unittest.TestCase):
     def test_fail_open_fixture_is_refused(self):
         # Without the contract, the misspelt section reads as "no direct transfers": cleared, exit 0.
@@ -221,6 +304,21 @@ class JsonSchemaAgreesWithTheContract(unittest.TestCase):
             with self.subTest(dpa=json.dumps(dpa)[:60]):
                 self.assertTrue(violations(dpa))
                 self.assertTrue(list(self.validator.iter_errors(dpa)))
+
+    def test_absence_markers_fail_the_schema_too(self):
+        rng = random.Random(45)
+        for key in DESCRIPTION_KEYS:
+            markers = ABSENCE_MARKERS + ("", "   ")
+            for marker in markers + tuple(any_case_and_padding(m, rng) for m in markers for _ in range(5)):
+                dpa = with_description(key, marker)
+                with self.subTest(key=key, marker=marker):
+                    self.assertTrue(violations(dpa))
+                    self.assertTrue(list(self.validator.iter_errors(dpa)))
+            for value in (True, False, None, "No fixed end date: the term of the main services agreement"):
+                dpa = with_description(key, value)
+                with self.subTest(key=key, value=value):
+                    self.assertEqual(violations(dpa), [])
+                    self.assertEqual(list(self.validator.iter_errors(dpa)), [])
 
 
 if __name__ == "__main__":

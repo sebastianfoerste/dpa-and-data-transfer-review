@@ -1,6 +1,7 @@
 """Deterministic tests. Pure stdlib unittest so `make test` needs no dependencies."""
 
 import json
+import random
 import unittest
 from pathlib import Path
 
@@ -80,6 +81,66 @@ class CuredPacket(unittest.TestCase):
         packet = build_packet(cured)
         self.assertEqual(packet.summary["high_open"], 0)
         self.assertIn(packet.review_state, {"NEEDS_REVIEW", "CLEARED_FOR_REVIEW"})
+
+
+# The absence markers decided for DPA-01, written out here rather than read from the code under test.
+ABSENCE_MARKERS = ("false", "no", "none", "n/a", "unknown", "not specified", "tbd")
+DESCRIPTION_KEYS = ("subject_matter", "duration", "nature_and_purpose")
+EEA_ONLY = json.loads((ROOT / "tests" / "fixtures" / "01-eea-only.json").read_text(encoding="utf-8"))
+DELETE = object()
+
+
+class ProcessingDescriptions(unittest.TestCase):
+    """Rules processing.subject_matter, processing.duration and processing.nature_and_purpose.
+
+    The rules run here without the input contract, which refuses a blank description or an absence
+    marker with exit 3 before any rule runs. The rules still must not read one as PRESENT.
+    """
+
+    def described(self, key, value):
+        dpa = json.loads(json.dumps(EEA_ONLY))
+        if value is DELETE:
+            del dpa["processing"][key]
+        else:
+            dpa["processing"][key] = value
+        return build_packet(dpa)
+
+    def test_a_description_or_true_is_present(self):
+        for key in DESCRIPTION_KEYS:
+            for value in (True, "The term of the main services agreement"):
+                with self.subTest(key=key, value=value):
+                    packet = self.described(key, value)
+                    self.assertEqual(_by_id(packet, f"processing.{key}").status, "PRESENT")
+                    self.assertEqual(packet.review_state, "CLEARED_FOR_REVIEW")
+
+    def test_false_null_or_omitted_is_missing(self):
+        for key in DESCRIPTION_KEYS:
+            for value in (False, None, DELETE):
+                with self.subTest(key=key, value=value):
+                    packet = self.described(key, value)
+                    finding = _by_id(packet, f"processing.{key}")
+                    self.assertEqual((finding.status, finding.severity), ("MISSING", "MEDIUM"))
+                    self.assertEqual(packet.review_state, "NEEDS_REVIEW")
+
+    def test_no_absence_marker_is_ever_present(self):
+        # Property test: in any case and with any surrounding whitespace, a blank string or an
+        # absence marker reads as MISSING, so the packet can never be CLEARED_FOR_REVIEW on it.
+        rng = random.Random(28)
+        for key in DESCRIPTION_KEYS:
+            for marker in ABSENCE_MARKERS + ("",):
+                variants = {marker, marker.upper(), f"  {marker.title()}\t"}
+                variants |= {
+                    "".join(rng.choice(" \t\n ") for _ in range(rng.randrange(3)))
+                    + "".join(rng.choice((ch.upper(), ch.lower())) for ch in marker)
+                    + "".join(rng.choice(" \t\n ") for _ in range(rng.randrange(3)))
+                    for _ in range(25)
+                }
+                for value in sorted(variants):
+                    with self.subTest(key=key, value=value):
+                        packet = self.described(key, value)
+                        finding = _by_id(packet, f"processing.{key}")
+                        self.assertEqual((finding.status, finding.severity), ("MISSING", "MEDIUM"))
+                        self.assertEqual(packet.review_state, "NEEDS_REVIEW")
 
 
 if __name__ == "__main__":

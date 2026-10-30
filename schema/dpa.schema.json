@@ -35,28 +35,40 @@
       "additionalProperties": false,
       "properties": {
         "subject_matter": {
-          "description": "The subject matter of the processing is stated: true, or a short description. Rule processing.subject_matter.",
+          "description": "The subject matter of the processing is stated: true, or a short description; false, null or omitted when it is not stated. A blank string, or \"false\", \"no\", \"none\", \"n/a\", \"unknown\", \"not specified\" or \"tbd\" in any case, is refused. Rule processing.subject_matter.",
           "type": [
             "boolean",
             "string",
             "null"
-          ]
+          ],
+          "not": {
+            "type": "string",
+            "pattern": "^\\s*(?:[Ff][Aa][Ll][Ss][Ee]|[Nn][Oo]|[Nn][Oo][Nn][Ee]|[Nn]/[Aa]|[Uu][Nn][Kk][Nn][Oo][Ww][Nn]|[Nn][Oo][Tt] [Ss][Pp][Ee][Cc][Ii][Ff][Ii][Ee][Dd]|[Tt][Bb][Dd])?\\s*$"
+          }
         },
         "duration": {
-          "description": "The duration of the processing is stated: true, or a short description. Rule processing.duration.",
+          "description": "The duration of the processing is stated: true, or a short description; false, null or omitted when it is not stated. A blank string, or \"false\", \"no\", \"none\", \"n/a\", \"unknown\", \"not specified\" or \"tbd\" in any case, is refused. Rule processing.duration.",
           "type": [
             "boolean",
             "string",
             "null"
-          ]
+          ],
+          "not": {
+            "type": "string",
+            "pattern": "^\\s*(?:[Ff][Aa][Ll][Ss][Ee]|[Nn][Oo]|[Nn][Oo][Nn][Ee]|[Nn]/[Aa]|[Uu][Nn][Kk][Nn][Oo][Ww][Nn]|[Nn][Oo][Tt] [Ss][Pp][Ee][Cc][Ii][Ff][Ii][Ee][Dd]|[Tt][Bb][Dd])?\\s*$"
+          }
         },
         "nature_and_purpose": {
-          "description": "The nature and purpose of the processing are stated: true, or a short description. Rule processing.nature_and_purpose.",
+          "description": "The nature and purpose of the processing are stated: true, or a short description; false, null or omitted when it is not stated. A blank string, or \"false\", \"no\", \"none\", \"n/a\", \"unknown\", \"not specified\" or \"tbd\" in any case, is refused. Rule processing.nature_and_purpose.",
           "type": [
             "boolean",
             "string",
             "null"
-          ]
+          ],
+          "not": {
+            "type": "string",
+            "pattern": "^\\s*(?:[Ff][Aa][Ll][Ss][Ee]|[Nn][Oo]|[Nn][Oo][Nn][Ee]|[Nn]/[Aa]|[Uu][Nn][Kk][Nn][Oo][Ww][Nn]|[Nn][Oo][Tt] [Ss][Pp][Ee][Cc][Ii][Ff][Ii][Ee][Dd]|[Tt][Bb][Dd])?\\s*$"
+          }
         },
         "data_types": {
           "description": "The types of personal data processed. Rule processing.data_types: an empty or omitted list is MISSING.",
