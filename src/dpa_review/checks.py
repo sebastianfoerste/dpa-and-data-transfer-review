@@ -110,7 +110,11 @@ def _any_case(word: str) -> str:
 
 # A blank string, or one absence marker with any whitespace around it. schema/dpa.schema.json
 # refuses description strings with the same pattern, so the schema and the CLI agree.
-ABSENCE_MARKER_PATTERN = r"^\s*(?:" + "|".join(_any_case(marker) for marker in ABSENCE_MARKERS) + r")?\s*$"
+# The trailing \s* sits inside the optional group, so two whitespace runs never meet: with
+# r"^\s*(?:...)?\s*$" a long run of whitespace followed by text backtracked in quadratic time.
+ABSENCE_MARKER_PATTERN = (
+    r"^\s*(?:(?:" + "|".join(_any_case(marker) for marker in ABSENCE_MARKERS) + r")\s*)?$"
+)
 _ABSENCE_MARKER = re.compile(ABSENCE_MARKER_PATTERN)
 
 

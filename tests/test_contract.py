@@ -2,7 +2,10 @@
 
 import copy
 import json
+import os
 import random
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -246,6 +249,88 @@ class AbsenceMarkers(unittest.TestCase):
                             self.assertEqual(code, 3, stderr)
                             self.assertEqual(stdout, "")
                             self.assertIn("no review state was decided", stderr)
+
+
+# A description is untrusted text of any length. The first absence-marker pattern,
+# r"^\s*(?:markers)?\s*$", backtracked in quadratic time on a long whitespace run followed by
+# text: 20,000 spaces and an "x" took 1.1 s, four times as long as 10,000, so 200,000 would
+# take about two minutes per check, and the CLI checks twice. The fixed pattern takes
+# milliseconds. Each run below gets a generous deadline in a subprocess, so a regression fails
+# within seconds instead of stalling the suite.
+LONG_RUN = 200_000
+DEADLINE_SECONDS = 15
+
+
+def run_python_with_deadline(test, *args):
+    """`python *args` with src on the path, or a test failure if it outlasts the deadline."""
+    try:
+        return subprocess.run(
+            [sys.executable, *map(str, args)],
+            capture_output=True,
+            text=True,
+            env=dict(os.environ, PYTHONPATH=str(ROOT / "src")),
+            cwd=ROOT,
+            timeout=DEADLINE_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        pass  # fail below, outside the handler, so the report does not repeat the whole command
+    test.fail(f"still running after {DEADLINE_SECONDS} s: the check is not linear in the input length")
+
+
+def schema_patterns(node):
+    """Every "not" pattern in the committed schema, which is where the description fields carry it."""
+    if isinstance(node, dict):
+        found = [node["not"]["pattern"]] if "pattern" in node.get("not", {}) else []
+        return found + [p for value in node.values() for p in schema_patterns(value)]
+    if isinstance(node, list):
+        return [p for value in node for p in schema_patterns(value)]
+    return []
+
+
+_TIMED_CHECK = """
+import json, re, sys
+from dpa_review.checks import is_absence_marker
+n, patterns = int(sys.argv[1]), json.loads(sys.argv[2])
+cases = {
+    " " * n + "x": False,
+    "\\t" * n + "none x": False,
+    " " * n + "none" + " " * n + "x": False,
+    " " * n + "The term of the main services agreement": False,
+    " " * n: True,
+    " " * n + "N/A" + "\\n" * n: True,
+}
+for value, marker in cases.items():
+    assert is_absence_marker(value) is marker, (value[-8:], marker)
+    for pattern in patterns:
+        assert (re.search(pattern, value) is not None) is marker, (pattern, value[-8:], marker)
+print("ok")
+"""
+
+
+class LongWhitespaceRuns(unittest.TestCase):
+    def test_the_pattern_and_the_schema_answer_at_once(self):
+        committed = (ROOT / "schema" / "dpa.schema.json").read_text(encoding="utf-8")
+        patterns = schema_patterns(json.loads(committed))
+        self.assertEqual(len(patterns), len(DESCRIPTION_KEYS))
+        result = run_python_with_deadline(self, "-c", _TIMED_CHECK, LONG_RUN, json.dumps(patterns))
+        self.assertEqual((result.returncode, result.stdout.strip()), (0, "ok"), result.stderr)
+
+    def test_the_cli_answers_at_once(self):
+        cases = (
+            ("duration", " " * LONG_RUN + "The term of the main services agreement", 0),
+            ("subject_matter", " " * LONG_RUN + "x", 0),
+            ("nature_and_purpose", " " * LONG_RUN + "none" + " " * LONG_RUN, 3),
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "dpa.json"
+            for key, value, expected in cases:
+                path.write_text(json.dumps(with_description(key, value)), encoding="utf-8")
+                for fail_on in ("needs_review", "blocked"):
+                    with self.subTest(key=key, fail_on=fail_on):
+                        result = run_python_with_deadline(
+                            self, "-m", "dpa_review.cli", "--input", path, "--quiet", "--fail-on", fail_on
+                        )
+                        self.assertEqual(result.returncode, expected, result.stderr[-300:])
 
 
 class CommandLine(unittest.TestCase):
