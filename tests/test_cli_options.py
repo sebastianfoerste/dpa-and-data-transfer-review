@@ -87,6 +87,23 @@ class Failures(unittest.TestCase):
         self.assertIn("RuntimeError: boom", stderr)
         self.assertIn("no review state was decided", stderr)
 
+    def test_paths_with_line_breaks_are_printed_on_one_line(self):
+        # A path is input: printed raw, a line break in it would start a line of its own, which the
+        # Actions runner reads as a workflow command when it starts with "::".
+        with tempfile.TemporaryDirectory() as tmp:
+            missing = Path(tmp) / "x\n::stop-commands::tok\n.json"
+            code, _, stderr = run_cli("--input", missing, "--quiet")
+            self.assertEqual((code, stderr.count("\n")), (3, 1))
+            self.assertIn(f"error: cannot read {str(missing)!r}:", stderr)
+            empty = Path(tmp) / "reg\n::error::forged"
+            try:
+                empty.mkdir()
+            except OSError as exc:  # pragma: no cover - a file system that refuses the name
+                self.skipTest(f"cannot create {empty.name!r} here: {exc}")
+            code, _, stderr = run_cli("--input", empty, "--quiet")
+            self.assertEqual((code, stderr.count("\n")), (3, 1))
+            self.assertIn(f"error: {str(empty)!r} contains no *.json files to review", stderr)
+
     def test_an_output_that_cannot_be_written_exits_3(self):
         with tempfile.TemporaryDirectory() as tmp:
             blocker = Path(tmp) / "out"

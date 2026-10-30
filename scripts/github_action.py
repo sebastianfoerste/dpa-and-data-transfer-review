@@ -7,7 +7,9 @@ It exits with dpa-review's own exit code, so `fail-on` decides whether the step 
 
 The inputs arrive as environment variables (DPA_REVIEW_INPUT, DPA_REVIEW_OUT, DPA_REVIEW_FAIL_ON,
 DPA_REVIEW_SARIF, DPA_REVIEW_ANNOTATE), never interpolated into a shell command, so an input
-cannot run code. Standard library only, like the package.
+cannot run code. dpa-review's standard error quotes file names and input values; it is relayed
+with every line the runner would read as a workflow command made inert (neutralise), so a DPA
+cannot issue one. Standard library only, like the package.
 """
 
 from __future__ import annotations
@@ -59,6 +61,24 @@ def _property(text: str) -> str:
     return _data(text).replace(":", "%3A").replace(",", "%2C")
 
 
+def neutralise(text: str) -> str:
+    """text with every line the runner could read as a workflow command made inert.
+
+    The runner reads a line of standard output or standard error as a command when it starts with
+    "::" after leading white space, or when it contains "##[" anywhere (actions/runner,
+    src/Runner.Common/ActionCommand.cs, TryParseV2 and TryParse). So the "::" that opens a line
+    becomes "%3A%3A" and every "##[" becomes "#%23[". Lines are split wherever Python splits them,
+    which includes CR and LF, the runner's line ends. Any other text is unchanged.
+    """
+    lines = []
+    for line in text.splitlines(keepends=True):
+        body = line.lstrip()
+        if body.startswith("::"):
+            line = line[: len(line) - len(body)] + "%3A%3A" + body[2:]
+        lines.append(line.replace("##[", "#%23["))
+    return "".join(lines)
+
+
 def annotations(log: dict) -> list[str]:
     """One workflow command per SARIF result, errors first: ::error file=…,line=…,title=…::message."""
     commands = []
@@ -100,7 +120,7 @@ def run(environ: Mapping[str, str]) -> int:
 
     common = ["--input", source, "--fail-on", fail_on]
     code, printed, errors = _run([*common, "--out", str(out), "--format", "json"])
-    sys.stderr.write(errors)
+    sys.stderr.write(neutralise(errors))
     # dpa-review prints the packet or the register summary only once it has written --out.
     data = json.loads(printed) if printed.strip() else None
 

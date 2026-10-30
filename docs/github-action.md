@@ -32,7 +32,10 @@ jobs:
 ```
 
 `input` is one DPA description, or a directory whose `*.json` files are reviewed as a register
-(see [input-format.md](input-format.md)). Pin a full commit SHA: there are no release tags yet, and
+(see [input-format.md](input-format.md)). In a register, each `*.json` entry must be a regular file,
+not a symbolic link, whose name starts with a letter or digit and holds only letters, digits,
+spaces, `.`, `_` and `-`. Any other `*.json` entry is not read: it fails the step with exit code `3`
+and is listed in the job summary. Pin a full commit SHA: there are no release tags yet, and
 a SHA cannot move. To block merges, make the job a required status check in the branch protection
 rules.
 
@@ -72,6 +75,9 @@ on those as well.
   the fact that decided it. `HIGH` becomes an error, `MEDIUM` a warning, and `LOW` a notice. On a pull
   request they appear next to the changed lines. GitHub shows at most 10 of each kind per step;
   the job summary and the SARIF log list them all.
+- **Error output:** what `dpa-review` reports on standard error goes to the step log. It can quote a
+  file name or an input value, so a line the runner would read as a workflow command is made inert
+  first: a leading `::` becomes `%3A%3A` and `##[` becomes `#%23[`.
 - **A SARIF log**, if `sarif` is set. Upload it to code scanning to track findings across runs:
 
 ```yaml

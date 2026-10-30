@@ -11,6 +11,10 @@ read as "not recorded". With --out, writes review-packet.md and .json and the tr
 graph: for a register, one subdirectory per input (named after the file), plus
 register-summary.md and .json.
 
+A register entry is reviewed only when it is a regular file, not a symbolic link, and its name
+matches REGISTER_NAME. Any other entry whose name ends in .json is an input problem, so it exits 3
+instead of being skipped, followed, or written outside --out under a name such as "...json".
+
 The exit code gates a pipeline: 2 BLOCKED, 1 NEEDS_REVIEW, 0 CLEARED_FOR_REVIEW (the worst
 state across a register). --fail-on blocked exits 0 for NEEDS_REVIEW, --fail-on never always
 exits 0. Unreadable input, input that breaks the contract, or a usage error exits 3 with
@@ -23,6 +27,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 import traceback
 from pathlib import Path
@@ -44,6 +49,9 @@ EXIT_CODES = {"BLOCKED": 2, "NEEDS_REVIEW": 1, "CLEARED_FOR_REVIEW": 0}
 # The lowest exit code that still fails, per --fail-on.
 FAIL_THRESHOLD = {"needs_review": 1, "blocked": 2, "never": 4}
 STDIN = "-"
+# A register entry's file name: no leading dot or dash, no path separator, no control character,
+# and a stem that names a subdirectory of --out on every Python version.
+REGISTER_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._ -]*\.json")
 
 
 class _ArgumentParser(argparse.ArgumentParser):
@@ -54,8 +62,14 @@ class _ArgumentParser(argparse.ArgumentParser):
         self.exit(EXIT_INPUT_ERROR, f"{self.prog}: error: {message}\n")
 
 
+def _shown(path: str) -> str:
+    """A path as a message prints it: unchanged, or as a Python string literal when it holds a line
+    break or another character that does not print, so a file name cannot start a line of its own."""
+    return path if path.isprintable() else repr(path)
+
+
 def _name(source: str) -> str:
-    return "standard input" if source == STDIN else source
+    return "standard input" if source == STDIN else _shown(source)
 
 
 def _read(path: str) -> str:
@@ -71,9 +85,9 @@ def _read(path: str) -> str:
     try:
         return Path(path).read_text(encoding="utf-8")
     except OSError as exc:
-        raise ValueError(f"cannot read {path}: {exc.strerror or exc}") from exc
+        raise ValueError(f"cannot read {_shown(path)}: {exc.strerror or exc}") from exc
     except UnicodeDecodeError as exc:
-        raise ValueError(f"{path} is not valid UTF-8 text: {exc.reason}") from exc
+        raise ValueError(f"{_shown(path)} is not valid UTF-8 text: {exc.reason}") from exc
 
 
 def _parse(text: str, path: str) -> dict:
@@ -106,6 +120,33 @@ def _review(source: str) -> Review:
         return review
     review.packet = build_packet(review.dpa)
     return review
+
+
+def _entry_problem(path: Path) -> str | None:
+    """Why a register entry is not reviewed, or None for a regular file with an accepted name."""
+    if path.is_symlink():
+        return f"{_shown(str(path))} is a symbolic link, which a register does not follow; copy the DPA description into the register."
+    if not path.is_file():
+        return f"{_shown(str(path))} is not a regular file, so it was not reviewed."
+    if not REGISTER_NAME.fullmatch(path.name):
+        return (
+            f"{_shown(str(path))} is not a register file name dpa-review reviews: a name starts with a letter "
+            "or digit, holds only letters, digits, spaces, '.', '_' and '-', and ends in .json."
+        )
+    return None
+
+
+def _register(directory: Path) -> list[Review]:
+    """One Review per entry directly inside the register whose name ends in .json. The name is
+    compared as text, not through Path.suffix, whose reading of names such as "...json" differs
+    across Python versions. An entry that is not reviewed is never read."""
+    reviews = []
+    for path in sorted(directory.iterdir(), key=str):
+        if not path.name.endswith(".json"):
+            continue
+        problem = _entry_problem(path)
+        reviews.append(Review(source=str(path), errors=[Problem(problem)]) if problem else _review(str(path)))
+    return reviews
 
 
 def _report_errors(review: Review) -> None:
@@ -141,11 +182,32 @@ def _write_packet(review: Review, out_dir: Path) -> None:
     )
 
 
+class _OutsideOut(ValueError):
+    """A packet directory that would not sit directly inside --out."""
+
+
+def _packet_dir(out_dir: Path, source: str) -> Path:
+    """out_dir/<the input's file name without .json>, checked to resolve directly inside out_dir, so
+    neither a file name nor a link already in out_dir can move a packet outside it."""
+    directory = out_dir / Path(source).name[: -len(".json")]
+    if directory.resolve().parent != out_dir.resolve():
+        raise _OutsideOut(
+            f"the packet for {_shown(source)} would be written outside {_shown(str(out_dir))}, "
+            f"at {_shown(str(directory.resolve()))}; nothing was written."
+        )
+    return directory
+
+
 def _write_outputs(reviews: list[Review], data: dict | None, out_dir: Path) -> None:
-    """Write each packet, and for a register (data is its summary) one directory per input."""
-    for review in reviews:
-        if review.packet:
-            _write_packet(review, out_dir / Path(review.source).stem if data is not None else out_dir)
+    """Write each packet, and for a register (data is its summary) one directory per input. Every
+    packet directory is checked before the first file is written."""
+    reviewed = [review for review in reviews if review.packet]
+    if data is None:
+        targets = [(review, out_dir) for review in reviewed]
+    else:
+        targets = [(review, _packet_dir(out_dir, review.source)) for review in reviewed]
+    for review, directory in targets:
+        _write_packet(review, directory)
     if data is not None:
         out_dir.mkdir(parents=True, exist_ok=True)
         (out_dir / "register-summary.md").write_text(render_summary(data), encoding="utf-8")
@@ -170,7 +232,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--input",
-        help="A DPA JSON file, '-' for standard input, or a directory whose *.json files are reviewed as a register.",
+        help="A DPA JSON file, '-' for standard input, or a directory whose *.json files are reviewed as a register "
+        "(regular files named like vendor-a.json; any other *.json entry exits 3).",
     )
     parser.add_argument("--out", default=None, help="Output directory for the review packet(s).")
     parser.add_argument(
@@ -216,14 +279,13 @@ def _run(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
     if register:
         if args.out and Path(args.out).resolve() == Path(args.input).resolve():
             parser.error("--out must not be the input directory: the next run would review the register summary as a DPA")
-        sources = sorted(str(path) for path in Path(args.input).iterdir() if path.suffix == ".json" and path.is_file())
-        if not sources:
-            print(f"error: {args.input} contains no *.json files to review", file=sys.stderr)
+        reviews = _register(Path(args.input))
+        if not reviews:
+            print(f"error: {_shown(args.input)} contains no *.json files to review", file=sys.stderr)
             return EXIT_INPUT_ERROR
     else:
-        sources = [args.input]
+        reviews = [_review(args.input)]
 
-    reviews = [_review(source) for source in sources]
     for review in reviews:
         if not review.packet:
             _report_errors(review)
@@ -236,8 +298,11 @@ def _run(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
     if args.out:
         try:
             _write_outputs(reviews, data, Path(args.out))
+        except _OutsideOut as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return EXIT_INPUT_ERROR
         except OSError as exc:
-            print(f"error: cannot write to {args.out}: {exc.strerror or exc}", file=sys.stderr)
+            print(f"error: cannot write to {_shown(args.out)}: {exc.strerror or exc}", file=sys.stderr)
             return EXIT_INPUT_ERROR
 
     if not args.quiet:

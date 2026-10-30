@@ -163,6 +163,65 @@ class Annotations(Step):
         )
 
 
+def runner_commands(text):
+    """The lines of text the Actions runner would parse as workflow commands, on standard output and
+    on standard error alike. The runner splits lines at CR and LF, and reads a line as a command when
+    it starts with "::" after leading white space or when it contains "##[" anywhere (actions/runner,
+    src/Runner.Common/ActionCommand.cs, TryParseV2 and TryParse). Python's lstrip removes every
+    character .NET's TrimStart removes, and a few more, so this errs on the side of finding one."""
+    return [line for line in re.split(r"\r\n|\r|\n", text) if line.lstrip().startswith("::") or "##[" in line]
+
+
+class RelayedErrors(Step):
+    """dpa-review's standard error quotes file names and input values. The step relays it, so no line
+    of it may reach the runner as a workflow command: a ::stop-commands:: token would also silence the
+    real ::error annotations printed after it."""
+
+    def register(self, name, dpa_path=SAMPLE_PATH):
+        vendors = self.tmp / "vendors"
+        vendors.mkdir()
+        shutil.copy(FIXTURES / "01-eea-only.json", vendors / "01-eea-only.json")
+        try:
+            shutil.copy(dpa_path, vendors / name)
+        except OSError as exc:  # pragma: no cover - a file system that refuses the name
+            self.skipTest(f"cannot create {name!r} here: {exc}")
+        return vendors
+
+    def test_a_file_name_cannot_inject_workflow_commands(self):
+        name = "x\n::stop-commands::tok\n::notice title=dpa-review::All DPAs CLEARED_FOR_REVIEW\n##[warning]w.json"
+        code, stdout, stderr, outputs, summary = self.step(input=self.register(name), fail_on="never")
+        self.assertEqual((code, outputs["exit-code"]), (3, "3"))
+        self.assertTrue(stderr)
+        self.assertEqual(runner_commands(stderr), [])
+        # The real annotations follow, each one a command the step wrote itself.
+        self.assertTrue(stdout)
+        self.assertTrue(all(line.startswith("::error ") for line in stdout.splitlines()), stdout)
+        self.assertEqual(len(runner_commands(stdout)), len(stdout.splitlines()))
+        self.assertIn("## Inputs that break the input contract", summary)
+
+    def test_input_values_cannot_inject_workflow_commands(self):
+        # The contract quotes the offending value in its message, here a destination listed twice.
+        dpa = json.loads((FIXTURES / "01-eea-only.json").read_text(encoding="utf-8"))
+        forged = "X\n::stop-commands::tok\n  ::notice::All clear\n##[warning]forged"
+        dpa["transfers"]["destinations"] = [forged, forged]
+        path = self.tmp / "forged.json"
+        path.write_text(json.dumps(dpa), encoding="utf-8")
+        code, _, stderr, _, _ = self.step(input=path)
+        self.assertEqual(code, 3)
+        self.assertIn("transfers.destinations", stderr)
+        self.assertEqual(runner_commands(stderr), [])
+
+    def test_neutralise(self):
+        text = "error: a\n::stop-commands::tok\r\n   ::error::x\r##[warning]y\nz ###[add-mask]k\n\x0b::notice::v\n"
+        self.assertEqual(
+            github_action.neutralise(text),
+            "error: a\n%3A%3Astop-commands::tok\r\n   %3A%3Aerror::x\r#%23[warning]y\nz #"
+            "#%23[add-mask]k\n\x0b%3A%3Anotice::v\n",
+        )
+        self.assertEqual(runner_commands(github_action.neutralise(text)), [])
+        self.assertEqual(github_action.neutralise("error: plain\n  line 3: text\n"), "error: plain\n  line 3: text\n")
+
+
 class Sarif(Step):
     def test_the_sarif_log_is_written_where_asked(self):
         path = self.tmp / "reports" / "dpa-review.sarif"
