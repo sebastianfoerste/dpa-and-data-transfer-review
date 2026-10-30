@@ -38,16 +38,16 @@ flowchart LR
 | --- | --- | --- | --- |
 | processor-direct-to-us | block | direct_transfer_to | transfer.us |
 | processor-to-subprocessor-1 | block | appoints_subprocessor | subprocessor.authorization, subprocessor.flowdown |
-| processor-to-subprocessor-2 | block | appoints_subprocessor | subprocessor.authorization, subprocessor.flowdown, transfer.subprocessor.support_tools_llc |
-| processor-to-subprocessor-3 | block | appoints_subprocessor | subprocessor.authorization, subprocessor.flowdown, transfer.subprocessor.analytics_kk |
-| subprocessor-2-to-us | block | processes_in | transfer.subprocessor.support_tools_llc |
+| processor-to-subprocessor-2 | block | appoints_subprocessor | subprocessor.authorization, subprocessor.flowdown, transfer.subprocessor.support\_tools\_llc |
+| processor-to-subprocessor-3 | block | appoints_subprocessor | subprocessor.authorization, subprocessor.flowdown, transfer.subprocessor.analytics\_kk |
+| subprocessor-2-to-us | block | processes_in | transfer.subprocessor.support\_tools\_llc |
 
 ## Control remediation queue
 
 | Control | Severity | Affected edges | Reviewer | Required evidence |
 | --- | --- | ---: | --- | --- |
 | subprocessor.flowdown | HIGH | 3 | Privacy Counsel | Add a clause imposing materially equivalent obligations on every sub-processor (Art. 28(4)). |
-| transfer.subprocessor.support_tools_llc | HIGH | 2 | Privacy Counsel | Confirm the transfer mechanism covering Support Tools LLC in US. |
+| transfer.subprocessor.support\_tools\_llc | HIGH | 2 | Privacy Counsel | Confirm the transfer mechanism covering Support Tools LLC in US. |
 | transfer.us | HIGH | 1 | Privacy Counsel | Document a valid Art. 46 safeguard for US (or an Art. 49 derogation) and record the basis. |
 
 ## Review gate

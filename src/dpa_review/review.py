@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -103,9 +104,26 @@ _STATE_BANNER = {
 _STATUS_MARK = {"PRESENT": "[ok]", "MISSING": "[missing]", "NEEDS_REVIEW": "[review]"}
 
 
-def _cell(text: str) -> str:
-    """Input text made safe for one Markdown table cell."""
-    return " ".join(text.split()).replace("|", "\\|")
+_CONTROL_CHARACTERS = re.compile(r"[\x00-\x1f\x7f-\x9f]")
+_MARKDOWN_CHARACTERS = re.compile(r"[\\|*_`\[\]<>]")
+
+
+def one_line(text: Any) -> str:
+    """Text on one line: control characters, CR and LF among them, become spaces, and each run of
+    whitespace one space."""
+    return " ".join(_CONTROL_CHARACTERS.sub(" ", str(text)).split())
+
+
+def markdown_text(text: Any) -> str:
+    """Input-derived text made safe for one line of Markdown: a heading or a table cell.
+
+    The input is untrusted. On one line it cannot start a block of its own, such as a heading, a
+    review state line or an HTML block that hides the rest of the document. With backslash, pipe,
+    emphasis, code, link and angle-bracket characters escaped, and a leading "#", it cannot end a
+    table cell or turn into markup either.
+    """
+    escaped = _MARKDOWN_CHARACTERS.sub(lambda match: "\\" + match.group(), one_line(text))
+    return "\\" + escaped if escaped.startswith("#") else escaped
 
 
 def _source(packet: ReviewPacket, finding: Finding) -> str:
@@ -114,14 +132,14 @@ def _source(packet: ReviewPacket, finding: Finding) -> str:
     for item in packet.evidence.get(finding.rule_id, []):
         clause, quote = item.get("clause"), item.get("quote")
         text = f'{clause}: "{quote}"' if clause and quote else clause or f'"{quote}"'
-        parts.append(_cell(text))
+        parts.append(markdown_text(text))
     return "<br>".join(parts) or "not recorded"
 
 
 def render_markdown(packet: ReviewPacket) -> str:
     s = packet.summary
     lines: list[str] = []
-    lines.append(f"# {packet.title}")
+    lines.append(f"# {markdown_text(packet.title)}")
     lines.append("")
     lines.append(f"**Review state: {packet.review_state}**")
     lines.append("")
@@ -150,7 +168,8 @@ def render_markdown(packet: ReviewPacket) -> str:
         lines.append("| --- | --- | --- | --- | --- |" + (" --- |" if sourced else ""))
         for f in open_findings:
             lines.append(
-                f"| {f.severity} | {_STATUS_MARK[f.status]} | {f.title} | {f.citation} | {f.remediation or 'n/a'} |"
+                f"| {f.severity} | {_STATUS_MARK[f.status]} | {markdown_text(f.title)} | {f.citation} "
+                f"| {markdown_text(f.remediation or 'n/a')} |"
                 + (f" {_source(packet, f)} |" if sourced else "")
             )
         lines.append("")
@@ -161,7 +180,7 @@ def render_markdown(packet: ReviewPacket) -> str:
     lines.append("| --- | --- | --- | --- |" + (" --- |" if sourced else ""))
     for f in packet.findings:
         lines.append(
-            f"| {f.severity} | {_STATUS_MARK[f.status]} | {f.title} | {f.citation} |"
+            f"| {f.severity} | {_STATUS_MARK[f.status]} | {markdown_text(f.title)} | {f.citation} |"
             + (f" {_source(packet, f)} |" if sourced else "")
         )
     lines.append("")

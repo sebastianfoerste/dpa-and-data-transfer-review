@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from dpa_review.checks import SEVERITY_ORDER
-from dpa_review.review import DISCLAIMER, OPEN_STATUSES, ReviewPacket
+from dpa_review.review import DISCLAIMER, OPEN_STATUSES, ReviewPacket, markdown_text
 
 SCHEMA = "dpa-review.register-summary.v1"
 STATES = ("BLOCKED", "NEEDS_REVIEW", "CLEARED_FOR_REVIEW")  # worst first
@@ -99,10 +99,6 @@ def summary(reviews: list[Review], exit_code: int) -> dict[str, Any]:
     }
 
 
-def _cell(text: str) -> str:
-    return " ".join(str(text).split()).replace("|", "\\|")
-
-
 def render_summary(data: dict[str, Any]) -> str:
     counts = data["counts"]
     worst = data["worst_review_state"] or "none decided"
@@ -125,7 +121,7 @@ def render_summary(data: dict[str, Any]) -> str:
         order = {state: index for index, state in enumerate(STATES)}
         for dpa in sorted(data["dpas"], key=lambda item: (order[item["review_state"]], item["source"])):
             lines.append(
-                f"| {dpa['review_state']} | {_cell(dpa['title'])} | {_cell(dpa['source'])} "
+                f"| {dpa['review_state']} | {markdown_text(dpa['title'])} | {markdown_text(dpa['source'])} "
                 f"| {dpa['high_open']} | {dpa['medium_open']} | {dpa['open_findings']} |"
             )
         lines.append("")
@@ -137,7 +133,9 @@ def render_summary(data: dict[str, Any]) -> str:
             "| --- | --- | --- | ---: |",
         ]
         for rule in data["open_rules"]:
-            lines.append(f"| {rule['rule_id']} | {rule['severity']} | {rule['citation']} | {rule['dpa_count']} |")
+            lines.append(
+                f"| {markdown_text(rule['rule_id'])} | {rule['severity']} | {rule['citation']} | {rule['dpa_count']} |"
+            )
         lines.append("")
     if data["invalid_inputs"]:
         lines += [
@@ -149,7 +147,7 @@ def render_summary(data: dict[str, Any]) -> str:
             "| --- | --- |",
         ]
         for item in data["invalid_inputs"]:
-            lines.append(f"| {_cell(item['source'])} | {'<br>'.join(_cell(error) for error in item['errors'])} |")
+            lines.append(f"| {markdown_text(item['source'])} | {'<br>'.join(markdown_text(error) for error in item['errors'])} |")
         lines.append("")
     lines += ["---", "", f"_{data['disclaimer']}_", ""]
     return "\n".join(lines)

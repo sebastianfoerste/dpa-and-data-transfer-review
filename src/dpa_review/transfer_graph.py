@@ -8,7 +8,7 @@ import re
 from typing import Any
 
 from dpa_review.checks import EEA
-from dpa_review.review import OPEN_STATUSES, ReviewPacket
+from dpa_review.review import OPEN_STATUSES, ReviewPacket, markdown_text, one_line
 
 SCHEMA = "dpa-review.transfer-evidence-graph.v1"
 
@@ -253,7 +253,11 @@ def build_transfer_evidence_graph(
 
 
 def _mermaid_label(value: str) -> str:
-    return value.replace('"', "'")
+    """A node label inside a quoted Mermaid string: one line, so it cannot add a node, an edge or
+    a closing fence; no backticks, which would start a Markdown string; quotes and angle brackets
+    as Mermaid entity codes."""
+    text = one_line(str(value).replace("`", ""))
+    return text.replace('"', "#quot;").replace("<", "#lt;").replace(">", "#gt;")
 
 
 def render_transfer_evidence_graph(graph: dict[str, Any]) -> str:
@@ -299,7 +303,7 @@ def render_transfer_evidence_graph(graph: dict[str, Any]) -> str:
     for link in graph["weakest_links"]:
         lines.append(
             f"| {link['edge_id']} | {link['status']} | {link['relationship']} "
-            f"| {', '.join(link['control_refs'])} |"
+            f"| {', '.join(markdown_text(ref) for ref in link['control_refs'])} |"
         )
     if not graph["weakest_links"]:
         lines.append("| none | pass | n/a | n/a |")
@@ -314,9 +318,9 @@ def render_transfer_evidence_graph(graph: dict[str, Any]) -> str:
     )
     for item in graph["remediation_queue"]:
         lines.append(
-            f"| {item['control_ref']} | {item['severity']} "
+            f"| {markdown_text(item['control_ref'])} | {item['severity']} "
             f"| {len(item['affected_edges'])} | {item['reviewer_role']} "
-            f"| {item['required_evidence']} |"
+            f"| {markdown_text(item['required_evidence'])} |"
         )
     if not graph["remediation_queue"]:
         lines.append("| none | n/a | 0 | n/a | none |")
