@@ -10,7 +10,7 @@ install:
 test:
 	@PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m unittest discover -s tests -t . -q
 
-# Needs `pip install coverage` (and jsonschema for the JSON Schema cross-checks); CI runs it.
+# Needs `pip install -r requirements-dev.txt` (coverage, and jsonschema for the JSON Schema cross-checks); CI runs it.
 coverage:
 	@PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m coverage run -m unittest discover -s tests -t . -q
 	@$(PYTHON) -m coverage report
