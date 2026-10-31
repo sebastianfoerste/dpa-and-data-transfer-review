@@ -12,17 +12,11 @@ from __future__ import annotations
 import bisect
 import json
 import re
-from typing import Any
 
+from dpa_review.checks import SUBPROCESSOR_TRANSFER_PREFIX, subprocessor_rule_id
 from dpa_review.contract import KeyPath, format_path, parse_fact_path
 
 _ART28_FLAGS = "art28."
-_SUBPROCESSOR_TRANSFER = "transfer.subprocessor."
-
-
-def _subprocessor_slug(name: Any) -> str:
-    # The same derivation checks.check_transfers uses for transfer.subprocessor.<name>.
-    return str(name).lower().replace(" ", "_")
 
 
 def rule_facts(dpa: dict, rule_id: str) -> list[KeyPath]:
@@ -44,13 +38,12 @@ def rule_facts(dpa: dict, rule_id: str) -> list[KeyPath]:
         return [("transfers", "transfer_impact_assessment")]
     if rule_id.startswith("ccpa."):
         return [("ccpa", rule_id.split(".", 1)[1])]
-    if rule_id.startswith(_SUBPROCESSOR_TRANSFER):
-        slug = rule_id[len(_SUBPROCESSOR_TRANSFER):]
+    if rule_id.startswith(SUBPROCESSOR_TRANSFER_PREFIX):
         entries = dpa.get("subprocessors") or []
         return [
             ("subprocessors", index)
             for index, entry in enumerate(entries)
-            if isinstance(entry, dict) and _subprocessor_slug(entry.get("name", "unknown")) == slug
+            if isinstance(entry, dict) and subprocessor_rule_id(entry.get("name", "unknown")) == rule_id
         ]
     if rule_id.startswith("transfer."):
         code = rule_id.split(".", 1)[1]
