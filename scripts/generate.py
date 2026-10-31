@@ -17,7 +17,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from dpa_review.checks import ADEQUACY, EEA, assess_transfer, run_all_checks  # noqa: E402
+from dpa_review.checks import ADEQUACY, EEA, REFERENCE_DATA_AS_OF, assess_transfer, run_all_checks  # noqa: E402
 from dpa_review.contract import CONTRACT, MECHANISMS, Field, format_path, schema_text  # noqa: E402
 from dpa_review.facts import rule_facts  # noqa: E402
 
@@ -266,10 +266,12 @@ def rules() -> str:
         "",
         "## Reference data",
         "",
-        "The country lists the transfer rules use, as they stand in `checks.py`. They are illustrative "
-        "and carry no as-of date yet: verify them against the European Commission's current "
-        "[adequacy decisions](https://commission.europa.eu/law/law-topic/data-protection/international-"
-        "dimension-data-protection/adequacy-decisions_en) before relying on a result.",
+        "The country lists the transfer rules use, as they stand in `checks.py`. They were last checked "
+        f"against the European Commission's [adequacy decisions](https://commission.europa.eu/law/law-topic/"
+        f"data-protection/international-dimension-data-protection/adequacy-decisions_en) on {REFERENCE_DATA_AS_OF}; "
+        "[reference-data.md](reference-data.md) records the decision behind each entry, what was verified "
+        "and what the code does not model. They are illustrative: check the list again before relying on "
+        "a result.",
         "",
         f"- EEA ({len(EEA)}): " + ", ".join(sorted(EEA)),
         f"- Adequacy (Art. 45) ({len(ADEQUACY)}): " + ", ".join(sorted(ADEQUACY)),

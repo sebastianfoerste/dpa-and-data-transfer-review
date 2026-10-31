@@ -63,11 +63,11 @@
     "legal_review_note": ""
   },
   "10-brazil-adequacy.json": {
-    "checks": "A direct transfer to Brazil recorded as relying on adequacy.",
-    "review_state": "BLOCKED",
-    "exit_code": 2,
-    "open_rules": ["transfer.br"],
-    "legal_review_note": "Brazil is not in the adequacy reference data, so this is an open HIGH finding. The competitive review reports that the Commission's adequacy list has included Brazil since January 2026; the reference data needs a dated, sourced update."
+    "checks": "A direct transfer to Brazil recorded as relying on adequacy (Commission decision of 26 January 2026).",
+    "review_state": "CLEARED_FOR_REVIEW",
+    "exit_code": 0,
+    "open_rules": [],
+    "legal_review_note": "Changed on 2026-10-31 from BLOCKED (exit 2, open rule transfer.br): Brazil was added to the adequacy reference data on the basis of the Commission Implementing Decision of 26 January 2026, C(2026) 373 final, adopted under Art. 45(3) GDPR (Art. 1: controllers and processors in Brazil subject to the LGPD; Art. 3(4): first evaluation after four years), read from the Commission's published text and its adequacy page. The Official Journal citation (EU) 2026/179 was not verified on EUR-Lex. A lawyer should confirm the entry; see docs/reference-data.md."
   },
   "11-misspelt-transfers-key.json": {
     "checks": "\"transfer\" instead of \"transfers\", with every sub-processor in the EEA: the fail-open input that used to come out CLEARED_FOR_REVIEW with exit 0.",
