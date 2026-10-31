@@ -18,6 +18,41 @@ def _by_id(packet, rule_id):
     return next(f for f in packet.findings if f.rule_id == rule_id)
 
 
+def _open_high(packet):
+    """{rule id: status} of the packet's open HIGH findings."""
+    return {f.rule_id: f.status for f in packet.findings if f.status in OPEN_STATUSES and f.severity == "HIGH"}
+
+
+def _support_tools(dpa):
+    return next(sp for sp in dpa["subprocessors"] if sp["name"] == "Support Tools LLC")
+
+
+def _record_tia(dpa):
+    dpa["transfers"]["transfer_impact_assessment"] = True
+
+
+def _changed(*changes):
+    """The packet for a copy of the sample with each change applied."""
+    dpa = json.loads(json.dumps(SAMPLE))
+    for change in changes:
+        change(dpa)
+    return build_packet(dpa)
+
+
+# The input changes README.md ("What the demo produces") names as moving the sample to NEEDS_REVIEW,
+# written out here rather than read from the README.
+CURE_CHANGES = {
+    "flow-down clause": lambda dpa: dpa["art28_clauses"].update(subprocessor_flowdown=True),
+    "notice and objection": lambda dpa: dpa["art28_clauses"].update(
+        subprocessor_change_notice_and_objection=True
+    ),
+    "SCCs for the direct US transfer": lambda dpa: dpa["transfers"]["mechanisms"].update(US="sccs"),
+    "SCCs for Support Tools LLC": lambda dpa: _support_tools(dpa).update(transfer_mechanism="sccs"),
+}
+SUPPORT_TOOLS_RULE = "transfer.subprocessor.support_tools_llc"
+SCCS_WITHOUT_TIA = ROOT / "tests" / "fixtures" / "04-sccs-without-tia.json"
+
+
 class TransferAssessment(unittest.TestCase):
     def test_eea_country_needs_no_mechanism(self):
         status, sev, _ = assess_transfer("FR", "none")
@@ -80,16 +115,85 @@ class SamplePacket(unittest.TestCase):
 
 
 class CuredPacket(unittest.TestCase):
+    """README.md, "What the demo produces": the four input changes in CURE_CHANGES move the sample from
+    BLOCKED to NEEDS_REVIEW, each of them is needed, and the three fixes the README used to name leave
+    it BLOCKED."""
+
     def test_fixing_defects_clears_high_findings(self):
-        cured = json.loads(json.dumps(SAMPLE))
-        cured["art28_clauses"]["subprocessor_flowdown"] = True
-        cured["art28_clauses"]["subprocessor_change_notice_and_objection"] = True
-        cured["transfers"]["mechanisms"]["US"] = "sccs"
-        cured["transfers"]["transfer_impact_assessment"] = True
-        cured["subprocessors"][1]["transfer_mechanism"] = "sccs"
-        packet = build_packet(cured)
+        packet = _changed(*CURE_CHANGES.values(), _record_tia)
+        self.assertEqual((packet.summary["high_open"], packet.summary["medium_open"]), (0, 0))
+        self.assertEqual(packet.review_state, "NEEDS_REVIEW")
+        # The two US transfers on SCCs stay open as LOW review items, so the sample cannot clear.
+        for rule_id in ("transfer.us", SUPPORT_TOOLS_RULE):
+            with self.subTest(rule_id=rule_id):
+                finding = _by_id(packet, rule_id)
+                self.assertEqual((finding.status, finding.severity), ("NEEDS_REVIEW", "LOW"))
+        self.assertEqual(_by_id(packet, "transfer.impact_assessment").status, "PRESENT")
+
+    def test_without_a_recorded_tia_the_cure_leaves_a_medium_review_item(self):
+        packet = _changed(*CURE_CHANGES.values())
         self.assertEqual(packet.summary["high_open"], 0)
-        self.assertIn(packet.review_state, {"NEEDS_REVIEW", "CLEARED_FOR_REVIEW"})
+        self.assertEqual(packet.review_state, "NEEDS_REVIEW")
+        finding = _by_id(packet, "transfer.impact_assessment")
+        self.assertEqual((finding.status, finding.severity), ("NEEDS_REVIEW", "MEDIUM"))
+
+    def test_each_of_the_four_changes_is_needed(self):
+        for left_out in CURE_CHANGES:
+            with self.subTest(left_out=left_out):
+                rest = [change for name, change in CURE_CHANGES.items() if name != left_out]
+                packet = _changed(*rest, _record_tia)
+                self.assertEqual(packet.summary["high_open"], 1)
+                self.assertEqual(packet.review_state, "BLOCKED")
+
+    def test_the_three_fixes_the_old_readme_named_leave_the_sample_blocked(self):
+        # The README used to say that a flow-down clause, an Art. 46 mechanism for the US transfer and a
+        # recorded transfer impact assessment move the sample to NEEDS_REVIEW.
+        packet = _changed(
+            CURE_CHANGES["flow-down clause"], CURE_CHANGES["SCCs for the direct US transfer"], _record_tia
+        )
+        self.assertEqual(packet.review_state, "BLOCKED")
+        self.assertEqual(_open_high(packet), {NOTICE_RULE: "MISSING", SUPPORT_TOOLS_RULE: "MISSING"})
+
+
+class TransferImpactAssessmentGate(unittest.TestCase):
+    """README.md, "AI SaaS legal-team use case": the sample raises no transfer impact assessment finding,
+    and a missing assessment is a MEDIUM review item. It makes a packet NEEDS_REVIEW, never BLOCKED, so
+    it fails a gate only from --fail-on needs_review (the CLI default, not the Action's)."""
+
+    def test_the_sample_raises_no_tia_finding(self):
+        packet = build_packet(SAMPLE)
+        self.assertNotIn("transfer.impact_assessment", {f.rule_id for f in packet.findings})
+        self.assertEqual(
+            _open_high(packet),
+            {
+                "subprocessor.flowdown": "MISSING",
+                NOTICE_RULE: "MISSING",
+                "transfer.us": "MISSING",
+                SUPPORT_TOOLS_RULE: "MISSING",
+            },
+        )
+
+    def test_a_missing_tia_is_a_medium_review_item(self):
+        packet = build_packet(json.loads(SCCS_WITHOUT_TIA.read_text(encoding="utf-8")))
+        finding = _by_id(packet, "transfer.impact_assessment")
+        self.assertEqual((finding.status, finding.severity), ("NEEDS_REVIEW", "MEDIUM"))
+        self.assertEqual(packet.review_state, "NEEDS_REVIEW")
+
+    def test_the_cli_fails_on_a_missing_tia_only_from_needs_review(self):
+        for fail_on, expected in (((), 1), (("--fail-on", "needs_review"), 1), (("--fail-on", "blocked"), 0)):
+            with self.subTest(fail_on=fail_on):
+                self.assertEqual(run_cli("--input", SCCS_WITHOUT_TIA, "--quiet", *fail_on), (expected, "", ""))
+
+
+class ReadmeDemo(unittest.TestCase):
+    def test_the_readme_quotes_the_committed_sample_packet(self):
+        # The block under "What the demo produces" is the start of examples/review-packet.md, which
+        # tests/test_github_action.py holds equal to what the CLI writes for the sample.
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        quoted = readme.split("## What the demo produces", 1)[1].split("```\n", 2)[1].splitlines()
+        packet = (ROOT / "examples" / "review-packet.md").read_text(encoding="utf-8").splitlines()
+        self.assertIn("**Review state: BLOCKED**", quoted)
+        self.assertEqual(quoted, packet[: len(quoted)])
 
 
 # The absence markers decided for DPA-01, written out here rather than read from the code under test.

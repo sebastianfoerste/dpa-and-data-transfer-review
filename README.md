@@ -61,15 +61,15 @@ uncovered Chapter V paths while keeping every approval and transfer action
 disabled. Its control remediation queue deduplicates each open rule, shows every
 affected transfer edge, and routes the required evidence to a named lawyer role.
 
-Fix the three defects in the input (flow-down clause, an Art. 46 mechanism for the US transfer, and a recorded transfer impact assessment) and the packet drops to `NEEDS_REVIEW`. There is a test that asserts exactly this transition.
+The packet drops to `NEEDS_REVIEW` (exit code `1`) once the input records four changes: a sub-processor flow-down clause, a notice of sub-processor changes with an opportunity to object, SCCs for the direct transfer to the US, and SCCs for Support Tools LLC. Leave out any one of the four and the packet stays `BLOCKED`. It does not clear further, because the two US transfers on SCCs stay open as `LOW` review items. Without a recorded transfer impact assessment the packet also carries a `MEDIUM` review item for it; recording one closes that item, and the state stays `NEEDS_REVIEW`. A flow-down clause, SCCs for the direct US transfer and a recorded transfer impact assessment alone leave the packet `BLOCKED`. Tests in [`tests/test_review.py`](tests/test_review.py) assert each of these states.
 
 ## AI SaaS legal-team use case
 
 A legal team or reviewer at an AI SaaS company can use this as a privacy review surface before signature:
 
-1. **DPA defects:** the sample packet catches missing sub-processor flow-down, missing transfer mechanism, and missing transfer impact evidence.
+1. **DPA defects:** the sample packet catches the missing sub-processor flow-down, the missing notice of sub-processor changes with an opportunity to object, and the missing transfer mechanism for the direct US transfer and for the US sub-processor. It raises no transfer impact assessment finding, because the sample relies on no SCCs or BCR.
 2. **Transfer mechanism:** the review distinguishes adequacy, Art. 46 safeguards, and Art. 49 derogations per destination and sub-processor.
-3. **Transfer impact evidence:** the packet stays blocked until transfer impact assessment evidence is recorded where needed.
+3. **Transfer impact evidence:** where a DPA relies on SCCs or BCR and records no transfer impact assessment, the packet carries a `MEDIUM` review item. That makes it `NEEDS_REVIEW` (exit code `1`), not `BLOCKED`. The [GitHub Action](docs/github-action.md) fails on it only with `fail-on: needs_review`; under its default, `fail-on: blocked`, the step passes.
 4. **Blocked state:** high-severity findings produce `BLOCKED` and exit code `2`, so the review can stop a workflow rather than merely warn.
 5. **Lawyer review:** even a remediated packet moves to review, not autonomous approval.
 

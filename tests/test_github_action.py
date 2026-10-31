@@ -79,6 +79,16 @@ class ExitCodes(Step):
                 self.assertEqual(outputs["review-state"], "NEEDS_REVIEW")
                 self.assertEqual(outputs["exit-code"], str(expected))
 
+    def test_a_missing_tia_fails_the_step_only_under_needs_review(self):
+        # README.md: a missing transfer impact assessment is a MEDIUM review item, so the default
+        # fail-on: blocked passes it.
+        missing_tia = FIXTURES / "04-sccs-without-tia.json"
+        for extra, expected in (({}, 0), ({"fail_on": "blocked"}, 0), ({"fail_on": "needs_review"}, 1)):
+            with self.subTest(**extra):
+                code, _, stderr, outputs, _ = self.step(input=missing_tia, **extra)
+                self.assertEqual((code, stderr), (expected, ""))
+                self.assertEqual((outputs["review-state"], outputs["exit-code"]), ("NEEDS_REVIEW", str(expected)))
+
     def test_a_register_reports_its_worst_state(self):
         vendors = self.tmp / "vendors"
         vendors.mkdir()
