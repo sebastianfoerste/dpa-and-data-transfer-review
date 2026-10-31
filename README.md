@@ -8,7 +8,9 @@ Deterministic, cited GDPR Art. 28 + Chapter V transfer checks; produces a review
 
 > **If you don't code:** scroll to [What the demo produces](#what-the-demo-produces). The repository ships a sample output you can read in the browser: a cited checklist with a clear review state. The point is not the code; it is whether the legal review is structured, cited, reviewable, and testable.
 
-![demo](docs/demo.png)
+![Terminal session: the command that make demo runs, the review packet it prints for the synthetic sample DPA with review state BLOCKED, and its exit code 2](docs/demo.png)
+
+*The command that `make demo` runs, everything it prints for the bundled synthetic DPA, and its exit code `2` (`BLOCKED`). The image draws [`docs/demo.txt`](docs/demo.txt), and lines longer than 100 characters wrap. `make test` fails when the text or the image differs from what the CLI prints.*
 
 ## Why this exists
 

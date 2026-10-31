@@ -19,6 +19,8 @@ make demo      # regenerate examples/ if rule output changed
 
 If a change alters rule output, regenerate and commit `examples/review-packet.md` and `examples/review-packet.json` in the same PR so the committed sample stays truthful.
 
+If the packet that `make demo` prints changes, also run `python3 scripts/render_demo.py` and commit `docs/demo.txt`, the transcript of the demo, and `docs/demo.png`, the README image drawn from it. `make test` fails until both match what the CLI prints. Do not edit either file by hand.
+
 ## Adding a rule
 
 1. Add a check function in `src/dpa_review/checks.py` returning one or more `Finding`s, each with a citation and severity.
