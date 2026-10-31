@@ -4,10 +4,9 @@ from __future__ import annotations
 
 import hashlib
 import json
-import re
 from typing import Any
 
-from dpa_review.checks import EEA
+from dpa_review.checks import EEA, subprocessor_rule_id
 from dpa_review.review import OPEN_STATUSES, ReviewPacket
 
 SCHEMA = "dpa-review.transfer-evidence-graph.v1"
@@ -90,10 +89,7 @@ def build_transfer_evidence_graph(
             role="subprocessor",
             purpose=str(subprocessor.get("purpose", "")),
         )
-        transfer_rule_id = (
-            "transfer.subprocessor."
-            + re.sub(r"[^a-z0-9_]+", "_", name.lower().replace(" ", "_")).strip("_")
-        )
+        transfer_rule_id = subprocessor_rule_id(name)
         transfer_finding = _finding(packet, transfer_rule_id)
         appointment_findings = [
             finding for finding in (authorization, flowdown, transfer_finding) if finding

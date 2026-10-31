@@ -69,10 +69,12 @@ def _summarise(findings: list[Finding]) -> dict[str, int]:
 
 
 def _decide_state(summary: dict[str, int]) -> str:
-    # Any open HIGH finding blocks the packet from leaving review.
+    # Any open HIGH finding blocks the packet from leaving review. Any other open finding
+    # (MISSING or NEEDS_REVIEW, whatever its severity) needs a lawyer's judgement, as
+    # docs/rules.md promises; only a packet with no open finding is cleared for review.
     if summary["high_open"] > 0:
         return "BLOCKED"
-    if summary["medium_open"] > 0 or summary["needs_review"] > 0:
+    if summary["missing"] + summary["needs_review"] > 0:
         return "NEEDS_REVIEW"
     return "CLEARED_FOR_REVIEW"
 
@@ -97,7 +99,7 @@ def build_packet(dpa: dict) -> ReviewPacket:
 _STATE_BANNER = {
     "BLOCKED": "BLOCKED: open high-severity findings must be resolved before this DPA can be relied on.",
     "NEEDS_REVIEW": "NEEDS REVIEW: open items require a lawyer's judgement.",
-    "CLEARED_FOR_REVIEW": "CLEARED FOR REVIEW: no open high or medium findings; lawyer sign-off still required.",
+    "CLEARED_FOR_REVIEW": "CLEARED FOR REVIEW: no open findings; lawyer sign-off still required.",
 }
 
 _STATUS_MARK = {"PRESENT": "[ok]", "MISSING": "[missing]", "NEEDS_REVIEW": "[review]"}

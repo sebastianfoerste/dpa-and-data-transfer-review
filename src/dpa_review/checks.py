@@ -28,6 +28,19 @@ VALID_TRANSFER_MECHANISMS = {"adequacy", "sccs", "bcr", "derogation_art49", "dpf
 
 SEVERITY_ORDER = {"HIGH": 3, "MEDIUM": 2, "LOW": 1, "INFO": 0}
 
+SUBPROCESSOR_TRANSFER_PREFIX = "transfer.subprocessor."
+
+
+def subprocessor_rule_id(name: Any) -> str:
+    """The rule id of a sub-processor's transfer finding, derived from its name.
+
+    The rules, the fact mapping (facts.py) and the evidence graph (transfer_graph.py) must
+    all derive it here, or a name with punctuation gives the graph a rule id the packet never
+    emits and a blocked transfer renders as passed. The input contract refuses names that
+    would collide under this derivation.
+    """
+    return SUBPROCESSOR_TRANSFER_PREFIX + str(name).lower().replace(" ", "_")
+
 
 @dataclass
 class Finding:
@@ -265,7 +278,7 @@ def check_transfers(dpa: dict) -> list[Finding]:
             status, severity, detail = assess_transfer(country, sp.get("transfer_mechanism"))
             findings.append(
                 Finding(
-                    rule_id=f"transfer.subprocessor.{sp.get('name', 'unknown').lower().replace(' ', '_')}",
+                    rule_id=subprocessor_rule_id(sp.get("name", "unknown")),
                     title=f"Sub-processor transfer: {sp.get('name', 'unknown')} ({country})",
                     citation="GDPR Art. 28(4) / Art. 44-46",
                     severity=severity,

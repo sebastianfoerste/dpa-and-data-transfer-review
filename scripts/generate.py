@@ -110,7 +110,7 @@ def input_format() -> str:
         "",
         "It is valid, and `BLOCKED`: it records no Art. 28 clause. "
         "[`data/sample_dpa.json`](../data/sample_dpa.json) is a complete example, and "
-        "[`tests/fixtures/`](../tests/fixtures/) holds twelve more.",
+        f"[`tests/fixtures/`](../tests/fixtures/) holds {len(load_expected())} more.",
         "",
         "## Keys",
         "",
