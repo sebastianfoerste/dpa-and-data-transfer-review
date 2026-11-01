@@ -3,9 +3,10 @@
 import json
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from dpa_review.review import build_packet, render_markdown
-from dpa_review.checks import InvalidInputError, assess_transfer
+from dpa_review.checks import Finding, InvalidInputError, assess_transfer
 
 ROOT = Path(__file__).resolve().parents[1]
 SAMPLE = json.loads((ROOT / "data" / "sample_dpa.json").read_text(encoding="utf-8"))
@@ -589,6 +590,28 @@ class TransferCitations(unittest.TestCase):
         self.assertEqual(
             finding.citation, "Cal. Civ. Code §§ 1798.140(ag), 1798.100(d) (CCPA, as amended by the CPRA)"
         )
+
+
+class StateDecision(unittest.TestCase):
+    """docs/rules.md: any open HIGH finding blocks; any other open finding needs review."""
+
+    def _state(self, *findings):
+        with mock.patch("dpa_review.review.run_all_checks", return_value=list(findings)):
+            return build_packet(SAMPLE).review_state
+
+    def _finding(self, severity, status):
+        return Finding("test.rule", "Test", "GDPR Art. 28(3)", severity, status, "detail", "remediation")
+
+    def test_any_open_finding_needs_review_whatever_its_severity(self):
+        # No rule emits a LOW or INFO MISSING finding today; the decision must not rely on that.
+        for severity, status in (("MEDIUM", "MISSING"), ("LOW", "MISSING"), ("INFO", "MISSING"), ("LOW", "NEEDS_REVIEW")):
+            with self.subTest(severity=severity, status=status):
+                self.assertEqual(self._state(self._finding(severity, status)), "NEEDS_REVIEW")
+
+    def test_open_high_blocks_and_present_clears(self):
+        self.assertEqual(self._state(self._finding("HIGH", "MISSING"), self._finding("LOW", "PRESENT")), "BLOCKED")
+        self.assertEqual(self._state(self._finding("HIGH", "NEEDS_REVIEW")), "BLOCKED")
+        self.assertEqual(self._state(self._finding("HIGH", "PRESENT"), self._finding("INFO", "PRESENT")), "CLEARED_FOR_REVIEW")
 
 
 class CuredPacket(unittest.TestCase):

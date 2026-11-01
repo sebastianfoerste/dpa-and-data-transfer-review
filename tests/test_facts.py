@@ -3,8 +3,8 @@
 import json
 import unittest
 
-from dpa_review.checks import run_all_checks
-from dpa_review.contract import CONTRACT
+from dpa_review.checks import SUBPROCESSOR_TRANSFER_PREFIX, run_all_checks, subprocessor_rule_id
+from dpa_review.contract import CONTRACT, violations
 from dpa_review.facts import evidence_for, key_lines, line_of, rule_facts
 from dpa_review.review import build_packet, render_markdown
 from tests.helpers import FIXTURES, ROOT, SAMPLE_PATH, load
@@ -14,7 +14,8 @@ SAMPLE = load(SAMPLE_PATH)
 
 class RuleFacts(unittest.TestCase):
     def test_every_rule_reads_facts_the_contract_defines(self):
-        inputs = [SAMPLE] + [load(p) for p in sorted(FIXTURES.glob("0*.json")) + sorted(FIXTURES.glob("10-*.json"))]
+        fixtures = [load(p) for p in sorted(FIXTURES.glob("*.json")) if p.name != "expected.json"]
+        inputs = [SAMPLE] + [dpa for dpa in fixtures if not violations(dpa)]
         seen = set()
         for dpa in inputs:
             for finding in run_all_checks(dpa):
@@ -82,6 +83,15 @@ class RuleFacts(unittest.TestCase):
         self.assertEqual(evidence_for(dpa, "transfer.us"), [])
         dpa["transfers"]["mechanisms"]["US"] = "derogation_art49"
         self.assertEqual(rule_facts(dpa, "transfer.us")[-1], ("transfers", "occasional_and_not_repetitive", "US"))
+
+    def test_subprocessor_rule_ids_survive_punctuation(self):
+        # The rules and the fact mapping derive the id the same way, so the line and the
+        # evidence of a punctuated name are still found.
+        dpa = load(SAMPLE_PATH)
+        dpa["subprocessors"][1]["name"] = "Support Tools, LLC."
+        (finding,) = [f for f in run_all_checks(dpa) if f.rule_id.startswith(SUBPROCESSOR_TRANSFER_PREFIX) and "(US)" in f.title]
+        self.assertEqual(finding.rule_id, subprocessor_rule_id("Support Tools, LLC."))
+        self.assertEqual(rule_facts(dpa, finding.rule_id), [("subprocessors", 1)])
 
 
 class EvidenceInThePacket(unittest.TestCase):

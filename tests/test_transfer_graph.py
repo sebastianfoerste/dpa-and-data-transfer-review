@@ -1,15 +1,18 @@
 import json
 import unittest
-from pathlib import Path
 
-from dpa_review.review import build_packet
+from dpa_review import checks, contract, facts, transfer_graph
+from dpa_review.checks import SUBPROCESSOR_TRANSFER_PREFIX, subprocessor_rule_id
+from dpa_review.contract import violations
+from dpa_review.facts import rule_facts
+from dpa_review.review import OPEN_STATUSES, build_packet
 from dpa_review.transfer_graph import (
     build_transfer_evidence_graph,
     render_transfer_evidence_graph,
 )
+from tests.helpers import FIXTURES, SAMPLE_PATH, load
 
-ROOT = Path(__file__).resolve().parents[1]
-SAMPLE = json.loads((ROOT / "data" / "sample_dpa.json").read_text(encoding="utf-8"))
+SAMPLE = load(SAMPLE_PATH)
 
 
 class TransferEvidenceGraphTests(unittest.TestCase):
@@ -93,6 +96,34 @@ class TransferEvidenceGraphTests(unittest.TestCase):
                 self.assertEqual(statuses[on_sccs["control_refs"][0]], "NEEDS_REVIEW")
                 self.assertEqual(statuses[without_basis["control_refs"][0]], "MISSING")
 
+    def test_rules_facts_and_graph_share_one_rule_id_that_keeps_names_outside_ascii_distinct(self):
+        # checks.subprocessor_rule_id is the one derivation, and it keeps letters of every script.
+        # The contract, the fact mapping and the graph import that function, and for names that
+        # differ only outside ASCII the rules emit distinct, non-empty ids, which the fact mapping
+        # and the graph resolve to the matching entry.
+        for module in (contract, facts, transfer_graph):
+            with self.subTest(module=module.__name__):
+                self.assertIs(module.subprocessor_rule_id, checks.subprocessor_rule_id)
+        for names in (("Müller Inc", "Möller Inc"), ("百度", "腾讯"), ("Альфа Сервис", "Бета Сервис")):
+            with self.subTest(names=names):
+                dpa = json.loads(json.dumps(SAMPLE))
+                dpa["subprocessors"] = [
+                    {"name": names[0], "country": "CN", "transfer_mechanism": "sccs"},
+                    {"name": names[1], "country": "CN"},
+                ]
+                self.assertEqual(violations(dpa), [])
+                expected = [subprocessor_rule_id(name) for name in names]
+                self.assertNotEqual(expected[0], expected[1])
+                self.assertNotIn(SUBPROCESSOR_TRANSFER_PREFIX, expected)
+                packet = build_packet(dpa)
+                emitted = sorted(f.rule_id for f in packet.findings if f.rule_id.startswith(SUBPROCESSOR_TRANSFER_PREFIX))
+                self.assertEqual(emitted, sorted(expected))
+                edges = {edge["edge_id"]: edge for edge in build_transfer_evidence_graph(dpa, packet)["edges"]}
+                for index, rule_id in enumerate(expected):
+                    self.assertEqual(rule_facts(dpa, rule_id), [("subprocessors", index)])
+                    self.assertEqual(edges[f"subprocessor-{index + 1}-to-cn"]["control_refs"][0], rule_id)
+                    self.assertIn(rule_id, edges[f"processor-to-subprocessor-{index + 1}"]["control_refs"])
+
     def test_assessment_attaches_only_to_transfers_outside_the_eea(self):
         dpa = json.loads(json.dumps(SAMPLE))
         dpa["transfers"]["mechanisms"]["FR"] = "sccs"
@@ -133,6 +164,43 @@ class TransferEvidenceGraphTests(unittest.TestCase):
         self.assertFalse(
             any(e["relationship"] == "direct_transfer_to" for e in graph["edges"])
         )
+
+    def test_punctuated_subprocessor_name_keeps_the_transfer_finding(self):
+        # The graph must look up the rule id the rules emit, whatever the name contains. It used
+        # to derive its own, so "Support Tools, LLC." lost its finding and the US edge passed.
+        dpa = json.loads(json.dumps(SAMPLE))
+        dpa["subprocessors"][1]["name"] = "Support Tools, LLC."
+        packet = build_packet(dpa)
+        (finding,) = [f for f in packet.findings if f.rule_id.startswith(SUBPROCESSOR_TRANSFER_PREFIX) and "(US)" in f.title]
+        self.assertEqual((finding.status, finding.severity), ("MISSING", "HIGH"))
+
+        graph = build_transfer_evidence_graph(dpa, packet)
+        edges = {edge["edge_id"]: edge for edge in graph["edges"]}
+        self.assertEqual(edges["subprocessor-2-to-us"]["status"], "block")
+        self.assertEqual(edges["subprocessor-2-to-us"]["control_refs"], [finding.rule_id])
+        self.assertEqual(edges["processor-to-subprocessor-2"]["status"], "block")
+        self.assertIn(finding.rule_id, edges["processor-to-subprocessor-2"]["control_refs"])
+        self.assertIn(finding.rule_id, {item["control_ref"] for item in graph["remediation_queue"]})
+        self.assertEqual(graph["graph_status"], "BLOCKED")
+
+    def test_every_subprocessor_finding_reaches_the_graph(self):
+        # Across the sample and every conforming fixture, each sub-processor transfer finding
+        # controls at least one edge, and each open one is queued for remediation.
+        fixtures = [load(path) for path in sorted(FIXTURES.glob("*.json")) if path.name != "expected.json"]
+        for dpa in [SAMPLE, *fixtures]:
+            if violations(dpa):
+                continue
+            packet = build_packet(dpa)
+            graph = build_transfer_evidence_graph(dpa, packet)
+            controlled = {ref for edge in graph["edges"] for ref in edge["control_refs"]}
+            queued = {item["control_ref"] for item in graph["remediation_queue"]}
+            for finding in packet.findings:
+                if not finding.rule_id.startswith(SUBPROCESSOR_TRANSFER_PREFIX):
+                    continue
+                with self.subTest(agreement=dpa.get("agreement"), rule=finding.rule_id):
+                    self.assertIn(finding.rule_id, controlled)
+                    if finding.status in OPEN_STATUSES:
+                        self.assertIn(finding.rule_id, queued)
 
     def test_graph_is_deterministic_and_renders_mermaid(self):
         first = build_transfer_evidence_graph(SAMPLE, build_packet(SAMPLE))

@@ -74,6 +74,23 @@ ART49_GUIDELINES_TITLE = (
 
 SEVERITY_ORDER = {"HIGH": 3, "MEDIUM": 2, "LOW": 1, "INFO": 0}
 
+SUBPROCESSOR_TRANSFER_PREFIX = "transfer.subprocessor."
+
+
+def subprocessor_rule_id(name: Any) -> str:
+    """The rule id of a sub-processor's transfer finding, derived from its name.
+
+    The rules, the fact mapping (facts.py), the evidence graph (transfer_graph.py) and the input
+    contract (contract.py) must all derive it here, or a name with punctuation gives the graph a
+    rule id the packet never emits and a blocked transfer renders as passed.
+
+    Letters and digits of every script are kept, in lower case, so "Müller Inc" and "Möller Inc",
+    or two names written in Chinese, get distinct ids. Each space becomes "_", and every other run
+    of characters that are not letters, digits or "_" becomes one "_". The input contract refuses
+    two sub-processor names that would share an id, and a name that would give an empty one.
+    """
+    return SUBPROCESSOR_TRANSFER_PREFIX + re.sub(r"\W+", "_", str(name).lower().replace(" ", "_")).strip("_")
+
 
 @dataclass
 class Finding:
@@ -232,17 +249,6 @@ def subprocessor_name(sp: dict, index: int) -> str:
 def subprocessor_country(sp: dict, index: int) -> str:
     """The sub-processor's country as an upper-case code, or "" when none is recorded."""
     return (subprocessor_text(sp, index, "country") or "").upper()
-
-
-def subprocessor_rule_id(name: str) -> str:
-    """Rule id of a sub-processor transfer finding; the transfer graph looks findings up by it.
-
-    Letters and digits of every script are kept, in lower case, so "Müller Inc" and "Möller Inc",
-    or two names written in Chinese, get distinct ids. Each space becomes "_", and every other run
-    of characters that are not letters, digits or "_" becomes one "_". The input contract refuses
-    two sub-processor names that would share an id, and a name that would give an empty one.
-    """
-    return "transfer.subprocessor." + re.sub(r"\W+", "_", name.lower().replace(" ", "_")).strip("_")
 
 
 def transfer_destinations(dpa: dict) -> list[str]:

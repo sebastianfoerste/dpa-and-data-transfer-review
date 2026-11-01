@@ -39,7 +39,7 @@ A flag that is `false`, `null` or omitted reads as "the DPA does not contain thi
 }
 ```
 
-It is valid, and `BLOCKED`: it records no Art. 28 clause. [`data/sample_dpa.json`](../data/sample_dpa.json) is a complete example, and [`tests/fixtures/`](../tests/fixtures/) holds twelve more.
+It is valid, and `BLOCKED`: it records no Art. 28 clause. [`data/sample_dpa.json`](../data/sample_dpa.json) is a complete example, and [`tests/fixtures/`](../tests/fixtures/) holds 12 more.
 
 ## Keys
 

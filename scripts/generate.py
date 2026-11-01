@@ -121,7 +121,7 @@ def input_format() -> str:
         "",
         "It is valid, and `BLOCKED`: it records no Art. 28 clause. "
         "[`data/sample_dpa.json`](../data/sample_dpa.json) is a complete example, and "
-        "[`tests/fixtures/`](../tests/fixtures/) holds twelve more.",
+        f"[`tests/fixtures/`](../tests/fixtures/) holds {len(load_expected())} more.",
         "",
         "## Keys",
         "",
@@ -347,7 +347,7 @@ def conformance() -> str:
         "the review state, exit code and open rules the CLI must produce, recorded in "
         "[`expected.json`](../tests/fixtures/expected.json). "
         "[`tests/test_conformance.py`](../tests/test_conformance.py) runs every fixture through the CLI "
-        "on every push, on Python 3.10 to 3.13, and fails on any difference.",
+        "on every push, on Python 3.10 to 3.14, and fails on any difference.",
         "",
         "The fixtures freeze what the rules do today. Where a result looks legally questionable it is "
         "flagged below for review rather than changed: a rule change needs a lawyer's sign-off and a "

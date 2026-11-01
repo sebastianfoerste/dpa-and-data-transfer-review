@@ -14,11 +14,10 @@ import json
 import re
 from typing import Any
 
-from dpa_review.checks import subprocessor_rule_id
+from dpa_review.checks import SUBPROCESSOR_TRANSFER_PREFIX, subprocessor_rule_id
 from dpa_review.contract import KeyPath, format_path, parse_fact_path
 
 _ART28_FLAGS = "art28."
-_SUBPROCESSOR_TRANSFER = "transfer.subprocessor."
 # Facts a transfer rule reads per destination, keyed by country under `transfers`: the mechanism,
 # and the facts that only the named mechanism reads.
 _PER_COUNTRY = (
@@ -33,7 +32,8 @@ _DATA_TRANSFERRED = (("processing", "includes_hr_data"), ("processing", "include
 
 
 def _subprocessor_rule_id(entry: dict, index: int) -> str:
-    # The same name and derivation checks.check_transfers uses for transfer.subprocessor.<name>.
+    # The name checks.check_transfers uses (checks.subprocessor_name: the position when none is
+    # recorded), passed to the one shared derivation, checks.subprocessor_rule_id.
     name = entry.get("name")
     return subprocessor_rule_id(name if isinstance(name, str) and name else f"Sub-processor {index + 1}")
 
@@ -67,7 +67,7 @@ def rule_facts(dpa: dict, rule_id: str) -> list[KeyPath]:
         return [("transfers", "transfer_impact_assessment")]
     if rule_id.startswith("ccpa."):
         return [("ccpa", rule_id.split(".", 1)[1])]
-    if rule_id.startswith(_SUBPROCESSOR_TRANSFER):
+    if rule_id.startswith(SUBPROCESSOR_TRANSFER_PREFIX):
         entries = dpa.get("subprocessors") or []
         matched: list[KeyPath] = []
         for index, entry in enumerate(entries):
