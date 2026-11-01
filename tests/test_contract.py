@@ -6,6 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from dpa_review.checks import run_all_checks
 from dpa_review.contract import ContractError, json_schema, schema_text, validate, violations
 from dpa_review.review import build_packet
 from tests.helpers import FIXTURES, ROOT, SAMPLE_PATH, load, run_cli
@@ -107,6 +108,17 @@ class FailOpenInputs(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertNotEqual(messages(changed(**{path: value})), [])
 
+    def test_a_description_that_reads_as_yes_or_no_is_refused(self):
+        for value in ("false", " True ", "no", "YES"):
+            with self.subTest(value=value):
+                self.assertIn(
+                    f"processing.subject_matter must be a description or true/false, got {value!r}; "
+                    "record yes/no as a JSON boolean.",
+                    messages(changed(processing__subject_matter=value)),
+                )
+        self.assertEqual(messages(changed(processing__subject_matter="Hosting; no analytics")), [])
+        self.assertEqual(messages(changed(processing__duration=False)), [])
+
     def test_choice_suggests_the_spelling(self):
         found = messages(changed(transfers__mechanisms__US="SCCs"))
         self.assertTrue(any(m.endswith("did you mean 'sccs'?") for m in found), found)
@@ -130,6 +142,35 @@ class Countries(unittest.TestCase):
         found = messages(changed(transfers__mechanisms__IN="sccs"))
         self.assertTrue(any("records IN, which transfers.destinations does not list" in m for m in found))
 
+    def test_per_country_facts_for_an_unlisted_destination_are_refused(self):
+        found = messages(changed(transfers__dpf_certified={"IN": True}))
+        self.assertIn(
+            "transfers.dpf_certified records IN, which transfers.destinations does not list; add IN to "
+            "destinations, or record a sub-processor's dpf_certified on its own entry.",
+            found,
+        )
+        self.assertTrue(any("must be upper case" in m for m in messages(changed(transfers__dpf_certified={"us": True}))))
+        self.assertTrue(messages(changed(transfers__occasional_and_not_repetitive={"US": "yes"})))
+
+    def test_dpf_and_derogation_facts_are_part_of_the_contract(self):
+        dpa = changed(
+            processing__includes_hr_data=False,
+            processing__includes_non_hr_data=True,
+            transfers__dpf_certified={"US": True},
+            transfers__dpf_covers_non_hr_data={"US": True},
+            transfers__dpf_covers_hr_data={"US": False},
+            transfers__occasional_and_not_repetitive={"US": False},
+        )
+        dpa["subprocessors"][1].update(
+            transfer_mechanism="dpf",
+            dpf_certified=True,
+            dpf_covers_non_hr_data=True,
+            dpf_covers_hr_data=None,
+            occasional_and_not_repetitive=False,
+        )
+        self.assertEqual(messages(dpa), [])
+        self.assertTrue(messages(changed(processing__includes_hr_data="false")))
+
     def test_duplicate_destination_is_refused(self):
         found = messages(changed(transfers__destinations=["FR", "US", "JP", "US"]))
         self.assertIn("transfers.destinations lists US more than once.", found)
@@ -142,6 +183,45 @@ class Countries(unittest.TestCase):
         dpa = changed()
         dpa["subprocessors"].append({"name": "support tools, llc", "country": "US"})
         self.assertTrue(any("repeats subprocessors[1].name" in m for m in messages(dpa)))
+
+    def test_names_that_differ_only_outside_ascii_keep_distinct_rule_ids(self):
+        # Every non-ASCII letter used to become "_", so the contract accepted these pairs as
+        # distinct while both entries got the same rule id (or, for CJK names, an empty one).
+        for first, second in (("Müller Inc", "Möller Inc"), ("百度", "腾讯")):
+            with self.subTest(names=(first, second)):
+                dpa = changed(subprocessors=[
+                    {"name": first, "country": "CN", "transfer_mechanism": "sccs"},
+                    {"name": second, "country": "CN"},
+                ])
+                self.assertEqual(messages(dpa), [])
+                rule_ids = [f.rule_id for f in run_all_checks(dpa) if f.rule_id.startswith("transfer.subprocessor.")]
+                self.assertEqual(len(rule_ids), 2)
+                self.assertEqual(len(set(rule_ids)), 2, rule_ids)
+                self.assertTrue(all(rule_id != "transfer.subprocessor." for rule_id in rule_ids), rule_ids)
+
+    def test_names_that_differ_only_in_a_symbol_or_combining_mark_are_refused(self):
+        # Only letters and digits keep rule ids apart, so these pairs would share one; the
+        # contract refuses them before the rules run (checks.subprocessor_rule_id).
+        for first, second in (("Müller Inc", "Múller Inc"), ("Acme™", "Acme®")):
+            with self.subTest(names=(first, second)):
+                dpa = changed(subprocessors=[{"name": first, "country": "US"}, {"name": second, "country": "US"}])
+                found = messages(dpa)
+                self.assertEqual(len(found), 1, found)
+                self.assertIn("repeats subprocessors[0].name", found[0])
+
+    def test_names_that_give_the_same_rule_id_are_refused(self):
+        # Case folding turns U+0345 into a letter, so the name keys differ, but the rule id drops it.
+        dpa = changed(subprocessors=[{"name": "Acme", "country": "US"}, {"name": "Acme\u0345", "country": "US"}])
+        found = messages(dpa)
+        self.assertEqual(len(found), 1, found)
+        self.assertIn("gives the rule id transfer.subprocessor.acme, as subprocessors[0].name 'Acme' does", found[0])
+
+    def test_a_name_without_a_letter_or_digit_is_refused(self):
+        for name in ("***", "___", "—"):
+            with self.subTest(name=name):
+                found = messages(changed(subprocessors__1__name=name))
+                self.assertEqual(len(found), 1, found)
+                self.assertIn("contains no letter or digit, so no rule id can be derived from it", found[0])
 
 
 class Evidence(unittest.TestCase):
@@ -214,6 +294,8 @@ class JsonSchemaAgreesWithTheContract(unittest.TestCase):
             changed(subprocessors__1__country="us"),
             changed(transfers__mechanisms__US="SCCs"),
             changed(agreement=None),
+            changed(processing__subject_matter="false"),
+            changed(transfers__dpf_certified={"US": "yes"}),
             changed(evidence={"ccpa": {}}),
             {"$schema": 1, **SAMPLE},
         ]

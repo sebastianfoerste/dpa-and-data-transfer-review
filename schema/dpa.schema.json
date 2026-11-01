@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/sebastianfoerste/dpa-and-data-transfer-review/main/schema/dpa.schema.json",
   "title": "dpa-review input: a structured description of one Data Processing Agreement",
-  "description": "Generated from src/dpa_review/contract.py by `make docs`; docs/input-format.md explains every key. The CLI enforces this schema and, beyond it, a few cross-field rules: every transfers.mechanisms key is a listed destination, sub-processor names are unique ignoring case, spaces and punctuation, and every evidence key names a fact the input records. Input that breaks any of them exits 3.",
+  "description": "Generated from src/dpa_review/contract.py by `make docs`; docs/input-format.md explains every key. The CLI enforces this schema and, beyond it, a few cross-field rules: every key of transfers.mechanisms and of the other per-country objects under transfers is a listed destination, sub-processor names are unique ignoring case, spaces and punctuation, and every evidence key names a fact the input records. Input that breaks any of them exits 3.",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -40,7 +40,11 @@
             "boolean",
             "string",
             "null"
-          ]
+          ],
+          "not": {
+            "type": "string",
+            "pattern": "^\\s*([Tt][Rr][Uu][Ee]|[Ff][Aa][Ll][Ss][Ee]|[Yy][Ee][Ss]|[Nn][Oo])\\s*$"
+          }
         },
         "duration": {
           "description": "The duration of the processing is stated: true, or a short description. Rule processing.duration.",
@@ -48,7 +52,11 @@
             "boolean",
             "string",
             "null"
-          ]
+          ],
+          "not": {
+            "type": "string",
+            "pattern": "^\\s*([Tt][Rr][Uu][Ee]|[Ff][Aa][Ll][Ss][Ee]|[Yy][Ee][Ss]|[Nn][Oo])\\s*$"
+          }
         },
         "nature_and_purpose": {
           "description": "The nature and purpose of the processing are stated: true, or a short description. Rule processing.nature_and_purpose.",
@@ -56,7 +64,11 @@
             "boolean",
             "string",
             "null"
-          ]
+          ],
+          "not": {
+            "type": "string",
+            "pattern": "^\\s*([Tt][Rr][Uu][Ee]|[Ff][Aa][Ll][Ss][Ee]|[Yy][Ee][Ss]|[Nn][Oo])\\s*$"
+          }
         },
         "data_types": {
           "description": "The types of personal data processed. Rule processing.data_types: an empty or omitted list is MISSING.",
@@ -70,7 +82,7 @@
           }
         },
         "data_subjects": {
-          "description": "The categories of data subjects. Recorded only: no rule reads it.",
+          "description": "The categories of data subjects. Rule processing.data_subjects: an empty or omitted list is MISSING.",
           "type": [
             "array",
             "null"
@@ -79,6 +91,20 @@
             "type": "string",
             "pattern": "\\S"
           }
+        },
+        "includes_non_hr_data": {
+          "description": "Whether non-HR personal data is transferred; null or omitted when the DPA does not say. Read for a dpf transfer: the importer's certification must cover the data transferred.",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "includes_hr_data": {
+          "description": "Whether HR data from the employment context is transferred; null or omitted when the DPA does not say. Read for a dpf transfer: the importer's certification must cover the data transferred.",
+          "type": [
+            "boolean",
+            "null"
+          ]
         }
       }
     },
@@ -194,7 +220,7 @@
         "additionalProperties": false,
         "properties": {
           "name": {
-            "description": "The sub-processor's name. Names must differ, ignoring case, spaces and punctuation, because rule ids are derived from them.",
+            "description": "The sub-processor's name. Names must contain a letter or digit and must differ, ignoring case, spaces and punctuation, because rule ids are derived from them.",
             "type": "string",
             "pattern": "\\S"
           },
@@ -228,6 +254,34 @@
               "dpf",
               "derogation_art49",
               null
+            ]
+          },
+          "dpf_certified": {
+            "description": "For a dpf mechanism: the sub-processor is actively certified on the Data Privacy Framework List.",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "dpf_covers_non_hr_data": {
+            "description": "For a dpf mechanism: the sub-processor's DPF certification covers non-HR data.",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "dpf_covers_hr_data": {
+            "description": "For a dpf mechanism: the sub-processor's DPF certification covers HR data.",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "occasional_and_not_repetitive": {
+            "description": "For a derogation_art49 mechanism: the transfer is occasional and not repetitive. Otherwise the derogation is treated like a missing basis.",
+            "type": [
+              "boolean",
+              "null"
             ]
           }
         },
@@ -291,8 +345,104 @@
             ]
           }
         },
+        "dpf_certified": {
+          "description": "For a dpf mechanism, per destination: the importer is actively certified on the Data Privacy Framework List.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "propertyNames": {
+            "pattern": "^[A-Z]{2}$",
+            "not": {
+              "enum": [
+                "EL",
+                "EU",
+                "UK"
+              ]
+            }
+          },
+          "additionalProperties": {
+            "description": "The importer is actively certified on the Data Privacy Framework List.",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        "dpf_covers_non_hr_data": {
+          "description": "For a dpf mechanism, per destination: the importer's DPF certification covers non-HR data.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "propertyNames": {
+            "pattern": "^[A-Z]{2}$",
+            "not": {
+              "enum": [
+                "EL",
+                "EU",
+                "UK"
+              ]
+            }
+          },
+          "additionalProperties": {
+            "description": "The importer's DPF certification covers non-HR data.",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        "dpf_covers_hr_data": {
+          "description": "For a dpf mechanism, per destination: the importer's DPF certification covers HR data.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "propertyNames": {
+            "pattern": "^[A-Z]{2}$",
+            "not": {
+              "enum": [
+                "EL",
+                "EU",
+                "UK"
+              ]
+            }
+          },
+          "additionalProperties": {
+            "description": "The importer's DPF certification covers HR data.",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        "occasional_and_not_repetitive": {
+          "description": "For a derogation_art49 mechanism, per destination: the transfer is occasional and not repetitive. Otherwise the derogation is treated like a missing basis.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "propertyNames": {
+            "pattern": "^[A-Z]{2}$",
+            "not": {
+              "enum": [
+                "EL",
+                "EU",
+                "UK"
+              ]
+            }
+          },
+          "additionalProperties": {
+            "description": "The transfer is occasional and not repetitive.",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        },
         "transfer_impact_assessment": {
-          "description": "A transfer impact assessment is recorded. Read only when SCCs or BCR are relied on (rule transfer.impact_assessment).",
+          "description": "A transfer impact assessment is recorded. Read only when SCCs or BCR are relied on for a destination or sub-processor outside the EEA (rule transfer.impact_assessment).",
           "type": [
             "boolean",
             "null"

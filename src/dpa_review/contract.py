@@ -26,7 +26,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any, Union
 
-from dpa_review.checks import VALID_TRANSFER_MECHANISMS
+from dpa_review.checks import VALID_TRANSFER_MECHANISMS, subprocessor_rule_id
 
 SCHEMA_ID = (
     "https://raw.githubusercontent.com/sebastianfoerste/dpa-and-data-transfer-review/"
@@ -60,8 +60,9 @@ class Field:
     """One key of the contract.
 
     kind is one of: flag (a JSON boolean), text (a string), name (a non-empty string),
-    description (a string or a boolean), country (a two-letter code), choice (one of
-    `options`), labels (a list of non-empty strings), countries (a list of country codes),
+    description (a string or a boolean, but not a string that reads as yes or no), country (a
+    two-letter code), choice (one of `options`), labels (a list of non-empty strings),
+    countries (a list of country codes),
     section (an object with `fields`), entries (a list of objects with `fields`),
     by_country (an object keyed by country code, each value a `value`), evidence (the
     evidence map). An optional key may also be null, which reads as not recorded, unless
@@ -84,6 +85,9 @@ def _flag(description: str) -> Field:
 
 
 _ART28 = "true when the DPA contains the clause; false, null or omitted when it was not found."
+# A description that reads as an answer to a yes/no question; record yes/no as a JSON boolean.
+YES_NO_PATTERN = r"^\s*([Tt][Rr][Uu][Ee]|[Ff][Aa][Ll][Ss][Ee]|[Yy][Ee][Ss]|[Nn][Oo])\s*$"
+_YES_NO = re.compile(YES_NO_PATTERN)
 
 CONTRACT: dict[str, Field] = {
     "$schema": Field(
@@ -124,8 +128,18 @@ CONTRACT: dict[str, Field] = {
             ),
             "data_subjects": Field(
                 "labels",
-                "The categories of data subjects. Recorded only: no rule reads it.",
+                "The categories of data subjects. Rule processing.data_subjects: an empty or omitted "
+                "list is MISSING.",
                 example='["customer end users"]',
+            ),
+            "includes_non_hr_data": _flag(
+                "Whether non-HR personal data is transferred; null or omitted when the DPA does not say. "
+                "Read for a dpf transfer: the importer's certification must cover the data transferred."
+            ),
+            "includes_hr_data": _flag(
+                "Whether HR data from the employment context is transferred; null or omitted when the DPA "
+                "does not say. Read for a dpf transfer: the importer's certification must cover the data "
+                "transferred."
             ),
         },
     ),
@@ -205,8 +219,8 @@ CONTRACT: dict[str, Field] = {
         fields={
             "name": Field(
                 "name",
-                "The sub-processor's name. Names must differ, ignoring case, spaces and punctuation, "
-                "because rule ids are derived from them.",
+                "The sub-processor's name. Names must contain a letter or digit and must differ, ignoring "
+                "case, spaces and punctuation, because rule ids are derived from them.",
                 required=True,
                 hint="give every sub-processor a name",
             ),
@@ -224,6 +238,20 @@ CONTRACT: dict[str, Field] = {
                 "choice",
                 "The Chapter V basis for a sub-processor outside the EEA. Null or omitted reads as none.",
                 options=MECHANISMS,
+            ),
+            "dpf_certified": _flag(
+                "For a dpf mechanism: the sub-processor is actively certified on the Data Privacy "
+                "Framework List."
+            ),
+            "dpf_covers_non_hr_data": _flag(
+                "For a dpf mechanism: the sub-processor's DPF certification covers non-HR data."
+            ),
+            "dpf_covers_hr_data": _flag(
+                "For a dpf mechanism: the sub-processor's DPF certification covers HR data."
+            ),
+            "occasional_and_not_repetitive": _flag(
+                "For a derogation_art49 mechanism: the transfer is occasional and not repetitive. "
+                "Otherwise the derogation is treated like a missing basis."
             ),
         },
     ),
@@ -247,9 +275,35 @@ CONTRACT: dict[str, Field] = {
                 value=Field("choice", "The Chapter V basis for this destination.", options=MECHANISMS),
                 example='{"US": "sccs"}',
             ),
+            "dpf_certified": Field(
+                "by_country",
+                "For a dpf mechanism, per destination: the importer is actively certified on the Data "
+                "Privacy Framework List.",
+                value=Field("flag", "The importer is actively certified on the Data Privacy Framework List."),
+                example='{"US": true}',
+            ),
+            "dpf_covers_non_hr_data": Field(
+                "by_country",
+                "For a dpf mechanism, per destination: the importer's DPF certification covers non-HR data.",
+                value=Field("flag", "The importer's DPF certification covers non-HR data."),
+                example='{"US": true}',
+            ),
+            "dpf_covers_hr_data": Field(
+                "by_country",
+                "For a dpf mechanism, per destination: the importer's DPF certification covers HR data.",
+                value=Field("flag", "The importer's DPF certification covers HR data."),
+                example='{"US": true}',
+            ),
+            "occasional_and_not_repetitive": Field(
+                "by_country",
+                "For a derogation_art49 mechanism, per destination: the transfer is occasional and not "
+                "repetitive. Otherwise the derogation is treated like a missing basis.",
+                value=Field("flag", "The transfer is occasional and not repetitive."),
+                example='{"IN": true}',
+            ),
             "transfer_impact_assessment": _flag(
-                "A transfer impact assessment is recorded. Read only when SCCs or BCR are relied on "
-                "(rule transfer.impact_assessment)."
+                "A transfer impact assessment is recorded. Read only when SCCs or BCR are relied on for a "
+                "destination or sub-processor outside the EEA (rule transfer.impact_assessment)."
             ),
         },
     ),
@@ -408,6 +462,13 @@ def _check(value: Any, spec: Field, path: KeyPath, out: list[Violation]) -> None
     elif kind == "description":
         if not isinstance(value, (bool, str)):
             refuse("a description (a string) or true/false")
+        elif isinstance(value, str) and _YES_NO.fullmatch(value):
+            out.append(
+                Violation(
+                    path,
+                    f"{where} must be a description or true/false, got {value!r}; record yes/no as a JSON boolean.",
+                )
+            )
     elif kind == "country":
         _check_country(value, path, out)
     elif kind == "choice":
@@ -488,7 +549,9 @@ def _country_problem(value: Any) -> str:
     if value in NOT_ISO_COUNTRIES:
         return f"is not an ISO 3166-1 alpha-2 country code; use {NOT_ISO_COUNTRIES[value]}"
     if not _COUNTRY.fullmatch(value):
-        # The rules compare codes exactly, so "us" would not find the "US" mechanism.
+        # The rules upper-case codes before comparing them, but the contract's own checks (a destination
+        # listed twice, a per-country key for an unlisted destination) and evidence paths compare codes
+        # as written, so the contract accepts one spelling.
         return f"must be upper case: use {value.upper()!r}"
     return ""
 
@@ -500,7 +563,8 @@ def _check_country(value: Any, path: KeyPath, out: list[Violation]) -> None:
 
 
 def _name_key(name: str) -> str:
-    # Coarser than any rule-id derivation, so two names that pass here never share a rule id.
+    # Names are compared on this key (case, spaces and punctuation ignored) and on the rule id each
+    # one gives (checks.subprocessor_rule_id), so two names that pass never share a rule id.
     return "".join(ch for ch in name.casefold() if ch.isalnum())
 
 
@@ -521,42 +585,64 @@ def _check_cross_field(dpa: dict, out: list[Violation]) -> None:
                         )
                     )
                 listed.setdefault(country, index)
-        mechanisms = transfers.get("mechanisms")
         # Checked only once every destination is a valid code, so one typo is reported once.
-        if (
-            isinstance(mechanisms, dict)
-            and isinstance(destinations, list)
-            and not any(_country_problem(country) for country in destinations)
-        ):
-            for key in mechanisms:
-                if not _country_problem(key) and key not in listed:
-                    out.append(
-                        Violation(
-                            ("transfers", "mechanisms", key),
-                            f"transfers.mechanisms records {key}, which transfers.destinations does not list; "
-                            f"add {key} to destinations, or record a sub-processor's mechanism on its own entry.",
+        if isinstance(destinations, list) and not any(_country_problem(country) for country in destinations):
+            for name, spec in CONTRACT["transfers"].fields.items():
+                recorded = transfers.get(name)
+                if spec.kind != "by_country" or not isinstance(recorded, dict):
+                    continue
+                what = "mechanism" if name == "mechanisms" else name
+                for key in recorded:
+                    if not _country_problem(key) and key not in listed:
+                        out.append(
+                            Violation(
+                                ("transfers", name, key),
+                                f"transfers.{name} records {key}, which transfers.destinations does not list; "
+                                f"add {key} to destinations, or record a sub-processor's {what} on its own entry.",
+                            )
                         )
-                    )
     subprocessors = dpa.get("subprocessors")
     if isinstance(subprocessors, list):
         names: dict[str, int] = {}
+        rule_ids: dict[str, int] = {}
         for index, entry in enumerate(subprocessors):
             name = entry.get("name") if isinstance(entry, dict) else None
             if not isinstance(name, str) or not name.strip():
+                continue
+            where = ("subprocessors", index, "name")
+            rule_id = subprocessor_rule_id(name)
+            if rule_id == subprocessor_rule_id(""):
+                out.append(
+                    Violation(
+                        where,
+                        f"subprocessors[{index}].name {name!r} contains no letter or digit, so no rule id "
+                        "can be derived from it; record the sub-processor's name as the DPA gives it.",
+                    )
+                )
                 continue
             key = _name_key(name)
             if key in names:
                 first = names[key]
                 out.append(
                     Violation(
-                        ("subprocessors", index, "name"),
+                        where,
                         f"subprocessors[{index}].name {name!r} repeats subprocessors[{first}].name "
                         f"{subprocessors[first]['name']!r} (names are compared without case, spaces and "
                         "punctuation); give each entry a distinct name, such as one that adds its country.",
                     )
                 )
-            else:
-                names[key] = index
+            elif rule_id in rule_ids:
+                first = rule_ids[rule_id]
+                out.append(
+                    Violation(
+                        where,
+                        f"subprocessors[{index}].name {name!r} gives the rule id {rule_id}, as "
+                        f"subprocessors[{first}].name {subprocessors[first]['name']!r} does; give each entry "
+                        "a distinct name, such as one that adds its country.",
+                    )
+                )
+            names.setdefault(key, index)
+            rule_ids.setdefault(rule_id, index)
     evidence = dpa.get("evidence")
     if isinstance(evidence, dict):
         known: list[str] | None = None
@@ -628,7 +714,7 @@ def _schema(spec: Field) -> dict[str, Any]:
     elif kind == "name":
         schema.update(type=_types(spec, "string"), pattern=r"\S")
     elif kind == "description":
-        schema["type"] = _types(spec, "boolean", "string")
+        schema.update(type=_types(spec, "boolean", "string"), **{"not": {"type": "string", "pattern": YES_NO_PATTERN}})
     elif kind == "country":
         schema.update(type=_types(spec, "string"), **_COUNTRY_SCHEMA)
     elif kind == "choice":
@@ -681,7 +767,8 @@ def json_schema() -> dict[str, Any]:
         "description": (
             "Generated from src/dpa_review/contract.py by `make docs`; docs/input-format.md explains "
             "every key. The CLI enforces this schema and, beyond it, a few cross-field rules: every "
-            "transfers.mechanisms key is a listed destination, "
+            "key of transfers.mechanisms and of the other per-country objects under transfers is a "
+            "listed destination, "
             "sub-processor names are unique ignoring case, spaces and punctuation, and every evidence "
             "key names a fact the input records. Input that breaks any of them exits 3."
         ),

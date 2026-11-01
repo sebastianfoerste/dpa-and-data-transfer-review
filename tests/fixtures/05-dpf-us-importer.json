@@ -13,7 +13,9 @@
     "data_subjects": [
       "customers",
       "prospects"
-    ]
+    ],
+    "includes_non_hr_data": true,
+    "includes_hr_data": false
   },
   "art28_clauses": {
     "process_on_documented_instructions": true,
@@ -43,6 +45,12 @@
     ],
     "mechanisms": {
       "US": "dpf"
+    },
+    "dpf_certified": {
+      "US": true
+    },
+    "dpf_covers_non_hr_data": {
+      "US": true
     },
     "transfer_impact_assessment": false
   },

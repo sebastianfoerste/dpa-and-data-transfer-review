@@ -2,8 +2,8 @@
   "title": "Synthetic SaaS Data Processing Agreement review packet",
   "review_state": "BLOCKED",
   "summary": {
-    "total": 20,
-    "present": 17,
+    "total": 21,
+    "present": 18,
     "missing": 3,
     "needs_review": 0,
     "high_open": 3,
@@ -26,8 +26,8 @@
       "citation": "GDPR Art. 28(4) / Art. 44-46",
       "severity": "HIGH",
       "status": "MISSING",
-      "detail": "Support Tools LLC processes data in US. Transfer to US has no valid Chapter V mechanism (no adequacy, SCCs, BCR, or Art. 49 derogation).",
-      "remediation": "Confirm the transfer mechanism covering Support Tools LLC in US."
+      "detail": "Support Tools LLC processes data in US. Transfer to US has no recorded Chapter V basis: no Art. 45 adequacy decision (including the EU-US Data Privacy Framework), Art. 46 safeguard or Art. 49 derogation is recorded.",
+      "remediation": "Record an Art. 45 adequacy basis or an Art. 46 safeguard for Support Tools LLC in US."
     },
     {
       "rule_id": "transfer.us",
@@ -35,8 +35,8 @@
       "citation": "GDPR Art. 44-46",
       "severity": "HIGH",
       "status": "MISSING",
-      "detail": "Transfer to US has no valid Chapter V mechanism (no adequacy, SCCs, BCR, or Art. 49 derogation).",
-      "remediation": "Document a valid Art. 46 safeguard for US (or an Art. 49 derogation) and record the basis."
+      "detail": "Transfer to US has no recorded Chapter V basis: no Art. 45 adequacy decision (including the EU-US Data Privacy Framework), Art. 46 safeguard or Art. 49 derogation is recorded.",
+      "remediation": "Record an Art. 45 adequacy basis or an Art. 46 safeguard for US."
     },
     {
       "rule_id": "art28.assist_data_subject_requests",
@@ -120,12 +120,21 @@
       "remediation": ""
     },
     {
-      "rule_id": "processing.data_types",
-      "title": "Processing description: categories of personal data",
+      "rule_id": "processing.data_subjects",
+      "title": "Processing description: categories of data subjects",
       "citation": "GDPR Art. 28(3)",
       "severity": "MEDIUM",
       "status": "PRESENT",
-      "detail": "Categories of personal data are listed: account data, usage logs, support correspondence.",
+      "detail": "Categories of data subjects are listed: customer end users.",
+      "remediation": ""
+    },
+    {
+      "rule_id": "processing.data_types",
+      "title": "Processing description: type of personal data",
+      "citation": "GDPR Art. 28(3)",
+      "severity": "MEDIUM",
+      "status": "PRESENT",
+      "detail": "The types of personal data are listed: account data, usage logs, support correspondence.",
       "remediation": ""
     },
     {
@@ -158,7 +167,7 @@
     {
       "rule_id": "ccpa.service_provider_terms",
       "title": "CCPA/CPRA service-provider terms",
-      "citation": "CCPA §1798.140(ag); CPRA §1798.100(d)",
+      "citation": "Cal. Civ. Code §§ 1798.140(ag), 1798.100(d) (CCPA, as amended by the CPRA)",
       "severity": "LOW",
       "status": "PRESENT",
       "detail": "Service-provider / contractor terms restricting sale and retention are present.",
@@ -167,7 +176,7 @@
     {
       "rule_id": "transfer.jp",
       "title": "International transfer to JP",
-      "citation": "GDPR Art. 44-46",
+      "citation": "GDPR Art. 44-45",
       "severity": "LOW",
       "status": "PRESENT",
       "detail": "JP benefits from an adequacy decision (Art. 45).",
@@ -176,7 +185,7 @@
     {
       "rule_id": "transfer.subprocessor.analytics_kk",
       "title": "Sub-processor transfer: Analytics KK (JP)",
-      "citation": "GDPR Art. 28(4) / Art. 44-46",
+      "citation": "GDPR Art. 28(4) / Art. 44-45",
       "severity": "LOW",
       "status": "PRESENT",
       "detail": "Analytics KK processes data in JP. JP benefits from an adequacy decision (Art. 45).",

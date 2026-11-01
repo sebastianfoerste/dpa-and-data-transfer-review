@@ -29,17 +29,17 @@
   },
   "05-dpf-us-importer.json": {
     "checks": "A direct transfer to a US importer certified under the EU-US Data Privacy Framework.",
-    "review_state": "NEEDS_REVIEW",
-    "exit_code": 1,
-    "open_rules": ["transfer.us"],
-    "legal_review_note": "The finding labels the DPF \"an approved certification / framework (Art. 46)\" and asks for a transfer impact assessment; the DPF is an Art. 45 adequacy decision (Implementing Decision (EU) 2023/1795). Draft PR #4 changes this."
+    "review_state": "CLEARED_FOR_REVIEW",
+    "exit_code": 0,
+    "open_rules": [],
+    "legal_review_note": "Changed by PR #4: the DPF is treated as an Art. 45 adequacy decision (Implementing Decision (EU) 2023/1795), not an Art. 46 safeguard, so a transfer to an importer recorded as actively certified on the Data Privacy Framework List for the data transferred is PRESENT and asks for no transfer impact assessment. The fixture now records that certification and the data it covers. Confirm the changed expected result."
   },
   "06-art49-derogation.json": {
     "checks": "A direct transfer to India on an Art. 49 derogation.",
-    "review_state": "NEEDS_REVIEW",
-    "exit_code": 1,
+    "review_state": "BLOCKED",
+    "exit_code": 2,
     "open_rules": ["transfer.in"],
-    "legal_review_note": "The input cannot say whether the transfer is occasional or ongoing, so a systematic transfer on an Art. 49 derogation is only NEEDS_REVIEW (MEDIUM). EDPB Guidelines 2/2018 read the derogations restrictively. Draft PR #4 blocks non-occasional derogation transfers."
+    "legal_review_note": "Changed by PR #4: a derogation not recorded as occasional and not repetitive is treated like a missing basis (HIGH), so this fixture is now BLOCKED instead of NEEDS_REVIEW (MEDIUM). EDPB Guidelines 2/2018, section 1, read the derogations restrictively. Confirm the changed expected result."
   },
   "07-vague-breach-timing.json": {
     "checks": "The processor notifies breaches \"within a reasonable time\" instead of without undue delay.",

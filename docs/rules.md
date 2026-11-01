@@ -9,7 +9,8 @@ Every rule `dpa-review` runs, generated from the rules in [`src/dpa_review/check
 | `processing.subject_matter` | Processing description: subject matter of the processing | GDPR Art. 28(3) | MEDIUM | MISSING (MEDIUM) | `processing.subject_matter` |
 | `processing.duration` | Processing description: duration of the processing | GDPR Art. 28(3) | MEDIUM | MISSING (MEDIUM) | `processing.duration` |
 | `processing.nature_and_purpose` | Processing description: nature and purpose of the processing | GDPR Art. 28(3) | MEDIUM | MISSING (MEDIUM) | `processing.nature_and_purpose` |
-| `processing.data_types` | Processing description: categories of personal data | GDPR Art. 28(3) | MEDIUM | MISSING (MEDIUM) | `processing.data_types` |
+| `processing.data_types` | Processing description: type of personal data | GDPR Art. 28(3) | MEDIUM | MISSING (MEDIUM) | `processing.data_types` |
+| `processing.data_subjects` | Processing description: categories of data subjects | GDPR Art. 28(3) | MEDIUM | MISSING (MEDIUM) | `processing.data_subjects` |
 | `art28.process_on_documented_instructions` | Processing only on documented instructions | GDPR Art. 28(3)(a) | HIGH | MISSING (HIGH) | `art28_clauses.process_on_documented_instructions` |
 | `art28.confidentiality_commitment` | Confidentiality commitment for authorised persons | GDPR Art. 28(3)(b) | HIGH | MISSING (HIGH) | `art28_clauses.confidentiality_commitment` |
 | `art28.security_measures_art32` | Security of processing (technical & organisational measures) | GDPR Art. 28(3)(c) / Art. 32 | HIGH | MISSING (HIGH) | `art28_clauses.security_measures_art32` |
@@ -20,20 +21,28 @@ Every rule `dpa-review` runs, generated from the rules in [`src/dpa_review/check
 | `subprocessor.authorization` | Sub-processor authorisation | GDPR Art. 28(2) | HIGH | MISSING (HIGH) | `art28_clauses.subprocessor_authorization` |
 | `subprocessor.flowdown` | Sub-processor flow-down of data-protection obligations | GDPR Art. 28(4) | HIGH | MISSING (HIGH) | `art28_clauses.subprocessor_flowdown` |
 | `breach.processor_notifies` | Personal-data breach notification to controller | GDPR Art. 33(2) | HIGH | MISSING (HIGH) | `breach_notification.processor_notifies_controller`, `breach_notification.timing` |
-| `transfer.<country>` | International transfer to &lt;COUNTRY&gt; | GDPR Art. 44-46 | by transfer basis, see below | see below | `transfers.destinations`, `transfers.mechanisms.<COUNTRY>` |
-| `transfer.subprocessor.<name>` | Sub-processor transfer: &lt;name&gt; (&lt;COUNTRY&gt;) | GDPR Art. 28(4) / Art. 44-46 | by transfer basis, see below | see below | `subprocessors[].country`, `subprocessors[].transfer_mechanism` |
-| `transfer.impact_assessment` | Transfer impact assessment (Schrems II) | GDPR Art. 46 (CJEU C-311/18) | MEDIUM | NEEDS_REVIEW (MEDIUM); checked only when SCCs or BCR are relied on | `transfers.transfer_impact_assessment` |
-| `ccpa.service_provider_terms` | CCPA/CPRA service-provider terms | CCPA §1798.140(ag); CPRA §1798.100(d) | LOW | NEEDS_REVIEW (LOW) | `ccpa.service_provider_terms` |
+| `transfer.<country>` | International transfer to &lt;COUNTRY&gt; | by transfer basis, see below | by transfer basis, see below | see below | `transfers.destinations`, `transfers.mechanisms.<COUNTRY>`; for `dpf`, `transfers.dpf_certified.<COUNTRY>`, `transfers.dpf_covers_non_hr_data.<COUNTRY>`, `transfers.dpf_covers_hr_data.<COUNTRY>`, `processing.includes_non_hr_data`, `processing.includes_hr_data`; for `derogation_art49`, `transfers.occasional_and_not_repetitive.<COUNTRY>` |
+| `transfer.subprocessor.<name>` | Sub-processor transfer: &lt;name&gt; (&lt;COUNTRY&gt;) | GDPR Art. 28(4) / by transfer basis, see below | by transfer basis, see below | see below | `subprocessors[].country`, `subprocessors[].transfer_mechanism`; for `dpf`, `subprocessors[].dpf_certified`, `subprocessors[].dpf_covers_non_hr_data`, `subprocessors[].dpf_covers_hr_data`, `processing.includes_non_hr_data`, `processing.includes_hr_data`; for `derogation_art49`, `subprocessors[].occasional_and_not_repetitive` |
+| `transfer.impact_assessment` | Transfer impact assessment (Schrems II) | GDPR Art. 46 (CJEU C-311/18); EDPB Recommendations 01/2020 | MEDIUM | NEEDS_REVIEW (MEDIUM); checked only when SCCs or BCR are relied on for a transfer outside the EEA | `transfers.transfer_impact_assessment` |
+| `ccpa.service_provider_terms` | CCPA/CPRA service-provider terms | Cal. Civ. Code §§ 1798.140(ag), 1798.100(d) (CCPA, as amended by the CPRA) | LOW | NEEDS_REVIEW (LOW) | `ccpa.service_provider_terms` |
 
 ## Transfer rules by basis
 
-`transfer.<country>` checks each direct destination and `transfer.subprocessor.<name>` each sub-processor outside the EEA. Both use the same assessment of the country and the recorded mechanism (status and severity):
+`transfer.<country>` checks each direct destination and `transfer.subprocessor.<name>` each sub-processor outside the EEA. Both use the same assessment of the country and the recorded mechanism (status and severity). The table shows each mechanism with nothing else recorded: for `dpf`, no certification on the Data Privacy Framework List; for `derogation_art49`, a transfer not recorded as occasional and not repetitive.
 
 | Destination | `none` | `adequacy` | `sccs` | `bcr` | `dpf` | `derogation_art49` |
 | --- | --- | --- | --- | --- | --- | --- |
 | EEA member state (e.g. DE) | PRESENT (INFO) | PRESENT (INFO) | PRESENT (INFO) | PRESENT (INFO) | PRESENT (INFO) | PRESENT (INFO) |
-| Adequacy country (e.g. JP) | PRESENT (LOW) | PRESENT (LOW) | NEEDS_REVIEW (LOW) | NEEDS_REVIEW (LOW) | NEEDS_REVIEW (LOW) | NEEDS_REVIEW (MEDIUM) |
-| Other third country (e.g. US) | MISSING (HIGH) | MISSING (HIGH) | NEEDS_REVIEW (LOW) | NEEDS_REVIEW (LOW) | NEEDS_REVIEW (LOW) | NEEDS_REVIEW (MEDIUM) |
+| Adequacy country (e.g. JP) | PRESENT (LOW) | PRESENT (LOW) | NEEDS_REVIEW (LOW) | NEEDS_REVIEW (LOW) | NEEDS_REVIEW (LOW) | NEEDS_REVIEW (LOW) |
+| Other third country (e.g. US) | MISSING (HIGH) | MISSING (HIGH) | NEEDS_REVIEW (LOW) | NEEDS_REVIEW (LOW) | MISSING (HIGH) | MISSING (HIGH) |
+
+The citation follows the same assessment. This is the citation of `transfer.<country>`; `transfer.subprocessor.<name>` cites `GDPR Art. 28(4) /` followed by the same articles:
+
+| Destination | `none` | `adequacy` | `sccs` | `bcr` | `dpf` | `derogation_art49` |
+| --- | --- | --- | --- | --- | --- | --- |
+| EEA member state (e.g. DE) | GDPR Art. 44-46 | GDPR Art. 44-46 | GDPR Art. 44-46 | GDPR Art. 44-46 | GDPR Art. 44-46 | GDPR Art. 44-46 |
+| Adequacy country (e.g. JP) | GDPR Art. 44-45 | GDPR Art. 44-45 | GDPR Art. 44-46; Commission Implementing Decision (EU) 2021/914 | GDPR Art. 44-47 | GDPR Art. 44-45 | GDPR Art. 44-45 |
+| Other third country (e.g. US) | GDPR Art. 44-46 | GDPR Art. 44-46 | GDPR Art. 44-46; Commission Implementing Decision (EU) 2021/914 | GDPR Art. 44-47 | GDPR Art. 44-45; Commission Implementing Decision (EU) 2023/1795 | GDPR Art. 44, 49; EDPB Guidelines 2/2018, section 1 |
 
 ## Reference data
 

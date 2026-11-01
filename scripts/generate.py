@@ -17,7 +17,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from dpa_review.checks import ADEQUACY, EEA, assess_transfer, run_all_checks  # noqa: E402
+from dpa_review.checks import (  # noqa: E402
+    ADEQUACY,
+    EEA,
+    assess_transfer,
+    check_transfers,
+    run_all_checks,
+    subprocessor_rule_id,
+)
 from dpa_review.contract import CONTRACT, MECHANISMS, Field, format_path, schema_text  # noqa: E402
 from dpa_review.facts import rule_facts  # noqa: E402
 
@@ -92,11 +99,15 @@ def input_format() -> str:
         "- A required section or key that is missing or `null` is refused. Record an absence explicitly "
         "(`[]`, `false`, `\"none\"`) instead of leaving the key out.",
         "- A value of the wrong JSON type is refused: the string `\"false\"` is not a boolean.",
+        "- A description (`processing.subject_matter`, `processing.duration`, "
+        "`processing.nature_and_purpose`) that reads as yes or no, such as `\"false\"`, is refused: record "
+        "yes/no as a JSON boolean.",
         "- Country codes are upper-case ISO 3166-1 alpha-2 codes. `UK`, `EL` and `EU` are refused with "
         "the code to use instead (`GB`, `GR`, a member state).",
-        "- Every key of `transfers.mechanisms` must be a country that `transfers.destinations` lists.",
-        "- Sub-processor names must differ, ignoring case, spaces and punctuation, because rule ids are "
-        "derived from them.",
+        "- Every key of `transfers.mechanisms`, and of the other per-country objects under `transfers`, must "
+        "be a country that `transfers.destinations` lists.",
+        "- Sub-processor names must contain a letter or digit and must differ, ignoring case, spaces and "
+        "punctuation, because rule ids are derived from them.",
         "- Every `evidence` key must name a fact the input records.",
         "",
         "A flag that is `false`, `null` or omitted reads as \"the DPA does not contain this\", so a clause "
@@ -186,6 +197,7 @@ def _probe(present: bool) -> dict:
             "duration": present,
             "nature_and_purpose": present,
             "data_types": ["contact data"] if present else [],
+            "data_subjects": ["customers"] if present else [],
         },
         "art28_clauses": {**flags, "subprocessor_authorization": "general" if present else "none"},
         "breach_notification": {"processor_notifies_controller": present, "timing": "without undue delay"},
@@ -201,10 +213,37 @@ def _probe(present: bool) -> dict:
 
 def _reads(rule_id: str, dpa: dict) -> str:
     if rule_id == "transfer.<country>":
-        return "`transfers.destinations`, `transfers.mechanisms.<COUNTRY>`"
+        return (
+            "`transfers.destinations`, `transfers.mechanisms.<COUNTRY>`; for `dpf`, "
+            "`transfers.dpf_certified.<COUNTRY>`, `transfers.dpf_covers_non_hr_data.<COUNTRY>`, "
+            "`transfers.dpf_covers_hr_data.<COUNTRY>`, `processing.includes_non_hr_data`, "
+            "`processing.includes_hr_data`; for `derogation_art49`, "
+            "`transfers.occasional_and_not_repetitive.<COUNTRY>`"
+        )
     if rule_id == "transfer.subprocessor.<name>":
-        return "`subprocessors[].country`, `subprocessors[].transfer_mechanism`"
+        return (
+            "`subprocessors[].country`, `subprocessors[].transfer_mechanism`; for `dpf`, "
+            "`subprocessors[].dpf_certified`, `subprocessors[].dpf_covers_non_hr_data`, "
+            "`subprocessors[].dpf_covers_hr_data`, `processing.includes_non_hr_data`, "
+            "`processing.includes_hr_data`; for `derogation_art49`, "
+            "`subprocessors[].occasional_and_not_repetitive`"
+        )
     return ", ".join(f"`{format_path(path)}`" for path in rule_facts(dpa, rule_id))
+
+
+# The rule id the probe's "<name>" sub-processor gets, and the placeholder the catalogue shows.
+_PROBE_SUBPROCESSOR = subprocessor_rule_id("<name>")
+_TRANSFER_BASES = (
+    ("EEA member state (e.g. DE)", "DE"),
+    ("Adequacy country (e.g. JP)", "JP"),
+    ("Other third country (e.g. US)", "US"),
+)
+
+
+def _transfer_citation(country: str, mechanism: str) -> str:
+    """The citation of the direct transfer finding for this destination and mechanism."""
+    dpa = {"transfers": {"destinations": [country], "mechanisms": {country: mechanism}}}
+    return check_transfers(dpa)[0].citation
 
 
 def rules() -> str:
@@ -227,8 +266,14 @@ def rules() -> str:
     ]
     for finding in run_all_checks(present):
         rule_id = finding.rule_id
+        citation = _cell(finding.citation)
+        if rule_id == _PROBE_SUBPROCESSOR:
+            rule_id = "transfer.subprocessor.<name>"
         if rule_id.startswith("transfer.") and rule_id != "transfer.impact_assessment":
             severity, absent_status = "by transfer basis, see below", "see below"
+            citation = ("GDPR Art. 28(4) / " if rule_id.startswith("transfer.subprocessor.") else "") + (
+                "by transfer basis, see below"
+            )
         else:
             absent_finding = when_absent.get(rule_id)
             severity = finding.severity
@@ -236,9 +281,9 @@ def rules() -> str:
                 f"{absent_finding.status} ({absent_finding.severity})" if absent_finding else "not checked"
             )
         if rule_id == "transfer.impact_assessment":
-            absent_status += "; checked only when SCCs or BCR are relied on"
+            absent_status += "; checked only when SCCs or BCR are relied on for a transfer outside the EEA"
         lines.append(
-            f"| `{rule_id}` | {_cell(finding.title)} | {_cell(finding.citation)} | {severity} "
+            f"| `{rule_id}` | {_cell(finding.title)} | {citation} | {severity} "
             f"| {absent_status} | {_reads(rule_id, present)} |"
         )
     lines += [
@@ -247,20 +292,29 @@ def rules() -> str:
         "",
         "`transfer.<country>` checks each direct destination and `transfer.subprocessor.<name>` each "
         "sub-processor outside the EEA. Both use the same assessment of the country and the recorded "
-        "mechanism (status and severity):",
+        "mechanism (status and severity). The table shows each mechanism with nothing else recorded: for "
+        "`dpf`, no certification on the Data Privacy Framework List; for `derogation_art49`, a transfer not "
+        "recorded as occasional and not repetitive.",
         "",
         "| Destination | " + " | ".join(f"`{mechanism}`" for mechanism in MECHANISMS) + " |",
         "| --- |" + " --- |" * len(MECHANISMS),
     ]
-    for label, country in (
-        ("EEA member state (e.g. DE)", "DE"),
-        ("Adequacy country (e.g. JP)", "JP"),
-        ("Other third country (e.g. US)", "US"),
-    ):
+    for label, country in _TRANSFER_BASES:
         cells = []
         for mechanism in MECHANISMS:
             status, severity, _ = assess_transfer(country, mechanism)
             cells.append(f"{status} ({severity})")
+        lines.append(f"| {label} | " + " | ".join(cells) + " |")
+    lines += [
+        "",
+        "The citation follows the same assessment. This is the citation of `transfer.<country>`; "
+        "`transfer.subprocessor.<name>` cites `GDPR Art. 28(4) /` followed by the same articles:",
+        "",
+        "| Destination | " + " | ".join(f"`{mechanism}`" for mechanism in MECHANISMS) + " |",
+        "| --- |" + " --- |" * len(MECHANISMS),
+    ]
+    for label, country in _TRANSFER_BASES:
+        cells = [_cell(_transfer_citation(country, mechanism)) for mechanism in MECHANISMS]
         lines.append(f"| {label} | " + " | ".join(cells) + " |")
     lines += [
         "",
