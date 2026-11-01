@@ -100,11 +100,18 @@ class TransferEvidenceGraphTests(unittest.TestCase):
         # checks.subprocessor_rule_id is the one derivation, and it keeps letters of every script.
         # The contract, the fact mapping and the graph import that function, and for names that
         # differ only outside ASCII the rules emit distinct, non-empty ids, which the fact mapping
-        # and the graph resolve to the matching entry.
+        # and the graph resolve to the matching entry. The identity check shows only that the
+        # modules import the helper; the punctuated pair is what fails when one of them derives
+        # the id its own way (without punctuation, the old derivations give the same ids).
         for module in (contract, facts, transfer_graph):
             with self.subTest(module=module.__name__):
                 self.assertIs(module.subprocessor_rule_id, checks.subprocessor_rule_id)
-        for names in (("Müller Inc", "Möller Inc"), ("百度", "腾讯"), ("Альфа Сервис", "Бета Сервис")):
+        for names in (
+            ("Müller Inc", "Möller Inc"),
+            ("Müller, Inc.", "Möller Inc"),
+            ("百度", "腾讯"),
+            ("Альфа Сервис", "Бета Сервис"),
+        ):
             with self.subTest(names=names):
                 dpa = json.loads(json.dumps(SAMPLE))
                 dpa["subprocessors"] = [

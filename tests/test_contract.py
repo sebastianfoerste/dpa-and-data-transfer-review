@@ -199,6 +199,16 @@ class Countries(unittest.TestCase):
                 self.assertEqual(len(set(rule_ids)), 2, rule_ids)
                 self.assertTrue(all(rule_id != "transfer.subprocessor." for rule_id in rule_ids), rule_ids)
 
+    def test_names_that_differ_only_in_a_symbol_or_combining_mark_are_refused(self):
+        # Only letters and digits keep rule ids apart, so these pairs would share one; the
+        # contract refuses them before the rules run (checks.subprocessor_rule_id).
+        for first, second in (("Müller Inc", "Múller Inc"), ("Acme™", "Acme®")):
+            with self.subTest(names=(first, second)):
+                dpa = changed(subprocessors=[{"name": first, "country": "US"}, {"name": second, "country": "US"}])
+                found = messages(dpa)
+                self.assertEqual(len(found), 1, found)
+                self.assertIn("repeats subprocessors[0].name", found[0])
+
     def test_names_that_give_the_same_rule_id_are_refused(self):
         # Case folding turns U+0345 into a letter, so the name keys differ, but the rule id drops it.
         dpa = changed(subprocessors=[{"name": "Acme", "country": "US"}, {"name": "Acme\u0345", "country": "US"}])

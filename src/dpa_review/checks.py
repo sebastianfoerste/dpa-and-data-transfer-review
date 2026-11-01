@@ -86,8 +86,12 @@ def subprocessor_rule_id(name: Any) -> str:
 
     Letters and digits of every script are kept, in lower case, so "Müller Inc" and "Möller Inc",
     or two names written in Chinese, get distinct ids. Each space becomes "_", and every other run
-    of characters that are not letters, digits or "_" becomes one "_". The input contract refuses
-    two sub-processor names that would share an id, and a name that would give an empty one.
+    of characters that are not letters, digits or "_" becomes one "_", so "Support Tools, LLC."
+    gives "support_tools__llc". Only letters and digits keep names apart: names that differ only in
+    a symbol ("Acme™", "Acme®") or in an accent written as a separate combining mark (decomposed
+    "Müller" and "Múller") share an id. The input contract refuses two sub-processor names that
+    would share an id, and a name that would give an empty one; a caller that skips it (build_packet
+    without validate) gets one finding for both entries.
     """
     return SUBPROCESSOR_TRANSFER_PREFIX + re.sub(r"\W+", "_", str(name).lower().replace(" ", "_")).strip("_")
 
