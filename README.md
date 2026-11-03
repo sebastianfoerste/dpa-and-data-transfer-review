@@ -1,32 +1,64 @@
 # dpa-and-data-transfer-review
 
 [![CI](https://github.com/sebastianfoerste/dpa-and-data-transfer-review/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/sebastianfoerste/dpa-and-data-transfer-review/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](pyproject.toml)
 
-Deterministic, cited GDPR Art. 28 + Chapter V transfer checks; produces a review packet with a visible review state and a gating exit code. Not legal advice; data is synthetic.
+**Repeatable, cited first-pass DPA review:** the recurring GDPR Art. 28 and Chapter V transfer checks run the same way every time, so a lawyer's time goes to the judgement calls.
 
 **Public-safety posture:** synthetic DPA facts only, cited source provenance, visible review state, a lawyer review gate, and no legal advice.
 
-> **If you don't code:** scroll to [What the demo produces](#what-the-demo-produces). The repository ships a sample output you can read in the browser: a cited checklist with a clear review state. The point is not the code; it is whether the legal review is structured, cited, reviewable, and testable.
+<!--
+  Demo image placeholder. Replace this comment and the note below with a real
+  screenshot or GIF captured from an actual `make demo` run, or of
+  examples/review-packet.md as rendered on GitHub. It must match the committed
+  sample output: 20 checks, review state BLOCKED, 3 open HIGH findings.
+-->
+> **Screenshot/GIF placeholder — to be added**
 
-![demo](docs/demo.png)
+## Who it's for
 
-## Why this exists
+- **In-house privacy and legal teams** with a steady flow of vendor, customer, and sub-processor DPAs (for example at a scaling AI SaaS company) who want the routine checks applied consistently, with a citation on every finding.
+- **Privacy operations and legal engineering teams** that need a gate, not just a report: a `BLOCKED` packet exits with code `2`, so it can stop a workflow rather than merely warn.
+- **Teams evaluating legal automation** who want to inspect the rules, citations, and tests themselves instead of taking quality claims on trust.
 
-Vendor and DPA review is high-volume, repetitive, and easy to do inconsistently. Every miss, a sub-processor in a third country with no transfer mechanism, no flow-down of obligations, or a missing breach-notification clause, is a real exposure. This encodes the recurring GDPR Article 28 and Chapter V checks as deterministic rules with citations, so the boring 80% is consistent and a lawyer's time goes to the judgement calls.
+**Not for:** legal advice, autonomous approval, or reading free-text contracts. It works on a structured JSON description of a DPA, and even the best outcome, `CLEARED_FOR_REVIEW`, still requires a lawyer's sign-off.
 
-The thesis is the same one that runs through my other repositories: **legal AI and legal automation quality should be measured and reviewable, not asserted.**
+## Try it now
 
-## Run it
+There is no hosted playground. The fastest way in needs no code and no install: the repository ships a complete sample run, generated from a synthetic DPA with three planted defects, that you can read in the browser.
+
+- [`examples/review-packet.md`](examples/review-packet.md): the cited checklist, the review state (`BLOCKED`), and a remediation for each open finding ([JSON](examples/review-packet.json)).
+- [`examples/transfer-evidence-graph.md`](examples/transfer-evidence-graph.md): the transfer chain from controller to processor, sub-processors, and destination countries as a diagram, with its weakest links and a remediation queue routed to reviewer roles ([JSON](examples/transfer-evidence-graph.json)).
+- [`data/sample_dpa.json`](data/sample_dpa.json): the synthetic input both were generated from.
+
+[What the demo produces](#what-the-demo-produces) walks through the result, and the [Quick start](#quick-start) regenerates it on your machine.
+
+## Quick start
+
+Needs Python 3.10+ and `make`. Nothing else to install: standard library only, no network or model calls.
 
 ```bash
 git clone https://github.com/sebastianfoerste/dpa-and-data-transfer-review
 cd dpa-and-data-transfer-review
 make install   # no third-party dependencies, standard library only
 make test      # deterministic unit tests
-make demo      # writes examples/review-packet.md and .json, prints the packet
+make demo      # prints the review packet and regenerates the files in examples/
 ```
 
-`make demo` runs end to end, offline and deterministically, against the synthetic DPA in `data/sample_dpa.json`.
+`make demo` runs end to end, offline and deterministically, against the synthetic DPA in `data/sample_dpa.json`. The sample is `BLOCKED` by design, so the command exits with code `2` and `make` reports an error after printing the packet: that is the gate working, not a crash.
+
+To review your own DPA, describe it in a JSON file with the same structure as `data/sample_dpa.json` (there is no PDF or free-text import), then run the command the `demo` target wraps:
+
+```bash
+PYTHONPATH=src python3 -m dpa_review.cli --input path/to/your-dpa.json --out path/to/output
+```
+
+## Why this exists
+
+Vendor and DPA review is high-volume, repetitive, and easy to do inconsistently. Every miss, a sub-processor in a third country with no transfer mechanism, no flow-down of obligations, or a missing breach-notification clause, is a real exposure. This encodes the recurring GDPR Article 28 and Chapter V checks as deterministic rules with citations, so the boring 80% is consistent and a lawyer's time goes to the judgement calls.
+
+The thesis is the same one that runs through my other repositories: **legal AI and legal automation quality should be measured and reviewable, not asserted.**
 
 ## What the demo produces
 
