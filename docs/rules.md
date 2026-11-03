@@ -37,7 +37,7 @@ Every rule `dpa-review` runs, generated from the rules in [`src/dpa_review/check
 
 ## Reference data
 
-The country lists the transfer rules use, as they stand in `checks.py`. They are illustrative and carry no as-of date yet: verify them against the European Commission's current [adequacy decisions](https://commission.europa.eu/law/law-topic/data-protection/international-dimension-data-protection/adequacy-decisions_en) before relying on a result.
+The country lists the transfer rules use, as they stand in `checks.py`. They were last checked against the European Commission's [adequacy decisions](https://commission.europa.eu/law/law-topic/data-protection/international-dimension-data-protection/adequacy-decisions_en) on 2026-10-31; [reference-data.md](reference-data.md) records the decision behind each entry, what was verified and what the code does not model. They are illustrative: check the list again before relying on a result.
 
 - EEA (30): AT, BE, BG, CY, CZ, DE, DK, EE, ES, FI, FR, GR, HR, HU, IE, IS, IT, LI, LT, LU, LV, MT, NL, NO, PL, PT, RO, SE, SI, SK
-- Adequacy (Art. 45) (14): AD, AR, CA, CH, FO, GB, GG, IL, IM, JE, JP, KR, NZ, UY
+- Adequacy (Art. 45) (15): AD, AR, BR, CA, CH, FO, GB, GG, IL, IM, JE, JP, KR, NZ, UY

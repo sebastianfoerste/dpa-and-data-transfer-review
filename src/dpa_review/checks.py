@@ -20,9 +20,20 @@ EEA = {
     "SE", "IS", "LI", "NO",
 }
 
-# Third countries with a European Commission adequacy decision (Art. 45).
-# Illustrative and synthetic-data oriented; verify against the current list in practice.
-ADEQUACY = {"AD", "AR", "CA", "FO", "GG", "IL", "IM", "JP", "JE", "NZ", "CH", "GB", "UY", "KR"}
+# Third countries with a European Commission adequacy decision (Art. 45), as the Commission's
+# list stood on REFERENCE_DATA_AS_OF; docs/reference-data.md records the decision behind each
+# entry and what the code does not model. Illustrative: check the list again before relying on a
+# result. Scope limits (e.g. Canada: commercial organisations) are not modelled. The United States
+# is not listed: Decision (EU) 2023/1795 covers only importers certified under the EU-US Data
+# Privacy Framework, which the input records as the mechanism "dpf".
+ADEQUACY = {
+    "AD", "AR", "CA", "FO", "GG", "IL", "IM", "JP", "JE", "NZ", "CH", "GB", "UY", "KR",
+    # Brazil: Commission Implementing Decision of 26 January 2026, C(2026) 373 final, Art. 45(3)
+    # GDPR, Art. 1: controllers and processors in Brazil subject to the LGPD. Added 2026-10-31.
+    "BR",
+}
+# The date the lists above were last checked against the Commission's published decisions.
+REFERENCE_DATA_AS_OF = "2026-10-31"
 
 VALID_TRANSFER_MECHANISMS = {"adequacy", "sccs", "bcr", "derogation_art49", "dpf"}
 
