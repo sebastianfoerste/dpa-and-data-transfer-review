@@ -9,6 +9,7 @@ present, missing, or needs human review. This is a review packet, never legal ad
 from __future__ import annotations
 
 import re
+import unicodedata
 from dataclasses import dataclass, asdict
 from typing import Any, Callable
 
@@ -84,16 +85,20 @@ def subprocessor_rule_id(name: Any) -> str:
     contract (contract.py) must all derive it here, or a name with punctuation gives the graph a
     rule id the packet never emits and a blocked transfer renders as passed.
 
-    Letters and digits of every script are kept, in lower case, so "Müller Inc" and "Möller Inc",
-    or two names written in Chinese, get distinct ids. Each space becomes "_", and every other run
-    of characters that are not letters, digits or "_" becomes one "_", so "Support Tools, LLC."
-    gives "support_tools__llc". Only letters and digits keep names apart: names that differ only in
-    a symbol ("Acme™", "Acme®") or in an accent written as a separate combining mark (decomposed
-    "Müller" and "Múller") share an id. The input contract refuses two sub-processor names that
-    would share an id, and a name that would give an empty one; a caller that skips it (build_packet
-    without validate) gets one finding for both entries.
+    The name is first put in Unicode normalisation form NFC, so its decomposed and its composed
+    spelling ("u" followed by the combining mark U+0308, or "ü") give one id, and an accent stays
+    part of its letter. Letters and digits of every script are then kept, in lower case, so
+    "Müller Inc", "Múller Inc" and "Möller Inc", composed or decomposed, or two names written in
+    Chinese, get distinct ids. Each space becomes "_", and every other run of characters that are not
+    letters, digits or "_" becomes one "_", so "Support Tools, LLC." gives "support_tools__llc".
+    Only letters and digits keep names apart: names that differ only in a symbol ("Acme™", "Acme®")
+    or in a combining mark that NFC cannot compose into a letter ("q" followed by U+0308 or by
+    U+0303) share an id. The input contract refuses two sub-processor names that would share an id,
+    and a name that would give an empty one; a caller that skips it (build_packet without validate)
+    gets one finding for both entries.
     """
-    return SUBPROCESSOR_TRANSFER_PREFIX + re.sub(r"\W+", "_", str(name).lower().replace(" ", "_")).strip("_")
+    name = unicodedata.normalize("NFC", str(name))
+    return SUBPROCESSOR_TRANSFER_PREFIX + re.sub(r"\W+", "_", name.lower().replace(" ", "_")).strip("_")
 
 
 @dataclass

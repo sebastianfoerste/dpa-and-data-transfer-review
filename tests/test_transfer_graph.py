@@ -111,6 +111,9 @@ class TransferEvidenceGraphTests(unittest.TestCase):
             ("Müller, Inc.", "Möller Inc"),
             ("百度", "腾讯"),
             ("Альфа Сервис", "Бета Сервис"),
+            # Decomposed: the accents are combining marks, which NFC composes into the letters.
+            ("Mu\u0308ller Inc", "Mu\u0301ller Inc"),
+            ("\u0396\u03c9\u0342 Ltd", "\u0396\u03c9 Ltd"),
         ):
             with self.subTest(names=names):
                 dpa = json.loads(json.dumps(SAMPLE))
@@ -130,6 +133,27 @@ class TransferEvidenceGraphTests(unittest.TestCase):
                     self.assertEqual(rule_facts(dpa, rule_id), [("subprocessors", index)])
                     self.assertEqual(edges[f"subprocessor-{index + 1}-to-cn"]["control_refs"][0], rule_id)
                     self.assertIn(rule_id, edges[f"processor-to-subprocessor-{index + 1}"]["control_refs"])
+
+    def test_decomposed_and_composed_spellings_of_a_name_give_one_rule_id(self):
+        # checks.subprocessor_rule_id puts the name in NFC before it builds the id, so the rules,
+        # the fact mapping and the graph give the decomposed spelling the composed spelling's id.
+        composed, decomposed = "M\u00fcller Inc", "Mu\u0308ller Inc"
+        expected = SUBPROCESSOR_TRANSFER_PREFIX + "m\u00fcller_inc"
+        self.assertEqual(subprocessor_rule_id(composed), expected)
+        self.assertEqual(subprocessor_rule_id(decomposed), expected)
+        for name in (composed, decomposed):
+            with self.subTest(name=ascii(name)):
+                dpa = json.loads(json.dumps(SAMPLE))
+                dpa["subprocessors"] = [{"name": name, "country": "CN"}]
+                self.assertEqual(violations(dpa), [])
+                packet = build_packet(dpa)
+                emitted = [f.rule_id for f in packet.findings if f.rule_id.startswith(SUBPROCESSOR_TRANSFER_PREFIX)]
+                self.assertEqual(emitted, [expected])
+                self.assertEqual(rule_facts(dpa, expected), [("subprocessors", 0)])
+                edges = {edge["edge_id"]: edge for edge in build_transfer_evidence_graph(dpa, packet)["edges"]}
+                self.assertEqual(edges["subprocessor-1-to-cn"]["control_refs"], [expected])
+                self.assertEqual(edges["subprocessor-1-to-cn"]["status"], "block")
+                self.assertIn(expected, edges["processor-to-subprocessor-1"]["control_refs"])
 
     def test_assessment_attaches_only_to_transfers_outside_the_eea(self):
         dpa = json.loads(json.dumps(SAMPLE))

@@ -187,7 +187,16 @@ class Countries(unittest.TestCase):
     def test_names_that_differ_only_outside_ascii_keep_distinct_rule_ids(self):
         # Every non-ASCII letter used to become "_", so the contract accepted these pairs as
         # distinct while both entries got the same rule id (or, for CJK names, an empty one).
-        for first, second in (("Müller Inc", "Möller Inc"), ("百度", "腾讯")):
+        # A name is put in NFC before it is compared, so an accent written as a combining mark
+        # stays part of its letter: decomposed "Müller Inc" and "Múller Inc" used to share both the
+        # name key and the rule id, and were refused as repeats. Case folding decomposes U+1FF6
+        # again, so the folded key is composed once more.
+        for first, second in (
+            ("Müller Inc", "Möller Inc"),
+            ("百度", "腾讯"),
+            ("Mu\u0308ller Inc", "Mu\u0301ller Inc"),
+            ("\u0396\u1ff6 Ltd", "\u0396\u03c9 Ltd"),
+        ):
             with self.subTest(names=(first, second)):
                 dpa = changed(subprocessors=[
                     {"name": first, "country": "CN", "transfer_mechanism": "sccs"},
@@ -201,8 +210,19 @@ class Countries(unittest.TestCase):
 
     def test_names_that_differ_only_in_a_symbol_or_combining_mark_are_refused(self):
         # Only letters and digits keep rule ids apart, so these pairs would share one; the
-        # contract refuses them before the rules run (checks.subprocessor_rule_id).
-        for first, second in (("Müller Inc", "Múller Inc"), ("Acme™", "Acme®")):
+        # contract refuses them before the rules run (checks.subprocessor_rule_id). NFC cannot
+        # compose "q" with U+0308 or U+0303 into a letter, so those marks are dropped.
+        for first, second in (("Acme™", "Acme®"), ("Taq\u0308 Inc", "Taq\u0303 Inc")):
+            with self.subTest(names=(first, second)):
+                dpa = changed(subprocessors=[{"name": first, "country": "US"}, {"name": second, "country": "US"}])
+                found = messages(dpa)
+                self.assertEqual(len(found), 1, found)
+                self.assertIn("repeats subprocessors[0].name", found[0])
+
+    def test_the_decomposed_and_the_composed_spelling_of_a_name_are_refused_as_a_repeat(self):
+        # Both spellings are put in NFC, so they give one name key and one rule id; they used to
+        # pass as two names with two ids.
+        for first, second in (("Mu\u0308ller Inc", "M\u00fcller Inc"), ("M\u00fcller Inc", "mu\u0308ller inc")):
             with self.subTest(names=(first, second)):
                 dpa = changed(subprocessors=[{"name": first, "country": "US"}, {"name": second, "country": "US"}])
                 found = messages(dpa)
