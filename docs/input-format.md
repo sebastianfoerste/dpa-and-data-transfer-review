@@ -17,9 +17,10 @@ error: dpa.json breaks the input contract, so no review state was decided (2 pro
 - An unknown key, at any level, is refused, with the closest known key as a suggestion.
 - A required section or key that is missing or `null` is refused. Record an absence explicitly (`[]`, `false`, `"none"`) instead of leaving the key out.
 - A value of the wrong JSON type is refused: the string `"false"` is not a boolean.
+- A description (`processing.subject_matter`, `processing.duration`, `processing.nature_and_purpose`) that reads as yes or no, such as `"false"`, is refused: record yes/no as a JSON boolean.
 - Country codes are upper-case ISO 3166-1 alpha-2 codes. `UK`, `EL` and `EU` are refused with the code to use instead (`GB`, `GR`, a member state).
-- Every key of `transfers.mechanisms` must be a country that `transfers.destinations` lists.
-- Sub-processor names must differ, ignoring case, spaces and punctuation, because rule ids are derived from them.
+- Every key of `transfers.mechanisms`, and of the other per-country objects under `transfers`, must be a country that `transfers.destinations` lists.
+- Sub-processor names must contain a letter or digit and must differ, ignoring case, spaces and punctuation, because rule ids are derived from them.
 - Every `evidence` key must name a fact the input records.
 
 A flag that is `false`, `null` or omitted reads as "the DPA does not contain this", so a clause you could not find fails closed.
@@ -58,7 +59,9 @@ Required, an object. The processing details GDPR Art. 28(3) requires the DPA to 
 | `processing.duration` | string or boolean, or null | no | The duration of the processing is stated: true, or a short description. Rule processing.duration. |
 | `processing.nature_and_purpose` | string or boolean, or null | no | The nature and purpose of the processing are stated: true, or a short description. Rule processing.nature_and_purpose. |
 | `processing.data_types` | list of strings, or null | no | The types of personal data processed. Rule processing.data_types: an empty or omitted list is MISSING. |
-| `processing.data_subjects` | list of strings, or null | no | The categories of data subjects. Recorded only: no rule reads it. |
+| `processing.data_subjects` | list of strings, or null | no | The categories of data subjects. Rule processing.data_subjects: an empty or omitted list is MISSING. |
+| `processing.includes_non_hr_data` | boolean, or null | no | Whether non-HR personal data is transferred; null or omitted when the DPA does not say. Read for a dpf transfer: the importer's certification must cover the data transferred. |
+| `processing.includes_hr_data` | boolean, or null | no | Whether HR data from the employment context is transferred; null or omitted when the DPA does not say. Read for a dpf transfer: the importer's certification must cover the data transferred. |
 
 ### `art28_clauses`
 
@@ -92,10 +95,14 @@ Required, a list of objects. Every sub-processor the DPA names or authorises. Ea
 
 | Key | Type | Required | Meaning |
 | --- | --- | --- | --- |
-| `subprocessors[].name` | non-empty string | yes | The sub-processor's name. Names must differ, ignoring case, spaces and punctuation, because rule ids are derived from them. |
+| `subprocessors[].name` | non-empty string | yes | The sub-processor's name. Names must contain a letter or digit and must differ, ignoring case, spaces and punctuation, because rule ids are derived from them. |
 | `subprocessors[].country` | country code | yes | Upper-case ISO 3166-1 alpha-2 code of the country where it processes the data, e.g. "US" (the United Kingdom is "GB", Greece is "GR"). |
 | `subprocessors[].purpose` | string | no | What the sub-processor does. Labels the graph; no rule reads it. |
 | `subprocessors[].transfer_mechanism` | one of `none`, `adequacy`, `sccs`, `bcr`, `dpf`, `derogation_art49`, or null | no | The Chapter V basis for a sub-processor outside the EEA. Null or omitted reads as none. |
+| `subprocessors[].dpf_certified` | boolean, or null | no | For a dpf mechanism: the sub-processor is actively certified on the Data Privacy Framework List. |
+| `subprocessors[].dpf_covers_non_hr_data` | boolean, or null | no | For a dpf mechanism: the sub-processor's DPF certification covers non-HR data. |
+| `subprocessors[].dpf_covers_hr_data` | boolean, or null | no | For a dpf mechanism: the sub-processor's DPF certification covers HR data. |
+| `subprocessors[].occasional_and_not_repetitive` | boolean, or null | no | For a derogation_art49 mechanism: the transfer is occasional and not repetitive. Otherwise the derogation is treated like a missing basis. |
 
 ### `transfers`
 
@@ -105,7 +112,11 @@ Required, an object. Transfers of personal data that the processor makes directl
 | --- | --- | --- | --- |
 | `transfers.destinations` | list of country codes | yes | Upper-case ISO 3166-1 alpha-2 codes of every country the processor transfers personal data to directly; each is checked (rule transfer.&lt;country&gt;). Record [] when there are none. |
 | `transfers.mechanisms` | object keyed by country code → one of `none`, `adequacy`, `sccs`, `bcr`, `dpf`, `derogation_art49`, or null, or null | no | The Chapter V basis per destination, keyed by a country that destinations lists. A destination without an entry reads as none. |
-| `transfers.transfer_impact_assessment` | boolean, or null | no | A transfer impact assessment is recorded. Read only when SCCs or BCR are relied on (rule transfer.impact_assessment). |
+| `transfers.dpf_certified` | object keyed by country code → boolean, or null, or null | no | For a dpf mechanism, per destination: the importer is actively certified on the Data Privacy Framework List. |
+| `transfers.dpf_covers_non_hr_data` | object keyed by country code → boolean, or null, or null | no | For a dpf mechanism, per destination: the importer's DPF certification covers non-HR data. |
+| `transfers.dpf_covers_hr_data` | object keyed by country code → boolean, or null, or null | no | For a dpf mechanism, per destination: the importer's DPF certification covers HR data. |
+| `transfers.occasional_and_not_repetitive` | object keyed by country code → boolean, or null, or null | no | For a derogation_art49 mechanism, per destination: the transfer is occasional and not repetitive. Otherwise the derogation is treated like a missing basis. |
+| `transfers.transfer_impact_assessment` | boolean, or null | no | A transfer impact assessment is recorded. Read only when SCCs or BCR are relied on for a destination or sub-processor outside the EEA (rule transfer.impact_assessment). |
 
 ### `ccpa`
 

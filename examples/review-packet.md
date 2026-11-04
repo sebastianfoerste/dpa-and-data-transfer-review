@@ -4,15 +4,15 @@
 
 > BLOCKED: open high-severity findings must be resolved before this DPA can be relied on.
 
-Checks: 20, present 17, missing 3, needs-review 0, open high 3, open medium 0
+Checks: 21, present 18, missing 3, needs-review 0, open high 3, open medium 0
 
 ## Open findings
 
 | Severity | Status | Finding | Citation | Remediation |
 | --- | --- | --- | --- | --- |
 | HIGH | [missing] | Sub-processor flow-down of data-protection obligations | GDPR Art. 28(4) | Add a clause imposing materially equivalent obligations on every sub-processor (Art. 28(4)). |
-| HIGH | [missing] | Sub-processor transfer: Support Tools LLC (US) | GDPR Art. 28(4) / Art. 44-46 | Confirm the transfer mechanism covering Support Tools LLC in US. |
-| HIGH | [missing] | International transfer to US | GDPR Art. 44-46 | Document a valid Art. 46 safeguard for US (or an Art. 49 derogation) and record the basis. |
+| HIGH | [missing] | Sub-processor transfer: Support Tools LLC (US) | GDPR Art. 28(4) / Art. 44-46 | Record an Art. 45 adequacy basis or an Art. 46 safeguard for Support Tools LLC in US. |
+| HIGH | [missing] | International transfer to US | GDPR Art. 44-46 | Record an Art. 45 adequacy basis or an Art. 46 safeguard for US. |
 
 ## Full checklist
 
@@ -30,13 +30,14 @@ Checks: 20, present 17, missing 3, needs-review 0, open high 3, open medium 0
 | HIGH | [ok] | Security of processing (technical & organisational measures) | GDPR Art. 28(3)(c) / Art. 32 |
 | HIGH | [ok] | Personal-data breach notification to controller | GDPR Art. 33(2) |
 | HIGH | [ok] | Sub-processor authorisation | GDPR Art. 28(2) |
-| MEDIUM | [ok] | Processing description: categories of personal data | GDPR Art. 28(3) |
+| MEDIUM | [ok] | Processing description: categories of data subjects | GDPR Art. 28(3) |
+| MEDIUM | [ok] | Processing description: type of personal data | GDPR Art. 28(3) |
 | MEDIUM | [ok] | Processing description: duration of the processing | GDPR Art. 28(3) |
 | MEDIUM | [ok] | Processing description: nature and purpose of the processing | GDPR Art. 28(3) |
 | MEDIUM | [ok] | Processing description: subject matter of the processing | GDPR Art. 28(3) |
-| LOW | [ok] | CCPA/CPRA service-provider terms | CCPA §1798.140(ag); CPRA §1798.100(d) |
-| LOW | [ok] | International transfer to JP | GDPR Art. 44-46 |
-| LOW | [ok] | Sub-processor transfer: Analytics KK (JP) | GDPR Art. 28(4) / Art. 44-46 |
+| LOW | [ok] | CCPA/CPRA service-provider terms | Cal. Civ. Code §§ 1798.140(ag), 1798.100(d) (CCPA, as amended by the CPRA) |
+| LOW | [ok] | International transfer to JP | GDPR Art. 44-45 |
+| LOW | [ok] | Sub-processor transfer: Analytics KK (JP) | GDPR Art. 28(4) / Art. 44-45 |
 | INFO | [ok] | International transfer to FR | GDPR Art. 44-46 |
 
 ---

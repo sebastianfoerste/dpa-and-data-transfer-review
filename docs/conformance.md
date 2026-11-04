@@ -12,8 +12,8 @@ The fixtures freeze what the rules do today. Where a result looks legally questi
 | [`02-adequacy-only.json`](../tests/fixtures/02-adequacy-only.json) | Direct transfers to Japan and Switzerland and a UK sub-processor, all on adequacy decisions. | `CLEARED_FOR_REVIEW` | 0 | none |
 | [`03-sccs-with-tia.json`](../tests/fixtures/03-sccs-with-tia.json) | A direct transfer to the US on SCCs, with a transfer impact assessment recorded. | `NEEDS_REVIEW` | 1 | `transfer.us` |
 | [`04-sccs-without-tia.json`](../tests/fixtures/04-sccs-without-tia.json) | The same SCC transfer to the US, without a transfer impact assessment. | `NEEDS_REVIEW` | 1 | `transfer.impact_assessment`, `transfer.us` |
-| [`05-dpf-us-importer.json`](../tests/fixtures/05-dpf-us-importer.json) ⚑ | A direct transfer to a US importer certified under the EU-US Data Privacy Framework. | `NEEDS_REVIEW` | 1 | `transfer.us` |
-| [`06-art49-derogation.json`](../tests/fixtures/06-art49-derogation.json) ⚑ | A direct transfer to India on an Art. 49 derogation. | `NEEDS_REVIEW` | 1 | `transfer.in` |
+| [`05-dpf-us-importer.json`](../tests/fixtures/05-dpf-us-importer.json) ⚑ | A direct transfer to a US importer certified under the EU-US Data Privacy Framework. | `CLEARED_FOR_REVIEW` | 0 | none |
+| [`06-art49-derogation.json`](../tests/fixtures/06-art49-derogation.json) ⚑ | A direct transfer to India on an Art. 49 derogation. | `BLOCKED` | 2 | `transfer.in` |
 | [`07-vague-breach-timing.json`](../tests/fixtures/07-vague-breach-timing.json) ⚑ | The processor notifies breaches "within a reasonable time" instead of without undue delay. | `BLOCKED` | 2 | `breach.processor_notifies` |
 | [`08-no-subprocessor-authorisation.json`](../tests/fixtures/08-no-subprocessor-authorisation.json) | The DPA gives no prior specific or general written authorisation for sub-processors. | `BLOCKED` | 2 | `subprocessor.authorization` |
 | [`09-third-country-subprocessor-chain.json`](../tests/fixtures/09-third-country-subprocessor-chain.json) | Sub-processors in Germany, in the US on SCCs, and in India with no transfer mechanism. | `BLOCKED` | 2 | `transfer.subprocessor.example_analytics_pvt_ltd`, `transfer.subprocessor.example_support_inc` |
@@ -23,8 +23,8 @@ The fixtures freeze what the rules do today. Where a result looks legally questi
 
 ## ⚑ Flagged for legal review
 
-- **`05-dpf-us-importer.json`**: The finding labels the DPF "an approved certification / framework (Art. 46)" and asks for a transfer impact assessment; the DPF is an Art. 45 adequacy decision (Implementing Decision (EU) 2023/1795). Draft PR #4 changes this.
-- **`06-art49-derogation.json`**: The input cannot say whether the transfer is occasional or ongoing, so a systematic transfer on an Art. 49 derogation is only NEEDS_REVIEW (MEDIUM). EDPB Guidelines 2/2018 read the derogations restrictively. Draft PR #4 blocks non-occasional derogation transfers.
+- **`05-dpf-us-importer.json`**: Changed by PR #4: the DPF is treated as an Art. 45 adequacy decision (Implementing Decision (EU) 2023/1795), not an Art. 46 safeguard, so a transfer to an importer recorded as actively certified on the Data Privacy Framework List for the data transferred is PRESENT and asks for no transfer impact assessment. The fixture now records that certification and the data it covers. Confirm the changed expected result.
+- **`06-art49-derogation.json`**: Changed by PR #4: a derogation not recorded as occasional and not repetitive is treated like a missing basis (HIGH), so this fixture is now BLOCKED instead of NEEDS_REVIEW (MEDIUM). EDPB Guidelines 2/2018, section 1, read the derogations restrictively. Confirm the changed expected result.
 - **`07-vague-breach-timing.json`**: Any timing wording without "undue delay" or "without delay" (also "within 24 hours") is an open HIGH finding and blocks the packet. Confirm that this is the intended threshold.
 - **`10-brazil-adequacy.json`**: Brazil is not in the adequacy reference data, so this is an open HIGH finding. The competitive review reports that the Commission's adequacy list has included Brazil since January 2026; the reference data needs a dated, sourced update.
 

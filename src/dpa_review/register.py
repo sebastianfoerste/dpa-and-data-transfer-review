@@ -37,6 +37,7 @@ class Review:
     text: str = ""  # the input as read, for line numbers
     dpa: dict | None = None  # set once the input parses as a JSON object
     packet: ReviewPacket | None = None
+    graph: dict | None = None  # the transfer evidence graph, built with the packet
     errors: list[Problem] = field(default_factory=list)
 
 

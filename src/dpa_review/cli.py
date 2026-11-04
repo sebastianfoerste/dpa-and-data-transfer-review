@@ -28,6 +28,7 @@ import traceback
 from pathlib import Path
 
 from dpa_review import __version__
+from dpa_review.checks import InvalidInputError
 from dpa_review.contract import ContractError, schema_text, validate
 from dpa_review.facts import key_lines, line_of
 from dpa_review.register import Problem, Review, render_summary, summary, worst_state
@@ -38,9 +39,12 @@ from dpa_review.transfer_graph import (
     render_transfer_evidence_graph,
 )
 
-
-EXIT_INPUT_ERROR = 3
+# BLOCKED -> exit 2 so this can gate CI; NEEDS_REVIEW -> exit 1; cleared -> 0.
 EXIT_CODES = {"BLOCKED": 2, "NEEDS_REVIEW": 1, "CLEARED_FOR_REVIEW": 0}
+# No review state was decided: unreadable or malformed input, a usage error, or a failure.
+# It must differ from the codes above, so that a crash never reads as a review state.
+EXIT_INPUT_ERROR = 3
+EXIT_NO_REVIEW_STATE = EXIT_INPUT_ERROR
 # The lowest exit code that still fails, per --fail-on.
 FAIL_THRESHOLD = {"needs_review": 1, "blocked": 2, "never": 4}
 STDIN = "-"
@@ -104,7 +108,15 @@ def _review(source: str) -> Review:
     except ValueError as exc:
         review.errors = [Problem(str(exc))]
         return review
-    review.packet = build_packet(review.dpa)
+    try:
+        packet = build_packet(review.dpa)
+        # Built for every input, before anything is printed or written: the exit code then does
+        # not depend on --out, and a failure leaves no partial output behind.
+        review.graph = build_transfer_evidence_graph(review.dpa, packet)
+    except InvalidInputError as exc:  # a fact the rules refuse to read, e.g. "false" as a description
+        review.errors = [Problem(str(exc))]
+        return review
+    review.packet = packet
     return review
 
 
@@ -130,13 +142,12 @@ def _write_packet(review: Review, out_dir: Path) -> None:
     (out_dir / "review-packet.json").write_text(
         json.dumps(packet.to_dict(), indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
-    transfer_graph = build_transfer_evidence_graph(review.dpa, packet)
     (out_dir / "transfer-evidence-graph.json").write_text(
-        json.dumps(transfer_graph, indent=2, ensure_ascii=False) + "\n",
+        json.dumps(review.graph, indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8",
     )
     (out_dir / "transfer-evidence-graph.md").write_text(
-        render_transfer_evidence_graph(transfer_graph),
+        render_transfer_evidence_graph(review.graph),
         encoding="utf-8",
     )
 

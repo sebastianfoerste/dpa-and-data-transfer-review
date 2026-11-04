@@ -12,11 +12,40 @@ from __future__ import annotations
 import bisect
 import json
 import re
+from typing import Any
 
 from dpa_review.checks import SUBPROCESSOR_TRANSFER_PREFIX, subprocessor_rule_id
 from dpa_review.contract import KeyPath, format_path, parse_fact_path
 
 _ART28_FLAGS = "art28."
+# Facts a transfer rule reads per destination, keyed by country under `transfers`: the mechanism,
+# and the facts that only the named mechanism reads.
+_PER_COUNTRY = (
+    ("mechanisms", None),
+    ("dpf_certified", "dpf"),
+    ("dpf_covers_hr_data", "dpf"),
+    ("dpf_covers_non_hr_data", "dpf"),
+    ("occasional_and_not_repetitive", "derogation_art49"),
+)
+# Whether each type of data is transferred: read for a dpf transfer, whose certification must cover it.
+_DATA_TRANSFERRED = (("processing", "includes_hr_data"), ("processing", "includes_non_hr_data"))
+
+
+def _subprocessor_rule_id(entry: dict, index: int) -> str:
+    # The name checks.check_transfers uses (checks.subprocessor_name: the position when none is
+    # recorded), passed to the one shared derivation, checks.subprocessor_rule_id.
+    name = entry.get("name")
+    return subprocessor_rule_id(name if isinstance(name, str) and name else f"Sub-processor {index + 1}")
+
+
+def _data_transferred(dpa: dict, mechanism: Any) -> list[KeyPath]:
+    """The recorded types of data transferred, which a dpf transfer reads."""
+    if not isinstance(mechanism, str) or mechanism.lower() != "dpf":
+        return []
+    processing = dpa.get("processing")
+    if not isinstance(processing, dict):
+        return []
+    return [path for path in _DATA_TRANSFERRED if path[1] in processing]
 
 
 def rule_facts(dpa: dict, rule_id: str) -> list[KeyPath]:
@@ -40,11 +69,12 @@ def rule_facts(dpa: dict, rule_id: str) -> list[KeyPath]:
         return [("ccpa", rule_id.split(".", 1)[1])]
     if rule_id.startswith(SUBPROCESSOR_TRANSFER_PREFIX):
         entries = dpa.get("subprocessors") or []
-        return [
-            ("subprocessors", index)
-            for index, entry in enumerate(entries)
-            if isinstance(entry, dict) and subprocessor_rule_id(entry.get("name", "unknown")) == rule_id
-        ]
+        matched: list[KeyPath] = []
+        for index, entry in enumerate(entries):
+            if isinstance(entry, dict) and _subprocessor_rule_id(entry, index) == rule_id:
+                matched.append(("subprocessors", index))
+                matched += _data_transferred(dpa, entry.get("transfer_mechanism"))
+        return matched
     if rule_id.startswith("transfer."):
         code = rule_id.split(".", 1)[1]
         transfers = dpa.get("transfers") or {}
@@ -54,10 +84,21 @@ def rule_facts(dpa: dict, rule_id: str) -> list[KeyPath]:
             for index, country in enumerate(destinations)
             if str(country).lower() == code
         ]
-        for key in transfers.get("mechanisms") or {}:
-            if key.lower() == code:
-                facts.append(("transfers", "mechanisms", key))
-        return facts
+        mechanism = None
+        for name, read_for in _PER_COUNTRY:
+            recorded = transfers.get(name)
+            if not isinstance(recorded, dict):
+                continue
+            # A dpf_* or derogation fact recorded beside another mechanism is not read by the rule,
+            # so it is not this finding's evidence.
+            if read_for and (not isinstance(mechanism, str) or mechanism.lower() != read_for):
+                continue
+            for key, value in recorded.items():
+                if key.lower() == code:
+                    facts.append(("transfers", name, key))
+                    if name == "mechanisms":
+                        mechanism = value
+        return facts + _data_transferred(dpa, mechanism)
     return []
 
 
