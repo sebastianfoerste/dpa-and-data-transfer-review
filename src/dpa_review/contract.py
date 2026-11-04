@@ -566,10 +566,11 @@ def _check_country(value: Any, path: KeyPath, out: list[Violation]) -> None:
 def _name_key(name: str) -> str:
     # Names are compared on this key (case, spaces and punctuation ignored) and on the rule id each
     # one gives (checks.subprocessor_rule_id), so two names that pass never share a rule id. The name
-    # is put in NFC first, as the rule id's derivation puts it, so the decomposed and the composed
-    # spelling of one name give one key and an accent stays part of its letter. Case folding splits a
-    # few letters into a letter and a combining mark again ("ῶ" folds to "ω" and U+0342), so the
-    # folded name is composed once more before everything but letters and digits is dropped.
+    # is put in NFC before and after case folding, as the rule id's derivation does around lower
+    # casing, so the decomposed and the composed spelling of one name give one key and an accent NFC
+    # can compose stays part of its letter. Case folding splits a few letters into a letter and a
+    # combining mark again ("ῶ" folds to "ω" and U+0342), so the folded name is composed once more
+    # before everything but letters and digits is dropped.
     folded = unicodedata.normalize("NFC", unicodedata.normalize("NFC", name).casefold())
     return "".join(ch for ch in folded if ch.isalnum())
 

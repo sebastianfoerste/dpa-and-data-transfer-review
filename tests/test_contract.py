@@ -190,12 +190,15 @@ class Countries(unittest.TestCase):
         # A name is put in NFC before it is compared, so an accent written as a combining mark
         # stays part of its letter: decomposed "Müller Inc" and "Múller Inc" used to share both the
         # name key and the rule id, and were refused as repeats. Case folding decomposes U+1FF6
-        # again, so the folded key is composed once more.
+        # again, so the folded key is composed once more. "T" with U+0308 has a composed form only in
+        # lower case, so the rule id is composed again after lower casing; it used to drop the mark
+        # and give "T" with U+0303 the same id.
         for first, second in (
             ("Müller Inc", "Möller Inc"),
             ("百度", "腾讯"),
             ("Mu\u0308ller Inc", "Mu\u0301ller Inc"),
             ("\u0396\u1ff6 Ltd", "\u0396\u03c9 Ltd"),
+            ("T\u0308 Ltd", "T\u0303 Ltd"),
         ):
             with self.subTest(names=(first, second)):
                 dpa = changed(subprocessors=[

@@ -85,20 +85,26 @@ def subprocessor_rule_id(name: Any) -> str:
     contract (contract.py) must all derive it here, or a name with punctuation gives the graph a
     rule id the packet never emits and a blocked transfer renders as passed.
 
-    The name is first put in Unicode normalisation form NFC, so its decomposed and its composed
-    spelling ("u" followed by the combining mark U+0308, or "ü") give one id, and an accent stays
-    part of its letter. Letters and digits of every script are then kept, in lower case, so
-    "Müller Inc", "Múller Inc" and "Möller Inc", composed or decomposed, or two names written in
-    Chinese, get distinct ids. Each space becomes "_", and every other run of characters that are not
-    letters, digits or "_" becomes one "_", so "Support Tools, LLC." gives "support_tools__llc".
-    Only letters and digits keep names apart: names that differ only in a symbol ("Acme™", "Acme®")
-    or in a combining mark that NFC cannot compose into a letter ("q" followed by U+0308 or by
-    U+0303) share an id. The input contract refuses two sub-processor names that would share an id,
-    and a name that would give an empty one; a caller that skips it (build_packet without validate)
-    gets one finding for both entries.
+    The name is put in Unicode normalisation form NFC, so its decomposed and its composed spelling
+    ("u" followed by the combining mark U+0308, or "ü") give one id. It is then put in lower case
+    and in NFC again, because a few letters have a composed form only in lower case ("T" followed by
+    U+0308 lowers to "t" and the mark, which compose into "ẗ"), so an accent NFC can compose stays
+    part of its letter. Letters and digits of every script are then kept, so "Müller Inc",
+    "Múller Inc" and "Möller Inc", composed or decomposed, or two names written in Chinese, get
+    distinct ids. Each space becomes "_", and every other run of characters that are not letters,
+    digits or "_" becomes one "_", so "Support Tools, LLC." gives "support_tools__llc". Only letters
+    and digits are sure to keep names apart: where one symbol, or one combining mark NFC cannot
+    compose into a letter, stands in for another ("Acme™"/"Acme®", "q" followed by U+0308 or by
+    U+0303), the names share an id, and a symbol, mark or extra space that only one name has changes
+    only the underscores ("Acme™ Inc" gives "acme__inc", "Acme Inc" "acme_inc"). The input contract
+    compares names without any of these, so it refuses both kinds of pair, as it refuses any two
+    names that would share an id and a name that would give an empty one. A caller that skips it
+    (build_packet without validate) gets two findings with one id, which the fact mapping and the
+    evidence graph cannot tell apart (the graph attaches the finding that comes first in the packet
+    to both entries).
     """
-    name = unicodedata.normalize("NFC", str(name))
-    return SUBPROCESSOR_TRANSFER_PREFIX + re.sub(r"\W+", "_", name.lower().replace(" ", "_")).strip("_")
+    name = unicodedata.normalize("NFC", unicodedata.normalize("NFC", str(name)).lower())
+    return SUBPROCESSOR_TRANSFER_PREFIX + re.sub(r"\W+", "_", name.replace(" ", "_")).strip("_")
 
 
 @dataclass

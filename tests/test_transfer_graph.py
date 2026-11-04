@@ -141,6 +141,11 @@ class TransferEvidenceGraphTests(unittest.TestCase):
         expected = SUBPROCESSOR_TRANSFER_PREFIX + "m\u00fcller_inc"
         self.assertEqual(subprocessor_rule_id(composed), expected)
         self.assertEqual(subprocessor_rule_id(decomposed), expected)
+        # "ẗ" has no upper-case composed form, so the id is composed again after lower casing, or
+        # the capital's mark would become "_" ("t_rex_ltd") while the small letter keeps it.
+        for name in ("T\u0308REX Ltd", "\u1e97rex Ltd", "t\u0308rex Ltd"):
+            with self.subTest(name=ascii(name)):
+                self.assertEqual(subprocessor_rule_id(name), SUBPROCESSOR_TRANSFER_PREFIX + "\u1e97rex_ltd")
         for name in (composed, decomposed):
             with self.subTest(name=ascii(name)):
                 dpa = json.loads(json.dumps(SAMPLE))
