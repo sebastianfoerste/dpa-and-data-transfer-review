@@ -49,4 +49,4 @@ The citation follows the same assessment. This is the citation of `transfer.<cou
 The country lists the transfer rules use, as they stand in `checks.py`. They are illustrative and carry no as-of date yet: verify them against the European Commission's current [adequacy decisions](https://commission.europa.eu/law/law-topic/data-protection/international-dimension-data-protection/adequacy-decisions_en) before relying on a result.
 
 - EEA (30): AT, BE, BG, CY, CZ, DE, DK, EE, ES, FI, FR, GR, HR, HU, IE, IS, IT, LI, LT, LU, LV, MT, NL, NO, PL, PT, RO, SE, SI, SK
-- Adequacy (Art. 45) (14): AD, AR, CA, CH, FO, GB, GG, IL, IM, JE, JP, KR, NZ, UY
+- Adequacy (Art. 45) (15): AD, AR, BR, CA, CH, FO, GB, GG, IL, IM, JE, JP, KR, NZ, UY
