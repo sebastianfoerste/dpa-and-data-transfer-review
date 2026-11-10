@@ -24,7 +24,10 @@ EEA = {
 
 # Third countries with a European Commission adequacy decision (Art. 45).
 # Illustrative and synthetic-data oriented; verify against the current list in practice.
-ADEQUACY = {"AD", "AR", "CA", "FO", "GG", "IL", "IM", "JP", "JE", "NZ", "CH", "GB", "UY", "KR"}
+# Brazil (BR): Commission Implementing Decision (EU) 2026/179 of 26 January 2026, OJ L, 2026/179,
+# 28.1.2026. Its Article 1 covers transfers to controllers and processors in Brazil subject to the
+# General Data Protection Law (LGPD).
+ADEQUACY = {"AD", "AR", "BR", "CA", "FO", "GG", "IL", "IM", "JP", "JE", "NZ", "CH", "GB", "UY", "KR"}
 
 VALID_TRANSFER_MECHANISMS = {"adequacy", "sccs", "bcr", "derogation_art49", "dpf"}
 
