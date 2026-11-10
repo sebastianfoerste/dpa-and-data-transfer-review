@@ -197,7 +197,7 @@ class DataPrivacyFrameworkAssessment(unittest.TestCase):
         for rule_id in self.US_TRANSFERS:
             finding = _by_id(packet, rule_id)
             self.assertEqual(finding.status, "PRESENT")
-            self.assertIn("Art. 44-45", finding.citation)
+            self.assertIn("Art. 44, 45(1)", finding.citation)
             self.assertIn("Commission Implementing Decision (EU) 2023/1795", finding.citation)
         self.assertNotIn("transfer.impact_assessment", {f.rule_id for f in packet.findings})
         self.assertEqual(packet.review_state, "CLEARED_FOR_REVIEW")
@@ -239,7 +239,7 @@ class AdequateDestinationWithOtherMechanism(unittest.TestCase):
     def test_derogation_to_an_adequate_country_goes_to_review_not_block(self):
         status, sev, detail = assess_transfer("GB", "derogation_art49")
         self.assertEqual((status, sev), ("NEEDS_REVIEW", "LOW"))
-        self.assertIn("adequacy decision (Art. 45)", detail)
+        self.assertIn("adequacy decision (Art. 45(1); Commission Implementing Decision (EU) 2021/1772", detail)
         self.assertIn("Art. 49(1)", detail)
 
     def test_dpf_to_an_adequate_country_goes_to_review_not_block(self):
@@ -255,7 +255,11 @@ class AdequateDestinationWithOtherMechanism(unittest.TestCase):
         dpa["transfers"]["mechanisms"]["GB"] = "derogation_art49"
         finding = _by_id(build_packet(dpa), "transfer.gb")
         self.assertEqual((finding.status, finding.severity), ("NEEDS_REVIEW", "LOW"))
-        self.assertEqual(finding.citation, "GDPR Art. 44-45")
+        self.assertEqual(
+            finding.citation,
+            "GDPR Art. 44, 45(1); Commission Implementing Decision (EU) 2021/1772; "
+            "Commission Implementing Decision (EU) 2025/2574",
+        )
         self.assertIn("Art. 45 adequacy decision for GB", finding.remediation)
 
 
@@ -576,14 +580,20 @@ class TransferCitations(unittest.TestCase):
             with self.subTest(mechanism=mechanism):
                 self.assertEqual(self._citation("DE", mechanism), "GDPR Art. 44-46")
 
-    def test_adequate_destination_cites_article_45(self):
+    def test_adequate_destination_cites_article_45_1_and_its_decision(self):
+        # Switzerland's decision was adopted under Directive 95/46/EC and stays in force under Art. 45(9).
         for mechanism in ("adequacy", "none"):
             with self.subTest(mechanism=mechanism):
-                self.assertEqual(self._citation("CH", mechanism), "GDPR Art. 44-45")
-        self.assertEqual(_by_id(build_packet(SAMPLE), "transfer.jp").citation, "GDPR Art. 44-45")
+                self.assertEqual(
+                    self._citation("CH", mechanism), "GDPR Art. 44, 45(1), 45(9); Commission Decision 2000/518/EC"
+                )
+        self.assertEqual(
+            _by_id(build_packet(SAMPLE), "transfer.jp").citation,
+            "GDPR Art. 44, 45(1); Commission Implementing Decision (EU) 2019/419",
+        )
 
-    def test_bcr_transfer_cites_article_47(self):
-        self.assertEqual(self._citation("IN", "bcr"), "GDPR Art. 44-47")
+    def test_bcr_transfer_cites_article_46_2_b_and_47(self):
+        self.assertEqual(self._citation("IN", "bcr"), "GDPR Art. 44, 46(2)(b), 47")
 
     def test_ccpa_citation_names_the_civil_code(self):
         finding = _by_id(build_packet(SAMPLE), "ccpa.service_provider_terms")
@@ -631,7 +641,7 @@ class CuredPacket(unittest.TestCase):
         dpa["transfers"]["mechanisms"]["US"] = "sccs"
         packet = build_packet(dpa)
         transfer = _by_id(packet, "transfer.us")
-        self.assertEqual(transfer.citation, "GDPR Art. 44-46; Commission Implementing Decision (EU) 2021/914")
+        self.assertEqual(transfer.citation, "GDPR Art. 44, 46(2)(c); Commission Implementing Decision (EU) 2021/914")
         self.assertIn("SCCs of Commission Implementing Decision (EU) 2021/914", transfer.remediation)
         tia = _by_id(packet, "transfer.impact_assessment")
         self.assertEqual(tia.status, "NEEDS_REVIEW")

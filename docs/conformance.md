@@ -2,7 +2,7 @@
 
 # Conformance suite
 
-12 synthetic DPA descriptions in [`tests/fixtures/`](../tests/fixtures/), each with the review state, exit code and open rules the CLI must produce, recorded in [`expected.json`](../tests/fixtures/expected.json). [`tests/test_conformance.py`](../tests/test_conformance.py) runs every fixture through the CLI on every push, on Python 3.10 to 3.14, and fails on any difference.
+15 synthetic DPA descriptions in [`tests/fixtures/`](../tests/fixtures/), each with the review state, exit code and open rules the CLI must produce, recorded in [`expected.json`](../tests/fixtures/expected.json). [`tests/test_conformance.py`](../tests/test_conformance.py) runs every fixture through the CLI on every push, on Python 3.10 to 3.14, and fails on any difference.
 
 The fixtures freeze what the rules do today. Where a result looks legally questionable it is flagged below for review rather than changed: a rule change needs a lawyer's sign-off and a deliberate update of the expected result.
 
@@ -17,15 +17,18 @@ The fixtures freeze what the rules do today. Where a result looks legally questi
 | [`07-vague-breach-timing.json`](../tests/fixtures/07-vague-breach-timing.json) ⚑ | The processor notifies breaches "within a reasonable time" instead of without undue delay. | `BLOCKED` | 2 | `breach.processor_notifies` |
 | [`08-no-subprocessor-authorisation.json`](../tests/fixtures/08-no-subprocessor-authorisation.json) | The DPA gives no prior specific or general written authorisation for sub-processors. | `BLOCKED` | 2 | `subprocessor.authorization` |
 | [`09-third-country-subprocessor-chain.json`](../tests/fixtures/09-third-country-subprocessor-chain.json) | Sub-processors in Germany, in the US on SCCs, and in India with no transfer mechanism. | `BLOCKED` | 2 | `transfer.subprocessor.example_analytics_pvt_ltd`, `transfer.subprocessor.example_support_inc` |
-| [`10-brazil-adequacy.json`](../tests/fixtures/10-brazil-adequacy.json) ⚑ | A direct transfer to Brazil recorded as relying on adequacy. | `BLOCKED` | 2 | `transfer.br` |
+| [`10-brazil-adequacy.json`](../tests/fixtures/10-brazil-adequacy.json) ⚑ | A direct transfer to Brazil recorded as relying on adequacy. | `CLEARED_FOR_REVIEW` | 0 | none |
 | [`11-misspelt-transfers-key.json`](../tests/fixtures/11-misspelt-transfers-key.json) | "transfer" instead of "transfers", with every sub-processor in the EEA: the fail-open input that used to come out CLEARED_FOR_REVIEW with exit 0. | refused (no state) | 3 | n/a |
 | [`12-string-false-flag.json`](../tests/fixtures/12-string-false-flag.json) | Flow-down recorded as the string "false", which a truthiness check would read as present. | refused (no state) | 3 | n/a |
+| [`13-sccs-to-full-adequacy.json`](../tests/fixtures/13-sccs-to-full-adequacy.json) | SCCs recorded for a direct transfer and a sub-processor in Switzerland, whose adequacy decision has no scope limit. | `CLEARED_FOR_REVIEW` | 0 | none |
+| [`14-safeguards-to-scope-limited-adequacy.json`](../tests/fixtures/14-safeguards-to-scope-limited-adequacy.json) | SCCs recorded for Japan and BCR for a Korean sub-processor; both adequacy decisions cover only some importers, and no transfer impact assessment is recorded. | `NEEDS_REVIEW` | 1 | `transfer.jp`, `transfer.subprocessor.example_analytics_co_ltd` |
+| [`15-other-art46-safeguards.json`](../tests/fixtures/15-other-art46-safeguards.json) | A code of conduct (Art. 46(2)(e)) for India and a certification (Art. 46(2)(f)) for an Indian sub-processor, without a transfer impact assessment. | `NEEDS_REVIEW` | 1 | `transfer.impact_assessment`, `transfer.in`, `transfer.subprocessor.example_ledger_pvt_ltd` |
 
 ## ⚑ Flagged for legal review
 
 - **`05-dpf-us-importer.json`**: Changed by PR #4: the DPF is treated as an Art. 45 adequacy decision (Implementing Decision (EU) 2023/1795), not an Art. 46 safeguard, so a transfer to an importer recorded as actively certified on the Data Privacy Framework List for the data transferred is PRESENT and asks for no transfer impact assessment. The fixture now records that certification and the data it covers. Confirm the changed expected result.
 - **`06-art49-derogation.json`**: Changed by PR #4: a derogation not recorded as occasional and not repetitive is treated like a missing basis (HIGH), so this fixture is now BLOCKED instead of NEEDS_REVIEW (MEDIUM). EDPB Guidelines 2/2018, section 1, read the derogations restrictively. Confirm the changed expected result.
 - **`07-vague-breach-timing.json`**: Any timing wording without "undue delay" or "without delay" (also "within 24 hours") is an open HIGH finding and blocks the packet. Confirm that this is the intended threshold.
-- **`10-brazil-adequacy.json`**: Brazil is not in the adequacy reference data, so this is an open HIGH finding. The competitive review reports that the Commission's adequacy list has included Brazil since January 2026; the reference data needs a dated, sourced update.
+- **`10-brazil-adequacy.json`**: Changed: Brazil is now in the adequacy reference data under Commission Implementing Decision (EU) 2026/179 of 26 January 2026 (OJ L, 2026/179, 28.1.2026), read on EUR-Lex on 2026-11-10, so the transfer is PRESENT and the packet CLEARED_FOR_REVIEW instead of BLOCKED. Article 1 of the decision covers only controllers and processors in Brazil subject to the LGPD; the finding states that scope for the reviewer.
 
 Run the suite with `make test`, or a single fixture with `dpa-review --input tests/fixtures/<name> --quiet; echo $?`.

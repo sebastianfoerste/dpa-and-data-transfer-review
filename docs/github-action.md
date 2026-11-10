@@ -48,8 +48,8 @@ rules.
 
 `fail-on` defaults to `blocked`: the step fails when any DPA has an open `HIGH` finding. The CLI
 itself defaults to `needs_review`. A merge gate needs a different default because `NEEDS_REVIEW`
-means "a lawyer has to look", and every DPA that relies on SCCs stays there by design (see
-[rules.md](rules.md)). A check that always fails gets ignored. Set `fail-on: needs_review` to fail
+means "a lawyer has to look", and every DPA that relies on SCCs or another Art. 46 safeguard for a
+third country without an adequacy decision stays there by design (see [rules.md](rules.md)). A check that always fails gets ignored. Set `fail-on: needs_review` to fail
 on those as well.
 
 ## Outputs

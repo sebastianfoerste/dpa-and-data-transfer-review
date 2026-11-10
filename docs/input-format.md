@@ -39,7 +39,7 @@ A flag that is `false`, `null` or omitted reads as "the DPA does not contain thi
 }
 ```
 
-It is valid, and `BLOCKED`: it records no Art. 28 clause. [`data/sample_dpa.json`](../data/sample_dpa.json) is a complete example, and [`tests/fixtures/`](../tests/fixtures/) holds 12 more.
+It is valid, and `BLOCKED`: it records no Art. 28 clause. [`data/sample_dpa.json`](../data/sample_dpa.json) is a complete example, and [`tests/fixtures/`](../tests/fixtures/) holds 15 more.
 
 ## Keys
 
@@ -98,7 +98,7 @@ Required, a list of objects. Every sub-processor the DPA names or authorises. Ea
 | `subprocessors[].name` | non-empty string | yes | The sub-processor's name. Names must contain a letter or digit and must differ, ignoring case, spaces and punctuation, because rule ids are derived from them. |
 | `subprocessors[].country` | country code | yes | Upper-case ISO 3166-1 alpha-2 code of the country where it processes the data, e.g. "US" (the United Kingdom is "GB", Greece is "GR"). |
 | `subprocessors[].purpose` | string | no | What the sub-processor does. Labels the graph; no rule reads it. |
-| `subprocessors[].transfer_mechanism` | one of `none`, `adequacy`, `sccs`, `bcr`, `dpf`, `derogation_art49`, or null | no | The Chapter V basis for a sub-processor outside the EEA. Null or omitted reads as none. |
+| `subprocessors[].transfer_mechanism` | one of `none`, `adequacy`, `sccs`, `bcr`, `public_bodies_instrument`, `sa_standard_clauses`, `code_of_conduct`, `certification`, `authorised_clauses`, `administrative_arrangement`, `dpf`, `derogation_art49`, or null | no | The Chapter V basis for a sub-processor outside the EEA. Null or omitted reads as none. "adequacy": an Art. 45 adequacy decision; "dpf": the EU-US Data Privacy Framework (Implementing Decision (EU) 2023/1795); "sccs": Art. 46(2)(c); "bcr": Art. 46(2)(b) and 47; "public_bodies_instrument": Art. 46(2)(a); "sa_standard_clauses": Art. 46(2)(d); "code_of_conduct": Art. 46(2)(e) and 40(3); "certification": Art. 46(2)(f) and 42(2); "authorised_clauses": Art. 46(3)(a); "administrative_arrangement": Art. 46(3)(b); "derogation_art49": an Art. 49 derogation. |
 | `subprocessors[].dpf_certified` | boolean, or null | no | For a dpf mechanism: the sub-processor is actively certified on the Data Privacy Framework List. |
 | `subprocessors[].dpf_covers_non_hr_data` | boolean, or null | no | For a dpf mechanism: the sub-processor's DPF certification covers non-HR data. |
 | `subprocessors[].dpf_covers_hr_data` | boolean, or null | no | For a dpf mechanism: the sub-processor's DPF certification covers HR data. |
@@ -111,12 +111,12 @@ Required, an object. Transfers of personal data that the processor makes directl
 | Key | Type | Required | Meaning |
 | --- | --- | --- | --- |
 | `transfers.destinations` | list of country codes | yes | Upper-case ISO 3166-1 alpha-2 codes of every country the processor transfers personal data to directly; each is checked (rule transfer.&lt;country&gt;). Record [] when there are none. |
-| `transfers.mechanisms` | object keyed by country code → one of `none`, `adequacy`, `sccs`, `bcr`, `dpf`, `derogation_art49`, or null, or null | no | The Chapter V basis per destination, keyed by a country that destinations lists. A destination without an entry reads as none. |
+| `transfers.mechanisms` | object keyed by country code → one of `none`, `adequacy`, `sccs`, `bcr`, `public_bodies_instrument`, `sa_standard_clauses`, `code_of_conduct`, `certification`, `authorised_clauses`, `administrative_arrangement`, `dpf`, `derogation_art49`, or null, or null | no | The Chapter V basis per destination, keyed by a country that destinations lists. A destination without an entry reads as none. "adequacy": an Art. 45 adequacy decision; "dpf": the EU-US Data Privacy Framework (Implementing Decision (EU) 2023/1795); "sccs": Art. 46(2)(c); "bcr": Art. 46(2)(b) and 47; "public_bodies_instrument": Art. 46(2)(a); "sa_standard_clauses": Art. 46(2)(d); "code_of_conduct": Art. 46(2)(e) and 40(3); "certification": Art. 46(2)(f) and 42(2); "authorised_clauses": Art. 46(3)(a); "administrative_arrangement": Art. 46(3)(b); "derogation_art49": an Art. 49 derogation. |
 | `transfers.dpf_certified` | object keyed by country code → boolean, or null, or null | no | For a dpf mechanism, per destination: the importer is actively certified on the Data Privacy Framework List. |
 | `transfers.dpf_covers_non_hr_data` | object keyed by country code → boolean, or null, or null | no | For a dpf mechanism, per destination: the importer's DPF certification covers non-HR data. |
 | `transfers.dpf_covers_hr_data` | object keyed by country code → boolean, or null, or null | no | For a dpf mechanism, per destination: the importer's DPF certification covers HR data. |
 | `transfers.occasional_and_not_repetitive` | object keyed by country code → boolean, or null, or null | no | For a derogation_art49 mechanism, per destination: the transfer is occasional and not repetitive. Otherwise the derogation is treated like a missing basis. |
-| `transfers.transfer_impact_assessment` | boolean, or null | no | A transfer impact assessment is recorded. Read only when SCCs or BCR are relied on for a destination or sub-processor outside the EEA (rule transfer.impact_assessment). |
+| `transfers.transfer_impact_assessment` | boolean, or null | no | A transfer impact assessment is recorded. Read when an Art. 46 safeguard is recorded for a destination or sub-processor in a third country: with no adequacy decision on the tool's list, by rule transfer.impact_assessment; with a scope-limited adequacy decision, by the transfer rule, which asks whether the importer is within the decision's scope. |
 
 ### `ccpa`
 

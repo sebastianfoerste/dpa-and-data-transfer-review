@@ -27,17 +27,28 @@ import unicodedata
 from dataclasses import dataclass, field
 from typing import Any, Union
 
-from dpa_review.checks import VALID_TRANSFER_MECHANISMS, subprocessor_rule_id
+from dpa_review.checks import TRANSFER_MECHANISMS, VALID_TRANSFER_MECHANISMS, subprocessor_rule_id
 
 SCHEMA_ID = (
     "https://raw.githubusercontent.com/sebastianfoerste/dpa-and-data-transfer-review/"
     "main/schema/dpa.schema.json"
 )
 
-# Every Chapter V basis the transfer rules recognise, plus "none" for a recorded absence.
-MECHANISMS = ("none", "adequacy", "sccs", "bcr", "dpf", "derogation_art49")
+# Every Chapter V basis the transfer rules recognise, plus "none" for a recorded absence: an Art. 45
+# adequacy decision ("adequacy", and "dpf" for the EU-US Data Privacy Framework), an Art. 46 safeguard
+# (checks.SAFEGUARDS) or an Art. 49 derogation.
+MECHANISMS = TRANSFER_MECHANISMS
 # GDPR Art. 28(2): prior specific or general written authorisation, or neither.
 AUTHORISATIONS = ("specific", "general", "none")
+# What each recorded transfer mechanism means, for the contract's descriptions.
+MECHANISM_VALUES = (
+    '"adequacy": an Art. 45 adequacy decision; "dpf": the EU-US Data Privacy Framework (Implementing '
+    'Decision (EU) 2023/1795); "sccs": Art. 46(2)(c); "bcr": Art. 46(2)(b) and 47; '
+    '"public_bodies_instrument": Art. 46(2)(a); "sa_standard_clauses": Art. 46(2)(d); '
+    '"code_of_conduct": Art. 46(2)(e) and 40(3); "certification": Art. 46(2)(f) and 42(2); '
+    '"authorised_clauses": Art. 46(3)(a); "administrative_arrangement": Art. 46(3)(b); '
+    '"derogation_art49": an Art. 49 derogation.'
+)
 
 COUNTRY_PATTERN = "^[A-Z]{2}$"
 # Two-letter codes that look right but are not ISO 3166-1 alpha-2 country codes.
@@ -237,7 +248,8 @@ CONTRACT: dict[str, Field] = {
             ),
             "transfer_mechanism": Field(
                 "choice",
-                "The Chapter V basis for a sub-processor outside the EEA. Null or omitted reads as none.",
+                "The Chapter V basis for a sub-processor outside the EEA. Null or omitted reads as none. "
+                + MECHANISM_VALUES,
                 options=MECHANISMS,
             ),
             "dpf_certified": _flag(
@@ -272,7 +284,7 @@ CONTRACT: dict[str, Field] = {
             "mechanisms": Field(
                 "by_country",
                 "The Chapter V basis per destination, keyed by a country that destinations lists. "
-                "A destination without an entry reads as none.",
+                "A destination without an entry reads as none. " + MECHANISM_VALUES,
                 value=Field("choice", "The Chapter V basis for this destination.", options=MECHANISMS),
                 example='{"US": "sccs"}',
             ),
@@ -303,8 +315,10 @@ CONTRACT: dict[str, Field] = {
                 example='{"IN": true}',
             ),
             "transfer_impact_assessment": _flag(
-                "A transfer impact assessment is recorded. Read only when SCCs or BCR are relied on for a "
-                "destination or sub-processor outside the EEA (rule transfer.impact_assessment)."
+                "A transfer impact assessment is recorded. Read when an Art. 46 safeguard is recorded for a "
+                "destination or sub-processor in a third country: with no adequacy decision on the tool's "
+                "list, by rule transfer.impact_assessment; with a scope-limited adequacy decision, by the "
+                "transfer rule, which asks whether the importer is within the decision's scope."
             ),
         },
     ),
