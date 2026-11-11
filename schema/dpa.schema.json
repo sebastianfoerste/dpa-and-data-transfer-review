@@ -241,7 +241,7 @@
             "type": "string"
           },
           "transfer_mechanism": {
-            "description": "The Chapter V basis for a sub-processor outside the EEA. Null or omitted reads as none.",
+            "description": "The Chapter V basis for a sub-processor outside the EEA. Null or omitted reads as none. \"adequacy\": an Art. 45 adequacy decision; \"dpf\": the EU-US Data Privacy Framework (Implementing Decision (EU) 2023/1795); \"sccs\": Art. 46(2)(c); \"bcr\": Art. 46(2)(b) and 47; \"public_bodies_instrument\": Art. 46(2)(a); \"sa_standard_clauses\": Art. 46(2)(d); \"code_of_conduct\": Art. 46(2)(e) and 40(3); \"certification\": Art. 46(2)(f) and 42(2); \"authorised_clauses\": Art. 46(3)(a); \"administrative_arrangement\": Art. 46(3)(b); \"derogation_art49\": an Art. 49 derogation.",
             "type": [
               "string",
               "null"
@@ -251,6 +251,12 @@
               "adequacy",
               "sccs",
               "bcr",
+              "public_bodies_instrument",
+              "sa_standard_clauses",
+              "code_of_conduct",
+              "certification",
+              "authorised_clauses",
+              "administrative_arrangement",
               "dpf",
               "derogation_art49",
               null
@@ -313,7 +319,7 @@
           "uniqueItems": true
         },
         "mechanisms": {
-          "description": "The Chapter V basis per destination, keyed by a country that destinations lists. A destination without an entry reads as none.",
+          "description": "The Chapter V basis per destination, keyed by a country that destinations lists. A destination without an entry reads as none. \"adequacy\": an Art. 45 adequacy decision; \"dpf\": the EU-US Data Privacy Framework (Implementing Decision (EU) 2023/1795); \"sccs\": Art. 46(2)(c); \"bcr\": Art. 46(2)(b) and 47; \"public_bodies_instrument\": Art. 46(2)(a); \"sa_standard_clauses\": Art. 46(2)(d); \"code_of_conduct\": Art. 46(2)(e) and 40(3); \"certification\": Art. 46(2)(f) and 42(2); \"authorised_clauses\": Art. 46(3)(a); \"administrative_arrangement\": Art. 46(3)(b); \"derogation_art49\": an Art. 49 derogation.",
           "type": [
             "object",
             "null"
@@ -339,6 +345,12 @@
               "adequacy",
               "sccs",
               "bcr",
+              "public_bodies_instrument",
+              "sa_standard_clauses",
+              "code_of_conduct",
+              "certification",
+              "authorised_clauses",
+              "administrative_arrangement",
               "dpf",
               "derogation_art49",
               null
@@ -442,7 +454,7 @@
           }
         },
         "transfer_impact_assessment": {
-          "description": "A transfer impact assessment is recorded. Read only when SCCs or BCR are relied on for a destination or sub-processor outside the EEA (rule transfer.impact_assessment).",
+          "description": "A transfer impact assessment is recorded. Read when an Art. 46 safeguard is recorded for a destination or sub-processor in a third country: with no adequacy decision, by rule transfer.impact_assessment; with a scope-limited adequacy decision (the United States and its DPF decision included), by the transfer rule, which asks whether the importer is within the decision's scope.",
           "type": [
             "boolean",
             "null"

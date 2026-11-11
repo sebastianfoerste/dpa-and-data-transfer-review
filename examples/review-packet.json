@@ -176,19 +176,19 @@
     {
       "rule_id": "transfer.jp",
       "title": "International transfer to JP",
-      "citation": "GDPR Art. 44-45",
+      "citation": "GDPR Art. 44, 45(1); Commission Implementing Decision (EU) 2019/419",
       "severity": "LOW",
       "status": "PRESENT",
-      "detail": "JP benefits from an adequacy decision (Art. 45).",
+      "detail": "JP benefits from an adequacy decision (Art. 45(1); Commission Implementing Decision (EU) 2019/419 of 23 January 2019). Its Article 1 covers only personal data transferred to personal information handling business operators in Japan subject to the Act on the Protection of Personal Information as complemented by the Supplementary Rules set out in its Annex I, and Article 1(2) excludes, to the extent of the purposes it lists, press organisations, persons engaged in professional writing, universities and other organisations or groups aimed at academic studies, religious bodies and political bodies. Confirm that the importer is within it.",
       "remediation": ""
     },
     {
       "rule_id": "transfer.subprocessor.analytics_kk",
       "title": "Sub-processor transfer: Analytics KK (JP)",
-      "citation": "GDPR Art. 28(4) / Art. 44-45",
+      "citation": "GDPR Art. 28(4) / Art. 44, 45(1); Commission Implementing Decision (EU) 2019/419",
       "severity": "LOW",
       "status": "PRESENT",
-      "detail": "Analytics KK processes data in JP. JP benefits from an adequacy decision (Art. 45).",
+      "detail": "Analytics KK processes data in JP. JP benefits from an adequacy decision (Art. 45(1); Commission Implementing Decision (EU) 2019/419 of 23 January 2019). Its Article 1 covers only personal data transferred to personal information handling business operators in Japan subject to the Act on the Protection of Personal Information as complemented by the Supplementary Rules set out in its Annex I, and Article 1(2) excludes, to the extent of the purposes it lists, press organisations, persons engaged in professional writing, universities and other organisations or groups aimed at academic studies, religious bodies and political bodies. Confirm that the importer is within it.",
       "remediation": ""
     },
     {

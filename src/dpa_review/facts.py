@@ -14,7 +14,11 @@ import json
 import re
 from typing import Any
 
-from dpa_review.checks import SUBPROCESSOR_TRANSFER_PREFIX, subprocessor_rule_id
+from dpa_review.checks import (
+    SUBPROCESSOR_TRANSFER_PREFIX,
+    scope_question_reads_impact_assessment,
+    subprocessor_rule_id,
+)
 from dpa_review.contract import KeyPath, format_path, parse_fact_path
 
 _ART28_FLAGS = "art28."
@@ -48,6 +52,22 @@ def _data_transferred(dpa: dict, mechanism: Any) -> list[KeyPath]:
     return [path for path in _DATA_TRANSFERRED if path[1] in processing]
 
 
+_IMPACT_ASSESSMENT = ("transfers", "transfer_impact_assessment")
+
+
+def _impact_assessment(dpa: dict, country: Any, mechanism: Any) -> list[KeyPath]:
+    """The recorded transfer impact assessment, which the transfer rule reads for an Art. 46
+    safeguard recorded for a destination whose adequacy decision has a scope limit."""
+    if not isinstance(country, str) or not isinstance(mechanism, str):
+        return []
+    if not scope_question_reads_impact_assessment(country, mechanism):
+        return []
+    transfers = dpa.get("transfers")
+    if not isinstance(transfers, dict) or _IMPACT_ASSESSMENT[1] not in transfers:
+        return []
+    return [_IMPACT_ASSESSMENT]
+
+
 def rule_facts(dpa: dict, rule_id: str) -> list[KeyPath]:
     """The input paths the rule with this id reads, in the order the rule reads them."""
     if rule_id.startswith(_ART28_FLAGS):
@@ -74,6 +94,7 @@ def rule_facts(dpa: dict, rule_id: str) -> list[KeyPath]:
             if isinstance(entry, dict) and _subprocessor_rule_id(entry, index) == rule_id:
                 matched.append(("subprocessors", index))
                 matched += _data_transferred(dpa, entry.get("transfer_mechanism"))
+                matched += _impact_assessment(dpa, entry.get("country"), entry.get("transfer_mechanism"))
         return matched
     if rule_id.startswith("transfer."):
         code = rule_id.split(".", 1)[1]
@@ -98,7 +119,7 @@ def rule_facts(dpa: dict, rule_id: str) -> list[KeyPath]:
                     facts.append(("transfers", name, key))
                     if name == "mechanisms":
                         mechanism = value
-        return facts + _data_transferred(dpa, mechanism)
+        return facts + _data_transferred(dpa, mechanism) + _impact_assessment(dpa, code, mechanism)
     return []
 
 

@@ -36,8 +36,8 @@ Checks: 21, present 18, missing 3, needs-review 0, open high 3, open medium 0
 | MEDIUM | [ok] | Processing description: nature and purpose of the processing | GDPR Art. 28(3) |
 | MEDIUM | [ok] | Processing description: subject matter of the processing | GDPR Art. 28(3) |
 | LOW | [ok] | CCPA/CPRA service-provider terms | Cal. Civ. Code §§ 1798.140(ag), 1798.100(d) (CCPA, as amended by the CPRA) |
-| LOW | [ok] | International transfer to JP | GDPR Art. 44-45 |
-| LOW | [ok] | Sub-processor transfer: Analytics KK (JP) | GDPR Art. 28(4) / Art. 44-45 |
+| LOW | [ok] | International transfer to JP | GDPR Art. 44, 45(1); Commission Implementing Decision (EU) 2019/419 |
+| LOW | [ok] | Sub-processor transfer: Analytics KK (JP) | GDPR Art. 28(4) / Art. 44, 45(1); Commission Implementing Decision (EU) 2019/419 |
 | INFO | [ok] | International transfer to FR | GDPR Art. 44-46 |
 
 ---

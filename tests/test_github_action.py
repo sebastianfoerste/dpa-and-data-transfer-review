@@ -130,11 +130,11 @@ class Annotations(Step):
                 self.assertIn('"subprocessor_flowdown"', lines[int(match.group(2)) - 1])
 
     def test_errors_come_first(self):
-        _, stdout, _, _, _ = self.step(input=FIXTURES / "04-sccs-without-tia.json")
+        _, stdout, _, _, _ = self.step(input=FIXTURES / "15-other-art46-safeguards.json")
         kinds = [line.split(" ", 1)[0] for line in stdout.splitlines()]
         self.assertEqual(kinds, sorted(kinds, key=["::error", "::warning", "::notice"].index))
         self.assertIn("::warning", kinds)  # transfer.impact_assessment is MEDIUM
-        self.assertIn("::notice", kinds)  # transfer.us is LOW
+        self.assertIn("::notice", kinds)  # transfer.in is LOW
 
     def test_annotate_false_prints_nothing(self):
         _, stdout, _, _, _ = self.step(input=SAMPLE_PATH, annotate="false")

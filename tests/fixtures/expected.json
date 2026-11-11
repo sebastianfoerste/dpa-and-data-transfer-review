@@ -24,8 +24,8 @@
     "checks": "The same SCC transfer to the US, without a transfer impact assessment.",
     "review_state": "NEEDS_REVIEW",
     "exit_code": 1,
-    "open_rules": ["transfer.impact_assessment", "transfer.us"],
-    "legal_review_note": ""
+    "open_rules": ["transfer.us"],
+    "legal_review_note": "Changed: Article 1 of Implementing Decision (EU) 2023/1795 covers only organisations on the Data Privacy Framework List, so SCCs recorded for a US importer now get the scope question every destination with a scope-limited adequacy decision gets. transfer.us asks whether the importer is on that list for the data transferred and, if not, for a transfer impact assessment; it is MEDIUM until one is recorded and replaces the generic transfer.impact_assessment finding. The review state is unchanged. Confirm the changed expected result."
   },
   "05-dpf-us-importer.json": {
     "checks": "A direct transfer to a US importer certified under the EU-US Data Privacy Framework.",
@@ -67,7 +67,7 @@
     "review_state": "CLEARED_FOR_REVIEW",
     "exit_code": 0,
     "open_rules": [],
-    "legal_review_note": "Brazil has an adequacy decision: Commission Implementing Decision (EU) 2026/179 of 26 January 2026 (OJ L, 2026/179, 28.1.2026), Article 1, for transfers to controllers and processors in Brazil subject to the LGPD. The tool records adequacy per country, so it cannot test whether the importer is subject to the LGPD; the reviewer confirms that."
+    "legal_review_note": "Changed: Brazil is now in the adequacy reference data under Commission Implementing Decision (EU) 2026/179 of 26 January 2026 (OJ L, 2026/179, 28.1.2026), read on EUR-Lex on 2026-11-10, so the transfer is PRESENT and the packet CLEARED_FOR_REVIEW instead of BLOCKED. Article 1 of the decision covers only controllers and processors in Brazil subject to the LGPD; the finding states that scope for the reviewer."
   },
   "11-misspelt-transfers-key.json": {
     "checks": "\"transfer\" instead of \"transfers\", with every sub-processor in the EEA: the fail-open input that used to come out CLEARED_FOR_REVIEW with exit 0.",
@@ -81,6 +81,27 @@
     "review_state": null,
     "exit_code": 3,
     "errors": ["art28_clauses.subprocessor_flowdown must be true or false, got 'false'"],
+    "legal_review_note": ""
+  },
+  "13-sccs-to-full-adequacy.json": {
+    "checks": "SCCs recorded for a direct transfer and a sub-processor in Switzerland, whose adequacy decision has no scope limit.",
+    "review_state": "CLEARED_FOR_REVIEW",
+    "exit_code": 0,
+    "open_rules": [],
+    "legal_review_note": ""
+  },
+  "14-safeguards-to-scope-limited-adequacy.json": {
+    "checks": "SCCs recorded for Japan and BCR for a Korean sub-processor; both adequacy decisions cover only some importers, and no transfer impact assessment is recorded.",
+    "review_state": "NEEDS_REVIEW",
+    "exit_code": 1,
+    "open_rules": ["transfer.jp", "transfer.subprocessor.example_analytics_co_ltd"],
+    "legal_review_note": ""
+  },
+  "15-other-art46-safeguards.json": {
+    "checks": "A code of conduct (Art. 46(2)(e)) for India and a certification (Art. 46(2)(f)) for an Indian sub-processor, without a transfer impact assessment.",
+    "review_state": "NEEDS_REVIEW",
+    "exit_code": 1,
+    "open_rules": ["transfer.impact_assessment", "transfer.in", "transfer.subprocessor.example_ledger_pvt_ltd"],
     "legal_review_note": ""
   }
 }

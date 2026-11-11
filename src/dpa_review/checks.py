@@ -22,14 +22,184 @@ EEA = {
     "SE", "IS", "LI", "NO",
 }
 
-# Third countries with a European Commission adequacy decision (Art. 45).
-# Illustrative and synthetic-data oriented; verify against the current list in practice.
-# Brazil (BR): Commission Implementing Decision (EU) 2026/179 of 26 January 2026, OJ L, 2026/179,
-# 28.1.2026. Its Article 1 covers transfers to controllers and processors in Brazil subject to the
-# General Data Protection Law (LGPD).
-ADEQUACY = {"AD", "AR", "BR", "CA", "FO", "GG", "IL", "IM", "JP", "JE", "NZ", "CH", "GB", "UY", "KR"}
 
-VALID_TRANSFER_MECHANISMS = {"adequacy", "sccs", "bcr", "derogation_art49", "dpf"}
+@dataclass(frozen=True)
+class AdequacyDecision:
+    """A Commission adequacy decision for one third country, as its text on EUR-Lex states it.
+
+    `scope_limit` restates the limit the decision's operative part sets on what it covers: the
+    recipients, the processing or the purposes. It is empty when Article 1 covers personal data
+    transferred from the Union to the country without such a limit. The tool cannot check a limit
+    from its input, so a finding that relies on the decision states it for the reviewer.
+    `directive_era` marks a decision adopted under Article 25(6) of Directive 95/46/EC, which stays
+    in force under Art. 45(9) GDPR until amended, replaced or repealed. `amending_acts` are the acts
+    that changed the decision's scope or validity, which its citation names; `amended` says what
+    they changed, for the reference table in docs/rules.md; `expires` is the date the decision
+    itself sets for its expiry.
+    """
+
+    country: str  # ISO 3166-1 alpha-2 code
+    name: str
+    act: str
+    adopted: str
+    oj: str
+    celex: str
+    directive_era: bool = False
+    scope_limit: str = ""
+    amending_acts: tuple[str, ...] = ()
+    amended: str = ""
+    expires: str = ""
+
+    @property
+    def limited(self) -> bool:
+        return bool(self.scope_limit)
+
+    @property
+    def articles(self) -> tuple[str, ...]:
+        """The GDPR provisions a transfer on this decision rests on."""
+        return ("45(1)", "45(9)") if self.directive_era else ("45(1)",)
+
+    @property
+    def documents(self) -> tuple[str, ...]:
+        """The acts a finding that relies on this decision cites."""
+        return (self.act, *self.amending_acts)
+
+    @property
+    def basis(self) -> str:
+        """The decision as a finding names it."""
+        text = f"Art. 45(1); {self.act} of {self.adopted}"
+        if self.amending_acts:
+            text += ", as last amended by " + " and ".join(self.amending_acts)
+        if self.directive_era:
+            text += ", in force under Art. 45(9)"
+        if self.expires:
+            text += f", which expires on {self.expires}"
+        return text
+
+
+# The date every entry below was last read against the decision's text on EUR-Lex: the operative
+# part (Article 1 and, for Israel, Article 2), the date of adoption, the OJ reference, and the
+# EUR-Lex record of the act's status (in force; an end of validity only for the United Kingdom). The
+# amending acts were read too: Implementing Decision (EU) 2016/2295 replaced the articles on suspending
+# data flows and on monitoring in each decision adopted under Directive 95/46/EC and left Article 1
+# unchanged; the Isle of Man corrigendum (OJ L 208, 10.6.2004, p. 47) restates the same Article 1. The
+# EUR-Lex record of the Israel decision lists one corrigendum (CELEX 32011D0061R(01)), for the Hungarian
+# text only. The Uruguay decision's title refers to automated processing, but its Article 1 sets no such
+# limit, so the entry has none.
+ADEQUACY_VERIFIED_ON = "2026-11-10"
+
+# Third countries with a Commission adequacy decision (Art. 45), keyed by ISO code. The EU-US Data
+# Privacy Framework decision is DPF_ADEQUACY below: it covers only listed organisations, so a US
+# transfer relies on it through the dpf mechanism and the US is not on this list. The tool models
+# countries only, not international organisations.
+ADEQUACY: dict[str, AdequacyDecision] = {
+    decision.country: decision
+    for decision in (
+        AdequacyDecision(
+            "AD", "Andorra", "Commission Decision 2010/625/EU", "19 October 2010",
+            "OJ L 277, 21.10.2010, p. 27", "32010D0625", directive_era=True,
+        ),
+        AdequacyDecision(
+            "AR", "Argentina", "Commission Decision 2003/490/EC", "30 June 2003",
+            "OJ L 168, 5.7.2003, p. 19", "32003D0490", directive_era=True,
+        ),
+        AdequacyDecision(
+            "BR", "Brazil", "Commission Implementing Decision (EU) 2026/179", "26 January 2026",
+            "OJ L, 2026/179, 28.1.2026", "32026D0179",
+            scope_limit=(
+                "Its Article 1 covers only personal data transferred to controllers and processors in "
+                "Brazil subject to the General Data Protection Law (LGPD)."
+            ),
+        ),
+        AdequacyDecision(
+            "CA", "Canada", "Commission Decision 2002/2/EC", "20 December 2001",
+            "OJ L 2, 4.1.2002, p. 13", "32002D0002", directive_era=True,
+            scope_limit=(
+                "Its Article 1 covers only personal data transferred to recipients subject to the "
+                "Personal Information Protection and Electronic Documents Act."
+            ),
+        ),
+        AdequacyDecision(
+            "CH", "Switzerland", "Commission Decision 2000/518/EC", "26 July 2000",
+            "OJ L 215, 25.8.2000, p. 1", "32000D0518", directive_era=True,
+        ),
+        AdequacyDecision(
+            "FO", "Faroe Islands", "Commission Decision 2010/146/EU", "5 March 2010",
+            "OJ L 58, 9.3.2010, p. 17", "32010D0146", directive_era=True,
+            scope_limit=(
+                "Its Article 1 covers only personal data transferred to recipients subject to the Act on "
+                "Processing of Personal Data (the Faeroese Act)."
+            ),
+        ),
+        AdequacyDecision(
+            "GB", "United Kingdom", "Commission Implementing Decision (EU) 2021/1772", "28 June 2021",
+            "OJ L 360, 11.10.2021, p. 1", "32021D1772",
+            amending_acts=("Commission Implementing Decision (EU) 2025/2574",),
+            amended=(
+                "Implementing Decision (EU) 2025/1226 of 24 June 2025 extended it to 27 December 2025; "
+                "Implementing Decision (EU) 2025/2574 of 19 December 2025 (OJ L, 2025/2574, 23.12.2025) "
+                "repealed its Article 1(2), which excluded data transferred for purposes of United Kingdom "
+                "immigration control, and replaced its Article 4, so that it expires on 27 December 2031"
+            ),
+            expires="27 December 2031",
+        ),
+        AdequacyDecision(
+            "GG", "Guernsey", "Commission Decision 2003/821/EC", "21 November 2003",
+            "OJ L 308, 25.11.2003, p. 27", "32003D0821", directive_era=True,
+        ),
+        AdequacyDecision(
+            "IL", "Israel", "Commission Decision 2011/61/EU", "31 January 2011",
+            "OJ L 27, 1.2.2011, p. 39", "32011D0061", directive_era=True,
+            scope_limit=(
+                "Its Article 1 covers only automated international transfers of personal data or, "
+                "where a transfer is not automated, data subject to further automated processing in "
+                "Israel, and its Article 2 limits it to the State of Israel as defined in accordance "
+                "with international law."
+            ),
+        ),
+        AdequacyDecision(
+            "IM", "Isle of Man", "Commission Decision 2004/411/EC", "28 April 2004",
+            "OJ L 151, 30.4.2004, p. 48", "32004D0411", directive_era=True,
+        ),
+        AdequacyDecision(
+            "JE", "Jersey", "Commission Decision 2008/393/EC", "8 May 2008",
+            "OJ L 138, 28.5.2008, p. 21", "32008D0393", directive_era=True,
+        ),
+        AdequacyDecision(
+            "JP", "Japan", "Commission Implementing Decision (EU) 2019/419", "23 January 2019",
+            "OJ L 76, 19.3.2019, p. 1", "32019D0419",
+            scope_limit=(
+                "Its Article 1 covers only personal data transferred to personal information handling "
+                "business operators in Japan subject to the Act on the Protection of Personal "
+                "Information as complemented by the Supplementary Rules set out in its Annex I, and "
+                "Article 1(2) excludes, to the extent of the purposes it lists, press organisations, "
+                "persons engaged in professional writing, universities and other organisations or "
+                "groups aimed at academic studies, religious bodies and political bodies."
+            ),
+        ),
+        AdequacyDecision(
+            "KR", "Republic of Korea", "Commission Implementing Decision (EU) 2022/254", "17 December 2021",
+            "OJ L 44, 24.2.2022, p. 1", "32022D0254",
+            scope_limit=(
+                "Its Article 1 covers only personal data transferred to entities in the Republic of "
+                "Korea subject to the Personal Information Protection Act as complemented by the "
+                "additional safeguards set out in its Annex I, and Article 1(2) excludes, to the extent "
+                "of the purposes it lists, religious organisations (missionary activities), political "
+                "parties (nomination of candidates) and entities subject to oversight by the Financial "
+                "Services Commission for the processing of personal credit information under the "
+                "Credit Information Act."
+            ),
+        ),
+        AdequacyDecision(
+            "NZ", "New Zealand", "Commission Implementing Decision 2013/65/EU", "19 December 2012",
+            "OJ L 28, 30.1.2013, p. 12", "32013D0065", directive_era=True,
+        ),
+        AdequacyDecision(
+            "UY", "Uruguay", "Commission Implementing Decision 2012/484/EU", "21 August 2012",
+            "OJ L 227, 23.8.2012, p. 11", "32012D0484", directive_era=True,
+        ),
+    )
+}
 
 # EU-US Data Privacy Framework (DPF): Commission Implementing Decision (EU) 2023/1795 of
 # 10 July 2023, adopted under Art. 45(3). It is an adequacy decision, not an Art. 46
@@ -42,6 +212,27 @@ VALID_TRANSFER_MECHANISMS = {"adequacy", "sccs", "bcr", "derogation_art49", "dpf
 # and 9 "Human Resources Data").
 DPF_COUNTRY = "US"
 DPF_DECISION = "Commission Implementing Decision (EU) 2023/1795"
+DPF_ADEQUACY = AdequacyDecision(
+    DPF_COUNTRY, "United States", DPF_DECISION, "10 July 2023", "OJ L 231, 20.9.2023, p. 118", "32023D1795",
+    scope_limit=(
+        "Its Article 1 covers only personal data transferred to organisations in the United States that "
+        "are included in the 'Data Privacy Framework List' maintained by the U.S. Department of Commerce."
+    ),
+)
+# The status of the DPF decision, as EUR-Lex recorded it on ADEQUACY_VERIFIED_ON. The General Court
+# dismissed the action for its annulment in Latombe v Commission (judgment of 3 September 2025,
+# T-553/23, ECLI:EU:T:2025:831, CELEX 62023TJ0553). EUR-Lex records an appeal against that judgment
+# (Case C-703/25 P, brought on 31 October 2025, OJ C, C/2025/6610, 22.12.2025; CELEX 62025CN0703) and
+# lists no judgment on it. The EUR-Lex record of the decision also lists a request for a preliminary
+# ruling from the Cour d'appel de Bruxelles (Case C-804/25, lodged on 10 December 2025, OJ C,
+# C/2026/2199, 27.4.2026), whose tenth question asks whether the decision is an adequacy decision for
+# the tax-data transfers at issue there.
+DPF_STATUS_NOTE = (
+    "Re-check the status of Commission Implementing Decision (EU) 2023/1795: the "
+    "General Court dismissed an action for its annulment (Latombe v Commission, T-553/23, judgment of "
+    "3 September 2025), and EUR-Lex records an appeal against that judgment (Case C-703/25 P, brought on "
+    f"31 October 2025) with no judgment on it as of {ADEQUACY_VERIFIED_ON}."
+)
 
 # Standard Contractual Clauses (Art. 46(2)(c)): Commission Implementing Decision (EU)
 # 2021/914 of 4 June 2021 on standard contractual clauses for the transfer of personal data
@@ -57,6 +248,133 @@ SUPPLEMENTARY_MEASURES_TITLE = (
     "compliance with the EU level of protection of personal data, version 2.0, adopted "
     "18 June 2021"
 )
+
+
+@dataclass(frozen=True)
+class Safeguard:
+    """An Art. 46 safeguard the input can record as a transfer mechanism.
+
+    Art. 46(1) makes these the transfer basis in the absence of an adequacy decision. The tool
+    cannot verify an approval, an authorisation or an importer's commitments, so a transfer on any
+    of them goes to review, with a transfer impact assessment as for the SCCs.
+    """
+
+    mechanism: str
+    label: str  # how a finding names the safeguard, with its provision
+    short: str  # how a later sentence refers back to it
+    articles: tuple[str, ...]
+    documents: tuple[str, ...] = ()
+    unverifiable: str = ""  # what the tool cannot check; empty for the SCCs and BCR
+    confirm: str = "validity"  # what a reviewer confirms, besides the transfer impact assessment
+    covers: str = ""  # "Confirm that <covers> the transfer to ..."
+
+
+# GDPR Art. 46(2) and (3), with Art. 40(3) and 42(2) for codes of conduct and certification, as
+# read on EUR-Lex (CELEX 32016R0679) on ADEQUACY_VERIFIED_ON.
+SAFEGUARDS: dict[str, Safeguard] = {
+    safeguard.mechanism: safeguard
+    for safeguard in (
+        Safeguard(
+            "sccs",
+            f"Standard Contractual Clauses (Art. 46(2)(c); {SCC_DECISION})",
+            "the SCCs",
+            ("46(2)(c)",),
+            (SCC_DECISION,),
+            covers=f"the SCCs of {SCC_DECISION} cover",
+        ),
+        Safeguard(
+            "bcr",
+            "Binding Corporate Rules (Art. 46(2)(b), 47)",
+            "the BCR",
+            ("46(2)(b)", "47"),
+            covers="approved Binding Corporate Rules (Art. 47) cover",
+        ),
+        Safeguard(
+            "public_bodies_instrument",
+            "a legally binding and enforceable instrument between public authorities or bodies (Art. 46(2)(a))",
+            "the instrument",
+            ("46(2)(a)",),
+            unverifiable="the instrument",
+            confirm="that a legally binding and enforceable instrument between public authorities or bodies covers it",
+            covers="a legally binding and enforceable instrument between public authorities or bodies covers",
+        ),
+        Safeguard(
+            "sa_standard_clauses",
+            "standard data protection clauses adopted by a supervisory authority and approved by the "
+            "Commission (Art. 46(2)(d))",
+            "the clauses",
+            ("46(2)(d)",),
+            unverifiable="the adoption or the approval of the clauses",
+            confirm=(
+                "that a supervisory authority adopted the clauses and the Commission approved them "
+                "pursuant to the examination procedure referred to in Art. 93(2)"
+            ),
+            covers="standard data protection clauses adopted by a supervisory authority and approved by the Commission cover",
+        ),
+        Safeguard(
+            "code_of_conduct",
+            "an approved code of conduct with binding and enforceable commitments of the importer "
+            "(Art. 46(2)(e), 40(3))",
+            "the code of conduct",
+            ("46(2)(e)", "40(3)"),
+            unverifiable="the approval of the code or the importer's commitments",
+            confirm=(
+                "that the code is approved under Art. 40(5) and has general validity under Art. 40(9), and "
+                "that the importer has made binding and enforceable commitments, via contractual or other "
+                "legally binding instruments, to apply the appropriate safeguards, including with regard to "
+                "the rights of data subjects (Art. 40(3))"
+            ),
+            covers="an approved code of conduct, with the importer's binding and enforceable commitments, covers",
+        ),
+        Safeguard(
+            "certification",
+            "an approved certification mechanism with binding and enforceable commitments of the importer "
+            "(Art. 46(2)(f), 42(2))",
+            "the certification",
+            ("46(2)(f)", "42(2)"),
+            unverifiable="the approval of the certification mechanism or the importer's commitments",
+            confirm=(
+                "that the certification mechanism, seal or mark is approved under Art. 42(5), and that the "
+                "importer has made binding and enforceable commitments, via contractual or other legally "
+                "binding instruments, to apply the appropriate safeguards, including with regard to the "
+                "rights of data subjects (Art. 42(2))"
+            ),
+            covers="an approved certification mechanism, with the importer's binding and enforceable commitments, covers",
+        ),
+        Safeguard(
+            "authorised_clauses",
+            "contractual clauses authorised by the competent supervisory authority (Art. 46(3)(a))",
+            "the authorised clauses",
+            ("46(3)(a)",),
+            unverifiable="the authorisation",
+            confirm=(
+                "that the competent supervisory authority authorised the clauses (Art. 46(3)), or that an "
+                "authorisation given on the basis of Article 26(2) of Directive 95/46/EC remains valid "
+                "(Art. 46(5))"
+            ),
+            covers="contractual clauses authorised by the competent supervisory authority cover",
+        ),
+        Safeguard(
+            "administrative_arrangement",
+            "provisions in administrative arrangements between public authorities or bodies, authorised by "
+            "the competent supervisory authority (Art. 46(3)(b))",
+            "the administrative arrangement",
+            ("46(3)(b)",),
+            unverifiable="the authorisation",
+            confirm=(
+                "that the competent supervisory authority authorised the provisions (Art. 46(3)), that the "
+                "arrangement is between public authorities or bodies and that the provisions include "
+                "enforceable and effective data subject rights"
+            ),
+            covers="provisions in an administrative arrangement authorised by the competent supervisory authority cover",
+        ),
+    )
+}
+
+# Every value the input may record as a transfer mechanism, in the order the docs list them: "none"
+# for a recorded absence, then the Art. 45, Art. 46 and Art. 49 bases.
+TRANSFER_MECHANISMS = ("none", "adequacy", *SAFEGUARDS, "dpf", "derogation_art49")
+VALID_TRANSFER_MECHANISMS = set(TRANSFER_MECHANISMS) - {"none"}
 
 # Art. 49 derogations apply only in the absence of an Art. 45(3) adequacy decision or of
 # Art. 46 safeguards (Art. 49(1)). EDPB Guidelines 2/2018 on derogations of Article 49
@@ -474,9 +792,10 @@ def _assess_dpf(
 
     The listed certification must also cover each type of data transferred: non-HR data,
     and HR data where HR data is in scope. An `includes_*` value of None means the DPA does
-    not say whether that type of data is transferred.
+    not say whether that type of data is transferred. A finding that the DPF may carry (PRESENT,
+    or NEEDS_REVIEW on the data covered) ends with DPF_STATUS_NOTE.
     """
-    basis = f"the EU-US Data Privacy Framework adequacy decision (Art. 45; {DPF_DECISION})"
+    basis = f"the EU-US Data Privacy Framework adequacy decision (Art. 45(1); {DPF_DECISION})"
     if country != DPF_COUNTRY:
         return (
             "MISSING",
@@ -505,7 +824,7 @@ def _assess_dpf(
                 f"Transfer to {country} relies on {basis}; the importer is recorded as certified on the "
                 "Data Privacy Framework List, but the DPA records that neither non-HR data nor HR data "
                 "is transferred, so the data the certification must cover is unclear. Confirm the data "
-                "transferred and that the certification covers it."
+                f"transferred and that the certification covers it. {DPF_STATUS_NOTE}"
             ),
         )
     uncovered: list[str] = []
@@ -536,7 +855,7 @@ def _assess_dpf(
                 f"Transfer to {country} relies on {basis}; the importer is recorded as certified on the "
                 f"Data Privacy Framework List, but its certification is not recorded as covering "
                 f"{data}, and the DPA does not say whether {data} {verb} transferred. "
-                "Confirm the data the certification covers."
+                f"Confirm the data the certification covers. {DPF_STATUS_NOTE}"
             ),
         )
     return (
@@ -545,7 +864,7 @@ def _assess_dpf(
         (
             f"Transfer to {country} relies on {basis}; the importer is recorded as actively certified "
             "on the Data Privacy Framework List for the data transferred. As an Art. 45 basis it needs "
-            "no transfer impact assessment; re-check the listing before relying on it."
+            f"no transfer impact assessment; re-check the listing before relying on it. {DPF_STATUS_NOTE}"
         ),
     )
 
@@ -588,6 +907,124 @@ _ADEQUACY_REDUNDANT = {
 }
 
 
+def _mechanism(mechanism: str | None) -> str:
+    """A recorded transfer mechanism in lower case, or "none" when none is recorded."""
+    return (mechanism or "none").lower()
+
+
+def _impact_assessment_status(recorded: bool) -> str:
+    return "A transfer impact assessment is recorded" if recorded else "The input records no transfer impact assessment"
+
+
+def _assess_adequate_destination(
+    decision: AdequacyDecision, mech: str, impact_assessment_recorded: bool
+) -> tuple[str, str, str] | None:
+    """A destination with its own adequacy decision, or None for a mechanism handled elsewhere.
+
+    Art. 45(1): a transfer on an adequacy decision needs no specific authorisation, and Art. 46(1)
+    makes Art. 46 safeguards the basis only in the absence of such a decision. A safeguard recorded
+    for a destination whose decision has no scope limit is therefore not needed for Chapter V. Where
+    the decision covers only some recipients, processing or purposes, the tool cannot tell from the
+    input whether the importer is covered, so the finding asks exactly that, and the severity is the
+    one the safeguard path would give if the importer is not covered: MEDIUM while no transfer impact
+    assessment is recorded, LOW once one is.
+    """
+    country = decision.country
+    has_decision = f"{country} benefits from an adequacy decision ({decision.basis})."
+    scope = f" {decision.scope_limit}" if decision.limited else ""
+    if mech in {"none", "adequacy"}:
+        confirm = " Confirm that the importer is within it." if decision.limited else ""
+        return ("PRESENT", "LOW", has_decision + scope + confirm)
+    if mech in _ADEQUACY_REDUNDANT:
+        return (
+            "NEEDS_REVIEW",
+            "LOW",
+            (
+                f"{has_decision}{scope} The transfer is recorded as relying on {_ADEQUACY_REDUNDANT[mech]}. "
+                "Confirm the basis relied on and record the adequacy decision."
+            ),
+        )
+    safeguard = SAFEGUARDS.get(mech)
+    if safeguard is None:
+        return None
+    if decision.limited:
+        return _scope_question(decision, safeguard, impact_assessment_recorded)
+    return (
+        "PRESENT",
+        "LOW",
+        (
+            f"{country} benefits from an adequacy decision ({decision.basis}), and its Article 1 sets "
+            f"no limit on the recipients or the purposes it covers. The transfer is recorded as relying "
+            f"on {safeguard.label}. The adequacy decision covers the transfer, so Chapter V needs no "
+            f"Art. 46 safeguard and no transfer impact assessment for it; {safeguard.short} may still "
+            "serve other purposes."
+        ),
+    )
+
+
+def _scope_question(
+    decision: AdequacyDecision, safeguard: Safeguard, impact_assessment_recorded: bool
+) -> tuple[str, str, str]:
+    """An Art. 46 safeguard recorded for a destination whose adequacy decision covers only some importers.
+
+    The tool cannot tell from the input whether the importer is within the decision's scope, so the
+    finding asks exactly that: if it is, the decision covers the transfer (Art. 45(1)) and Art. 46(1)
+    leaves no room for the safeguard as the Chapter V basis; if not, the safeguard carries the transfer
+    and needs a transfer impact assessment. The severity is the one the safeguard path would give if the
+    importer is not covered: MEDIUM while no transfer impact assessment is recorded, LOW once one is.
+    For the United States the decision is the DPF decision, which covers only organisations on the Data
+    Privacy Framework List; the input records such a certification only for the dpf mechanism.
+    """
+    country = decision.country
+    recorded = f"The transfer is recorded as relying on {safeguard.label}."
+    if decision is DPF_ADEQUACY:
+        opening = f"An adequacy decision covers some importers in {country} ({decision.basis})."
+        unknown = (
+            "The input records a certification on that list only for the dpf mechanism, so it does not "
+            "record whether the importer is within the decision's scope."
+        )
+        covered = (
+            "If it is, with a certification that covers the data transferred, the decision covers the "
+            "transfer: record the mechanism as dpf, and Chapter V needs no Art. 46 safeguard and no transfer "
+            "impact assessment for it."
+        )
+        note = f" {DPF_STATUS_NOTE}"
+    else:
+        opening = f"{country} benefits from an adequacy decision ({decision.basis})."
+        unknown = "The input does not record whether the importer is within the decision's scope."
+        covered = (
+            "If it is, the decision covers the transfer and Chapter V needs no Art. 46 safeguard and no "
+            "transfer impact assessment for it."
+        )
+        note = ""
+    return (
+        "NEEDS_REVIEW",
+        "LOW" if impact_assessment_recorded else "MEDIUM",
+        (
+            f"{opening} {decision.scope_limit} {recorded} {unknown} {covered} If it is not, the transfer "
+            f"relies on {safeguard.short}: confirm {safeguard.confirm}, and record a transfer impact "
+            f"assessment and any supplementary measures ({SUPPLEMENTARY_MEASURES}). "
+            f"{_impact_assessment_status(impact_assessment_recorded)}.{note}"
+        ),
+    )
+
+
+def _assess_safeguard(country: str, safeguard: Safeguard) -> tuple[str, str, str]:
+    """An Art. 46 safeguard for a third country with no adequacy decision at all (not even the DPF's)."""
+    if safeguard.unverifiable:
+        detail = (
+            f"Transfer to {country} relies on {safeguard.label}. The tool cannot verify "
+            f"{safeguard.unverifiable}: confirm {safeguard.confirm}, and record a transfer impact "
+            f"assessment and any supplementary measures ({SUPPLEMENTARY_MEASURES})."
+        )
+    else:
+        detail = (
+            f"Transfer to {country} relies on {safeguard.label}; confirm {safeguard.confirm}, a transfer "
+            f"impact assessment and any supplementary measures ({SUPPLEMENTARY_MEASURES})."
+        )
+    return ("NEEDS_REVIEW", "LOW", detail)
+
+
 def assess_transfer(
     country: str,
     mechanism: str | None,
@@ -598,6 +1035,7 @@ def assess_transfer(
     includes_hr_data: bool | None = None,
     includes_non_hr_data: bool | None = None,
     occasional_and_not_repetitive: bool = False,
+    impact_assessment_recorded: bool = False,
 ) -> tuple[str, str, str]:
     """Return (status, severity, detail) for a single destination country.
 
@@ -605,24 +1043,19 @@ def assess_transfer(
     an active certification, and whether it covers HR and non-HR data. The `includes_*`
     keywords say whether the DPA transfers HR and non-HR data (None means it does not say).
     `occasional_and_not_repetitive` is the recorded nature of a derogation-based transfer.
+    `impact_assessment_recorded` is read only for an Art. 46 safeguard recorded for a destination
+    whose adequacy decision has a scope limit, the United States (the DPF decision) included.
     """
     country = (country or "").upper()
-    mech = (mechanism or "none").lower()
+    mech = _mechanism(mechanism)
     if country in EEA:
         return ("PRESENT", "INFO", f"{country} is within the EEA; no Chapter V transfer mechanism required.")
     if country in ADEQUACY:
-        if mech in {"none", "adequacy"}:
-            return ("PRESENT", "LOW", f"{country} benefits from an adequacy decision (Art. 45).")
-        if mech in _ADEQUACY_REDUNDANT:
-            return (
-                "NEEDS_REVIEW",
-                "LOW",
-                (
-                    f"{country} benefits from an adequacy decision (Art. 45), but the transfer is recorded "
-                    f"as relying on {_ADEQUACY_REDUNDANT[mech]}. Confirm the basis relied on and record the "
-                    "adequacy decision."
-                ),
-            )
+        assessed = _assess_adequate_destination(ADEQUACY[country], mech, impact_assessment_recorded)
+        if assessed is not None:
+            return assessed
+    if country == DPF_COUNTRY and mech in SAFEGUARDS:
+        return _scope_question(DPF_ADEQUACY, SAFEGUARDS[mech], impact_assessment_recorded)
     if mech == "adequacy":
         # Recorded as adequacy, but the destination has no decision on the tool's list.
         detail = (
@@ -636,7 +1069,10 @@ def assess_transfer(
                 "with the importer's certification."
             )
         else:
-            detail += " The list is illustrative; confirm whether a current adequacy decision covers it."
+            detail += (
+                f" The list was checked against the decisions on EUR-Lex on {ADEQUACY_VERIFIED_ON}; "
+                "confirm whether a later adequacy decision covers it."
+            )
         return ("MISSING", "HIGH", detail)
     if mech != "none" and mech not in VALID_TRANSFER_MECHANISMS:
         return (
@@ -644,8 +1080,9 @@ def assess_transfer(
             "HIGH",
             (
                 f"Transfer to {country} is recorded as relying on '{mechanism}', which is not a Chapter V "
-                "basis this tool recognises (adequacy, dpf, sccs, bcr or derogation_art49); no "
-                "Art. 45 adequacy decision, Art. 46 safeguard or Art. 49 derogation is recorded."
+                f"basis this tool recognises ({', '.join(TRANSFER_MECHANISMS[1:-1])} or "
+                f"{TRANSFER_MECHANISMS[-1]}); no Art. 45 adequacy decision, Art. 46 safeguard or Art. 49 "
+                "derogation is recorded."
             ),
         )
     if mech == "dpf":
@@ -659,19 +1096,8 @@ def assess_transfer(
         )
     if mech == "derogation_art49":
         return _assess_derogation(country, occasional_and_not_repetitive)
-    if mech in {"sccs", "bcr"}:
-        label = {
-            "sccs": f"Standard Contractual Clauses (Art. 46(2)(c); {SCC_DECISION})",
-            "bcr": "Binding Corporate Rules (Art. 47)",
-        }[mech]
-        return (
-            "NEEDS_REVIEW",
-            "LOW",
-            (
-                f"Transfer to {country} relies on {label}; confirm validity, a transfer impact "
-                f"assessment and any supplementary measures ({SUPPLEMENTARY_MEASURES})."
-            ),
-        )
+    if mech in SAFEGUARDS:
+        return _assess_safeguard(country, SAFEGUARDS[mech])
     return (
         "MISSING",
         "HIGH",
@@ -683,30 +1109,74 @@ def assess_transfer(
     )
 
 
+def scope_limited_decision(country: str) -> AdequacyDecision | None:
+    """The adequacy decision for this country when it covers only some importers, or None.
+
+    For the United States that is the DPF decision, which covers only organisations on the Data
+    Privacy Framework List and which a transfer relies on through the dpf mechanism.
+    """
+    country = country.upper()
+    if country == DPF_COUNTRY:
+        return DPF_ADEQUACY
+    decision = ADEQUACY.get(country)
+    return decision if decision is not None and decision.limited else None
+
+
 def relies_on_art46_safeguard(country: str, mechanism: str | None) -> bool:
-    """Whether a transfer relies on SCCs or BCR, so that a transfer impact assessment is due.
+    """Whether a transfer relies on an Art. 46 safeguard, so that a transfer impact assessment is due.
 
     A destination inside the EEA is not a Chapter V transfer (Art. 44 covers transfers to a third
-    country or an international organisation), so SCCs or BCR recorded for it are not relied on.
+    country or an international organisation), and Art. 46(1) makes the safeguards the basis only
+    in the absence of an adequacy decision, so a safeguard recorded for either is not relied on here.
+    For a destination whose decision has a scope limit, the United States included, the transfer
+    finding itself asks whether the importer is covered and, if not, for the assessment
+    (scope_question_reads_impact_assessment).
     """
-    return country.upper() not in EEA and (mechanism or "none").lower() in {"sccs", "bcr"}
+    country = country.upper()
+    return (
+        country not in EEA
+        and country not in ADEQUACY
+        and country != DPF_COUNTRY
+        and _mechanism(mechanism) in SAFEGUARDS
+    )
+
+
+def scope_question_reads_impact_assessment(country: str, mechanism: str | None) -> bool:
+    """Whether the transfer finding reads `transfers.transfer_impact_assessment`.
+
+    It does for an Art. 46 safeguard recorded for a destination whose adequacy decision has a
+    scope limit, the United States included: the finding states whether an assessment is recorded
+    and takes its severity from that.
+    """
+    return scope_limited_decision(country) is not None and _mechanism(mechanism) in SAFEGUARDS
+
+
+def _cite(articles: tuple[str, ...], documents: tuple[str, ...] = ()) -> str:
+    return "Art. " + ", ".join(articles) + "".join(f"; {document}" for document in documents)
 
 
 def _transfer_articles(country: str, mechanism: str | None) -> str:
     """Chapter V provisions behind a transfer finding, for its citation."""
-    mech = (mechanism or "none").lower()
-    if country.upper() in EEA:
+    mech = _mechanism(mechanism)
+    country = country.upper()
+    if country in EEA:
         return "Art. 44-46"  # no Chapter V transfer; the recorded mechanism is not relied on
-    if country.upper() in ADEQUACY and (mech in {"none", "adequacy"} or mech in _ADEQUACY_REDUNDANT):
-        return "Art. 44-45"
+    decision = ADEQUACY.get(country)
+    limited = scope_limited_decision(country)
+    safeguard = SAFEGUARDS.get(mech)
+    if limited and safeguard:
+        return _cite(
+            ("44", *limited.articles, *safeguard.articles),
+            (*limited.documents, *safeguard.documents, SUPPLEMENTARY_MEASURES),
+        )
+    if decision and (mech in {"none", "adequacy"} or mech in _ADEQUACY_REDUNDANT or safeguard):
+        return _cite(("44", *decision.articles), decision.documents)
     if mech == "dpf":
-        return f"Art. 44-45; {DPF_DECISION}"
+        return _cite(("44", "45(1)"), (DPF_DECISION,))
     if mech == "derogation_art49":
         return f"Art. 44, 49; {ART49_GUIDELINES}"
-    if mech == "sccs":
-        return f"Art. 44-46; {SCC_DECISION}"
-    if mech == "bcr":
-        return "Art. 44-47"  # Art. 46(2)(b): binding corporate rules in accordance with Art. 47
+    if safeguard:
+        return _cite(("44", *safeguard.articles), safeguard.documents)
     return "Art. 44-46"
 
 
@@ -721,21 +1191,43 @@ def _transfer_remediation(
     `importer` names a sub-processor; a direct transfer is described by its country alone.
     The same defect gets the same remediation in either place.
     """
-    mech = (mechanism or "none").lower()
+    mech = _mechanism(mechanism)
+    country = country.upper()
     where = f"{importer} in {country}" if importer else country
     transfer = f"the transfer to {importer}" if importer else "the transfer"
     certification = f"the active certification of {importer}" if importer else "the importer's active certification"
-    if country.upper() in ADEQUACY and mech in _ADEQUACY_REDUNDANT:
+    decision = ADEQUACY.get(country)
+    limited = scope_limited_decision(country)
+    safeguard = SAFEGUARDS.get(mech)
+    if decision and mech in _ADEQUACY_REDUNDANT:
         return f"Record reliance on the Art. 45 adequacy decision for {country} as the basis for {transfer}."
-    if mech == "adequacy" and country.upper() not in ADEQUACY:
-        if country.upper() == DPF_COUNTRY:
+    if limited and safeguard:
+        who = importer or f"the importer in {country}"
+        if limited is DPF_ADEQUACY:
+            covered = (
+                f"Confirm whether {who} is within the scope of Article 1 of {limited.act}: on the Data "
+                "Privacy Framework List, with a certification that covers the data transferred. If it is, "
+                "record the mechanism as dpf with that certification"
+            )
+        else:
+            covered = (
+                f"Confirm whether {who} is within the scope of Article 1 of {limited.act}. If it is, record "
+                "the mechanism as adequacy"
+            )
+        return (
+            f"{covered}; if not, confirm that {safeguard.covers} the transfer to {where}, with a transfer "
+            f"impact assessment and any supplementary measures ({SUPPLEMENTARY_MEASURES})."
+        )
+    if mech == "adequacy" and not decision:
+        if country == DPF_COUNTRY:
             return (
                 f"Record the mechanism for {where} as dpf, with {certification} on the Data Privacy "
                 "Framework List and the data it covers, or record an Art. 46 safeguard."
             )
         return (
             f"Confirm that a current Commission adequacy decision covers {country} (the tool's adequacy "
-            f"list is illustrative), or record an Art. 46 safeguard for {where}."
+            f"list was checked against EUR-Lex on {ADEQUACY_VERIFIED_ON}), or record an Art. 46 safeguard "
+            f"for {where}."
         )
     if mech == "dpf":
         return (
@@ -750,13 +1242,9 @@ def _transfer_remediation(
             f"Record an Art. 45 adequacy basis or an Art. 46 safeguard for {where}, or record that "
             "the transfer is occasional and not repetitive and which Art. 49(1) derogation applies."
         )
-    if mech in {"sccs", "bcr"}:
-        tool = {
-            "sccs": f"the SCCs of {SCC_DECISION}",
-            "bcr": "approved Binding Corporate Rules (Art. 47)",
-        }[mech]
+    if safeguard:
         return (
-            f"Confirm that {tool} cover the transfer to {where}, with a transfer impact assessment "
+            f"Confirm that {safeguard.covers} the transfer to {where}, with a transfer impact assessment "
             f"and any supplementary measures ({SUPPLEMENTARY_MEASURES})."
         )
     return f"Record an Art. 45 adequacy basis or an Art. 46 safeguard for {where}."
@@ -771,6 +1259,7 @@ def check_transfers(dpa: dict) -> list[Finding]:
     dpf_covers_hr_data = _country_flags(dpa, "transfers.dpf_covers_hr_data")
     dpf_covers_non_hr_data = _country_flags(dpa, "transfers.dpf_covers_non_hr_data")
     occasional = _country_flags(dpa, "transfers.occasional_and_not_repetitive")
+    tia = _recorded(dpa, "transfers.transfer_impact_assessment")
     # None: the DPA does not say whether that type of data is transferred.
     includes_hr_data = _flag(_get(dpa, "processing.includes_hr_data"), "processing.includes_hr_data")
     includes_non_hr_data = _flag(
@@ -788,6 +1277,7 @@ def check_transfers(dpa: dict) -> list[Finding]:
             includes_hr_data=includes_hr_data,
             includes_non_hr_data=includes_non_hr_data,
             occasional_and_not_repetitive=is_occasional,
+            impact_assessment_recorded=tia,
         )
         findings.append(
             Finding(
@@ -826,6 +1316,7 @@ def check_transfers(dpa: dict) -> list[Finding]:
                 **flags,
                 includes_hr_data=includes_hr_data,
                 includes_non_hr_data=includes_non_hr_data,
+                impact_assessment_recorded=tia,
             )
             findings.append(
                 Finding(
@@ -847,10 +1338,11 @@ def check_transfers(dpa: dict) -> list[Finding]:
                 )
             )
 
-    # Transfer impact assessment (Schrems II): required where Art. 46 tools are relied on for a
-    # transfer outside the EEA. DPF transfers rely on an Art. 45 adequacy decision and therefore
-    # do not trigger it.
-    tia = _recorded(dpa, "transfers.transfer_impact_assessment")
+    # Transfer impact assessment (Schrems II): required where an Art. 46 safeguard is relied on for a
+    # transfer to a third country with no adequacy decision. DPF transfers rely on an Art. 45 adequacy
+    # decision and therefore do not trigger it; a safeguard recorded for a destination with a
+    # scope-limited adequacy decision (the United States and its DPF decision included) is asked about
+    # in its own transfer finding, which reads the recorded assessment.
     relies_on_safeguards = any(
         relies_on_art46_safeguard(c, mechanisms.get(c)) for c in destinations
     ) or any(

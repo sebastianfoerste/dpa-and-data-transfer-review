@@ -81,9 +81,19 @@ class OpenFindings(Structure, unittest.TestCase):
         self.assertEqual(sarif("--input", SAMPLE_PATH)[1], self.log)
 
     def test_levels_follow_severity(self):
+        _, log, _ = sarif("--input", FIXTURES / "15-other-art46-safeguards.json")
+        levels = {result["ruleId"]: result["level"] for result in log["runs"][0]["results"]}
+        self.assertEqual(
+            levels,
+            {
+                "transfer.impact_assessment": "warning",
+                "transfer.in": "note",
+                "transfer.subprocessor.example_ledger_pvt_ltd": "note",
+            },
+        )
         _, log, _ = sarif("--input", FIXTURES / "04-sccs-without-tia.json")
         levels = {result["ruleId"]: result["level"] for result in log["runs"][0]["results"]}
-        self.assertEqual(levels, {"transfer.impact_assessment": "warning", "transfer.us": "note"})
+        self.assertEqual(levels, {"transfer.us": "warning"})
 
     def test_a_cleared_input_has_no_results(self):
         code, log, _ = sarif("--input", FIXTURES / "01-eea-only.json")

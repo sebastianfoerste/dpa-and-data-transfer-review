@@ -2,7 +2,7 @@
 
 # Conformance suite
 
-12 synthetic DPA descriptions in [`tests/fixtures/`](../tests/fixtures/), each with the review state, exit code and open rules the CLI must produce, recorded in [`expected.json`](../tests/fixtures/expected.json). [`tests/test_conformance.py`](../tests/test_conformance.py) runs every fixture through the CLI on every push, on Python 3.10 to 3.14, and fails on any difference.
+15 synthetic DPA descriptions in [`tests/fixtures/`](../tests/fixtures/), each with the review state, exit code and open rules the CLI must produce, recorded in [`expected.json`](../tests/fixtures/expected.json). [`tests/test_conformance.py`](../tests/test_conformance.py) runs every fixture through the CLI on every push, on Python 3.10 to 3.14, and fails on any difference.
 
 The fixtures freeze what the rules do today. Where a result looks legally questionable it is flagged below for review rather than changed: a rule change needs a lawyer's sign-off and a deliberate update of the expected result.
 
@@ -11,7 +11,7 @@ The fixtures freeze what the rules do today. Where a result looks legally questi
 | [`01-eea-only.json`](../tests/fixtures/01-eea-only.json) | Every Art. 28 clause present, one sub-processor in Germany, no direct transfers; three facts carry evidence quotes. | `CLEARED_FOR_REVIEW` | 0 | none |
 | [`02-adequacy-only.json`](../tests/fixtures/02-adequacy-only.json) | Direct transfers to Japan and Switzerland and a UK sub-processor, all on adequacy decisions. | `CLEARED_FOR_REVIEW` | 0 | none |
 | [`03-sccs-with-tia.json`](../tests/fixtures/03-sccs-with-tia.json) | A direct transfer to the US on SCCs, with a transfer impact assessment recorded. | `NEEDS_REVIEW` | 1 | `transfer.us` |
-| [`04-sccs-without-tia.json`](../tests/fixtures/04-sccs-without-tia.json) | The same SCC transfer to the US, without a transfer impact assessment. | `NEEDS_REVIEW` | 1 | `transfer.impact_assessment`, `transfer.us` |
+| [`04-sccs-without-tia.json`](../tests/fixtures/04-sccs-without-tia.json) ⚑ | The same SCC transfer to the US, without a transfer impact assessment. | `NEEDS_REVIEW` | 1 | `transfer.us` |
 | [`05-dpf-us-importer.json`](../tests/fixtures/05-dpf-us-importer.json) ⚑ | A direct transfer to a US importer certified under the EU-US Data Privacy Framework. | `CLEARED_FOR_REVIEW` | 0 | none |
 | [`06-art49-derogation.json`](../tests/fixtures/06-art49-derogation.json) ⚑ | A direct transfer to India on an Art. 49 derogation. | `BLOCKED` | 2 | `transfer.in` |
 | [`07-vague-breach-timing.json`](../tests/fixtures/07-vague-breach-timing.json) ⚑ | The processor notifies breaches "within a reasonable time" instead of without undue delay. | `BLOCKED` | 2 | `breach.processor_notifies` |
@@ -20,12 +20,16 @@ The fixtures freeze what the rules do today. Where a result looks legally questi
 | [`10-brazil-adequacy.json`](../tests/fixtures/10-brazil-adequacy.json) ⚑ | A direct transfer to Brazil recorded as relying on adequacy. | `CLEARED_FOR_REVIEW` | 0 | none |
 | [`11-misspelt-transfers-key.json`](../tests/fixtures/11-misspelt-transfers-key.json) | "transfer" instead of "transfers", with every sub-processor in the EEA: the fail-open input that used to come out CLEARED_FOR_REVIEW with exit 0. | refused (no state) | 3 | n/a |
 | [`12-string-false-flag.json`](../tests/fixtures/12-string-false-flag.json) | Flow-down recorded as the string "false", which a truthiness check would read as present. | refused (no state) | 3 | n/a |
+| [`13-sccs-to-full-adequacy.json`](../tests/fixtures/13-sccs-to-full-adequacy.json) | SCCs recorded for a direct transfer and a sub-processor in Switzerland, whose adequacy decision has no scope limit. | `CLEARED_FOR_REVIEW` | 0 | none |
+| [`14-safeguards-to-scope-limited-adequacy.json`](../tests/fixtures/14-safeguards-to-scope-limited-adequacy.json) | SCCs recorded for Japan and BCR for a Korean sub-processor; both adequacy decisions cover only some importers, and no transfer impact assessment is recorded. | `NEEDS_REVIEW` | 1 | `transfer.jp`, `transfer.subprocessor.example_analytics_co_ltd` |
+| [`15-other-art46-safeguards.json`](../tests/fixtures/15-other-art46-safeguards.json) | A code of conduct (Art. 46(2)(e)) for India and a certification (Art. 46(2)(f)) for an Indian sub-processor, without a transfer impact assessment. | `NEEDS_REVIEW` | 1 | `transfer.impact_assessment`, `transfer.in`, `transfer.subprocessor.example_ledger_pvt_ltd` |
 
 ## ⚑ Flagged for legal review
 
+- **`04-sccs-without-tia.json`**: Changed: Article 1 of Implementing Decision (EU) 2023/1795 covers only organisations on the Data Privacy Framework List, so SCCs recorded for a US importer now get the scope question every destination with a scope-limited adequacy decision gets. transfer.us asks whether the importer is on that list for the data transferred and, if not, for a transfer impact assessment; it is MEDIUM until one is recorded and replaces the generic transfer.impact_assessment finding. The review state is unchanged. Confirm the changed expected result.
 - **`05-dpf-us-importer.json`**: Changed by PR #4: the DPF is treated as an Art. 45 adequacy decision (Implementing Decision (EU) 2023/1795), not an Art. 46 safeguard, so a transfer to an importer recorded as actively certified on the Data Privacy Framework List for the data transferred is PRESENT and asks for no transfer impact assessment. The fixture now records that certification and the data it covers. Confirm the changed expected result.
 - **`06-art49-derogation.json`**: Changed by PR #4: a derogation not recorded as occasional and not repetitive is treated like a missing basis (HIGH), so this fixture is now BLOCKED instead of NEEDS_REVIEW (MEDIUM). EDPB Guidelines 2/2018, section 1, read the derogations restrictively. Confirm the changed expected result.
 - **`07-vague-breach-timing.json`**: Any timing wording without "undue delay" or "without delay" (also "within 24 hours") is an open HIGH finding and blocks the packet. Confirm that this is the intended threshold.
-- **`10-brazil-adequacy.json`**: Brazil has an adequacy decision: Commission Implementing Decision (EU) 2026/179 of 26 January 2026 (OJ L, 2026/179, 28.1.2026), Article 1, for transfers to controllers and processors in Brazil subject to the LGPD. The tool records adequacy per country, so it cannot test whether the importer is subject to the LGPD; the reviewer confirms that.
+- **`10-brazil-adequacy.json`**: Changed: Brazil is now in the adequacy reference data under Commission Implementing Decision (EU) 2026/179 of 26 January 2026 (OJ L, 2026/179, 28.1.2026), read on EUR-Lex on 2026-11-10, so the transfer is PRESENT and the packet CLEARED_FOR_REVIEW instead of BLOCKED. Article 1 of the decision covers only controllers and processors in Brazil subject to the LGPD; the finding states that scope for the reviewer.
 
 Run the suite with `make test`, or a single fixture with `dpa-review --input tests/fixtures/<name> --quiet; echo $?`.

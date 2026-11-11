@@ -19,7 +19,11 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from dpa_review.checks import (  # noqa: E402
     ADEQUACY,
+    ADEQUACY_VERIFIED_ON,
+    DPF_ADEQUACY,
     EEA,
+    SAFEGUARDS,
+    AdequacyDecision,
     assess_transfer,
     check_transfers,
     run_all_checks,
@@ -218,7 +222,8 @@ def _reads(rule_id: str, dpa: dict) -> str:
             "`transfers.dpf_certified.<COUNTRY>`, `transfers.dpf_covers_non_hr_data.<COUNTRY>`, "
             "`transfers.dpf_covers_hr_data.<COUNTRY>`, `processing.includes_non_hr_data`, "
             "`processing.includes_hr_data`; for `derogation_art49`, "
-            "`transfers.occasional_and_not_repetitive.<COUNTRY>`"
+            "`transfers.occasional_and_not_repetitive.<COUNTRY>`; for an Art. 46 safeguard to a destination "
+            "whose adequacy decision has a scope limit (the US included), `transfers.transfer_impact_assessment`"
         )
     if rule_id == "transfer.subprocessor.<name>":
         return (
@@ -226,7 +231,8 @@ def _reads(rule_id: str, dpa: dict) -> str:
             "`subprocessors[].dpf_certified`, `subprocessors[].dpf_covers_non_hr_data`, "
             "`subprocessors[].dpf_covers_hr_data`, `processing.includes_non_hr_data`, "
             "`processing.includes_hr_data`; for `derogation_art49`, "
-            "`subprocessors[].occasional_and_not_repetitive`"
+            "`subprocessors[].occasional_and_not_repetitive`; for an Art. 46 safeguard to a country whose "
+            "adequacy decision has a scope limit (the US included), `transfers.transfer_impact_assessment`"
         )
     return ", ".join(f"`{format_path(path)}`" for path in rule_facts(dpa, rule_id))
 
@@ -235,9 +241,37 @@ def _reads(rule_id: str, dpa: dict) -> str:
 _PROBE_SUBPROCESSOR = subprocessor_rule_id("<name>")
 _TRANSFER_BASES = (
     ("EEA member state (e.g. DE)", "DE"),
-    ("Adequacy country (e.g. JP)", "JP"),
-    ("Other third country (e.g. US)", "US"),
+    ("Adequacy decision without a scope limit (e.g. CH)", "CH"),
+    ("Adequacy decision with a scope limit (e.g. JP)", "JP"),
+    ("United States (DPF decision)", "US"),
+    ("Third country without an adequacy decision (e.g. IN)", "IN"),
 )
+
+
+# The GDPR provision behind each mechanism value, for the transfer-basis table.
+_PROVISIONS = {
+    "none": "none recorded",
+    "adequacy": "Art. 45(1)",
+    **{
+        mechanism: "Art. " + ", ".join(safeguard.articles)
+        for mechanism, safeguard in SAFEGUARDS.items()
+    },
+    "dpf": "Art. 45(1); Implementing Decision (EU) 2023/1795",
+    "derogation_art49": "Art. 49",
+}
+
+
+def _decision_row(decision: AdequacyDecision) -> str:
+    """One row of the reference-data table."""
+    act = f"[{decision.act}](https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:{decision.celex}) of {decision.adopted}"
+    if decision.directive_era:
+        act += ", in force under Art. 45(9)"
+    if decision.amended:
+        act += "; " + decision.amended
+    code = decision.country + (" (via `dpf`)" if decision is DPF_ADEQUACY else "")
+    return (
+        f"| {code} | {decision.name} | {_cell(act)} | {decision.oj} | {_cell(decision.scope_limit or 'none')} |"
+    )
 
 
 def _transfer_citation(country: str, mechanism: str) -> str:
@@ -281,7 +315,10 @@ def rules() -> str:
                 f"{absent_finding.status} ({absent_finding.severity})" if absent_finding else "not checked"
             )
         if rule_id == "transfer.impact_assessment":
-            absent_status += "; checked only when SCCs or BCR are relied on for a transfer outside the EEA"
+            absent_status += (
+                "; checked only when an Art. 46 safeguard is relied on for a transfer to a third country "
+                "with no adequacy decision (the United States has one, the DPF decision)"
+            )
         lines.append(
             f"| `{rule_id}` | {_cell(finding.title)} | {citation} | {severity} "
             f"| {absent_status} | {_reads(rule_id, present)} |"
@@ -294,39 +331,64 @@ def rules() -> str:
         "sub-processor outside the EEA. Both use the same assessment of the country and the recorded "
         "mechanism (status and severity). The table shows each mechanism with nothing else recorded: for "
         "`dpf`, no certification on the Data Privacy Framework List; for `derogation_art49`, a transfer not "
-        "recorded as occasional and not repetitive.",
+        "recorded as occasional and not repetitive; for an Art. 46 safeguard, no transfer impact assessment. "
+        "Art. 46(1) makes the safeguards the transfer basis only in the absence of an adequacy decision, so "
+        "a safeguard recorded for a destination with a decision is not needed where the decision covers the "
+        "importer. Where the decision has a scope limit the tool cannot check, the finding asks whether the "
+        "importer is within it; once a transfer impact assessment is recorded that finding is LOW instead of "
+        "MEDIUM. The United States has such a decision: Implementing Decision (EU) 2023/1795 covers only "
+        "organisations on the Data Privacy Framework List, so a safeguard recorded for the US gets the same "
+        "question, about that list.",
         "",
-        "| Destination | " + " | ".join(f"`{mechanism}`" for mechanism in MECHANISMS) + " |",
-        "| --- |" + " --- |" * len(MECHANISMS),
+        "| Mechanism | Provision | " + " | ".join(label for label, _ in _TRANSFER_BASES) + " |",
+        "| --- | --- |" + " --- |" * len(_TRANSFER_BASES),
     ]
-    for label, country in _TRANSFER_BASES:
+    for mechanism in MECHANISMS:
         cells = []
-        for mechanism in MECHANISMS:
+        for _, country in _TRANSFER_BASES:
             status, severity, _ = assess_transfer(country, mechanism)
             cells.append(f"{status} ({severity})")
-        lines.append(f"| {label} | " + " | ".join(cells) + " |")
+        lines.append(f"| `{mechanism}` | {_cell(_PROVISIONS[mechanism])} | " + " | ".join(cells) + " |")
     lines += [
         "",
         "The citation follows the same assessment. This is the citation of `transfer.<country>`; "
         "`transfer.subprocessor.<name>` cites `GDPR Art. 28(4) /` followed by the same articles:",
         "",
-        "| Destination | " + " | ".join(f"`{mechanism}`" for mechanism in MECHANISMS) + " |",
-        "| --- |" + " --- |" * len(MECHANISMS),
+        "| Mechanism | " + " | ".join(label for label, _ in _TRANSFER_BASES) + " |",
+        "| --- |" + " --- |" * len(_TRANSFER_BASES),
     ]
-    for label, country in _TRANSFER_BASES:
-        cells = [_cell(_transfer_citation(country, mechanism)) for mechanism in MECHANISMS]
-        lines.append(f"| {label} | " + " | ".join(cells) + " |")
+    for mechanism in MECHANISMS:
+        cells = [_cell(_transfer_citation(country, mechanism)) for _, country in _TRANSFER_BASES]
+        lines.append(f"| `{mechanism}` | " + " | ".join(cells) + " |")
     lines += [
         "",
         "## Reference data",
         "",
-        "The country lists the transfer rules use, as they stand in `checks.py`. They are illustrative "
-        "and carry no as-of date yet: verify them against the European Commission's current "
-        "[adequacy decisions](https://commission.europa.eu/law/law-topic/data-protection/international-"
-        "dimension-data-protection/adequacy-decisions_en) before relying on a result.",
+        f"The country lists the transfer rules use, as they stand in `checks.py`. Every adequacy decision "
+        f"below was read on EUR-Lex on {ADEQUACY_VERIFIED_ON}: its operative part, its date, its Official "
+        "Journal reference and the EUR-Lex record of its status and amendments. The scope limit is the "
+        "decision's own; the tool cannot check it from the input, so a finding that relies on the decision "
+        "states it. Decisions are amended, extended and adopted after that date: re-check the decision on "
+        "EUR-Lex before relying on a result.",
         "",
         f"- EEA ({len(EEA)}): " + ", ".join(sorted(EEA)),
         f"- Adequacy (Art. 45) ({len(ADEQUACY)}): " + ", ".join(sorted(ADEQUACY)),
+        "",
+        "| Code | Country | Decision | Official Journal | Scope limit |",
+        "| --- | --- | --- | --- | --- |",
+    ]
+    for decision in [*sorted(ADEQUACY.values(), key=lambda item: item.country), DPF_ADEQUACY]:
+        lines.append(_decision_row(decision))
+    lines += [
+        "",
+        "Decisions adopted under Article 25(6) of Directive 95/46/EC stay in force under Art. 45(9) GDPR "
+        "until amended, replaced or repealed; their findings cite Art. 45(9) too. Implementing Decision (EU) "
+        "2016/2295 replaced their articles on suspending data flows and on monitoring and left Article 1 "
+        "unchanged. "
+        "The US decision is reached through the `dpf` mechanism, with the importer's certification, so the US "
+        "is not on the adequacy list. The tool models countries only: Commission Implementing Decision (EU) "
+        "2025/1382 of 15 July 2025 on the European Patent Organisation, an international organisation, is "
+        "not on the list.",
         "",
     ]
     return "\n".join(lines)
