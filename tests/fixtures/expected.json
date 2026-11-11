@@ -24,8 +24,8 @@
     "checks": "The same SCC transfer to the US, without a transfer impact assessment.",
     "review_state": "NEEDS_REVIEW",
     "exit_code": 1,
-    "open_rules": ["transfer.impact_assessment", "transfer.us"],
-    "legal_review_note": ""
+    "open_rules": ["transfer.us"],
+    "legal_review_note": "Changed: Article 1 of Implementing Decision (EU) 2023/1795 covers only organisations on the Data Privacy Framework List, so SCCs recorded for a US importer now get the scope question every destination with a scope-limited adequacy decision gets. transfer.us asks whether the importer is on that list for the data transferred and, if not, for a transfer impact assessment; it is MEDIUM until one is recorded and replaces the generic transfer.impact_assessment finding. The review state is unchanged. Confirm the changed expected result."
   },
   "05-dpf-us-importer.json": {
     "checks": "A direct transfer to a US importer certified under the EU-US Data Privacy Framework.",

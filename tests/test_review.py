@@ -37,9 +37,15 @@ class TransferAssessment(unittest.TestCase):
         self.assertEqual(sev, "HIGH")
 
     def test_sccs_need_review_not_block(self):
-        status, sev, detail = assess_transfer("US", "sccs")
+        status, sev, detail = assess_transfer("IN", "sccs")
         self.assertEqual(status, "NEEDS_REVIEW")
         self.assertEqual(sev, "LOW")
+        self.assertIn("Art. 46(2)(c); Commission Implementing Decision (EU) 2021/914", detail)
+        self.assertIn("EDPB Recommendations 01/2020", detail)
+        # For the US the finding asks whether the importer is within the DPF decision; it is MEDIUM,
+        # not HIGH, while no transfer impact assessment is recorded.
+        status, sev, detail = assess_transfer("US", "sccs")
+        self.assertEqual((status, sev), ("NEEDS_REVIEW", "MEDIUM"))
         self.assertIn("Art. 46(2)(c); Commission Implementing Decision (EU) 2021/914", detail)
         self.assertIn("EDPB Recommendations 01/2020", detail)
 
@@ -638,11 +644,21 @@ class CuredPacket(unittest.TestCase):
 
     def test_scc_findings_cite_the_scc_decision_and_supplementary_measures(self):
         dpa = json.loads(json.dumps(SAMPLE))
+        dpa["transfers"]["destinations"].append("IN")
+        dpa["transfers"]["mechanisms"]["IN"] = "sccs"
         dpa["transfers"]["mechanisms"]["US"] = "sccs"
         packet = build_packet(dpa)
-        transfer = _by_id(packet, "transfer.us")
+        transfer = _by_id(packet, "transfer.in")
         self.assertEqual(transfer.citation, "GDPR Art. 44, 46(2)(c); Commission Implementing Decision (EU) 2021/914")
         self.assertIn("SCCs of Commission Implementing Decision (EU) 2021/914", transfer.remediation)
+        # The US finding also cites the DPF decision, whose scope it asks about.
+        us = _by_id(packet, "transfer.us")
+        self.assertEqual(
+            us.citation,
+            "GDPR Art. 44, 45(1), 46(2)(c); Commission Implementing Decision (EU) 2023/1795; "
+            "Commission Implementing Decision (EU) 2021/914; EDPB Recommendations 01/2020",
+        )
+        self.assertIn("SCCs of Commission Implementing Decision (EU) 2021/914", us.remediation)
         tia = _by_id(packet, "transfer.impact_assessment")
         self.assertEqual(tia.status, "NEEDS_REVIEW")
         self.assertEqual(tia.citation, "GDPR Art. 46 (CJEU C-311/18); EDPB Recommendations 01/2020")
@@ -650,7 +666,9 @@ class CuredPacket(unittest.TestCase):
 
 
 class TransferImpactAssessmentScope(unittest.TestCase):
-    """A transfer impact assessment is due only where SCCs or BCR carry a transfer outside the EEA."""
+    """The generic assessment finding is due only where an Art. 46 safeguard carries a transfer to a third
+    country with no adequacy decision. For a destination whose decision covers only some importers, the
+    United States and its DPF decision included, the transfer finding asks for it instead."""
 
     def _tia_ids(self, dpa):
         return {f.rule_id for f in build_packet(dpa).findings} & {"transfer.impact_assessment"}
@@ -671,8 +689,21 @@ class TransferImpactAssessmentScope(unittest.TestCase):
     def test_sccs_for_a_third_country_still_trigger_the_assessment(self):
         dpa = json.loads(json.dumps(SAMPLE))
         dpa["transfers"]["mechanisms"]["FR"] = "sccs"
+        dpa["subprocessors"][1]["country"] = "IN"
         dpa["subprocessors"][1]["transfer_mechanism"] = "sccs"
         self.assertEqual(self._tia_ids(dpa), {"transfer.impact_assessment"})
+
+    def test_sccs_for_the_us_ask_about_the_dpf_decision_instead(self):
+        dpa = json.loads(json.dumps(SAMPLE))
+        dpa["transfers"]["mechanisms"]["US"] = "sccs"
+        dpa["subprocessors"][1]["transfer_mechanism"] = "sccs"
+        self.assertEqual(self._tia_ids(dpa), set())
+        packet = build_packet(dpa)
+        for rule_id in ("transfer.us", "transfer.subprocessor.support_tools_llc"):
+            with self.subTest(rule_id=rule_id):
+                finding = _by_id(packet, rule_id)
+                self.assertEqual((finding.status, finding.severity), ("NEEDS_REVIEW", "MEDIUM"))
+                self.assertIn("The input records no transfer impact assessment.", finding.detail)
 
 
 if __name__ == "__main__":

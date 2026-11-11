@@ -70,7 +70,9 @@ class RuleFacts(unittest.TestCase):
         self.assertEqual(rule_facts(dpa, "transfer.subprocessor.möller_inc"), [("subprocessors", 1)])
 
     def test_facts_of_another_mechanism_are_not_read(self):
-        # The SCC rule does not read a DPF certification or a derogation fact recorded beside it.
+        # The SCC rule does not read a DPF certification or a derogation fact recorded beside it. For
+        # the US it reads the recorded transfer impact assessment, because it asks whether the importer
+        # is within the DPF decision's scope and, if not, for the assessment.
         dpa = load(SAMPLE_PATH)
         dpa["transfers"]["mechanisms"]["US"] = "sccs"
         dpa["transfers"]["dpf_certified"] = {"US": True}
@@ -78,7 +80,11 @@ class RuleFacts(unittest.TestCase):
         dpa["evidence"] = {"transfers.dpf_certified.US": {"clause": "Annex 4"}}
         self.assertEqual(
             rule_facts(dpa, "transfer.us"),
-            [("transfers", "destinations", 1), ("transfers", "mechanisms", "US")],
+            [
+                ("transfers", "destinations", 1),
+                ("transfers", "mechanisms", "US"),
+                ("transfers", "transfer_impact_assessment"),
+            ],
         )
         self.assertEqual(evidence_for(dpa, "transfer.us"), [])
         dpa["transfers"]["mechanisms"]["US"] = "derogation_art49"

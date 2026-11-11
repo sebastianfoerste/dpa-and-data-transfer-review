@@ -223,7 +223,7 @@ def _reads(rule_id: str, dpa: dict) -> str:
             "`transfers.dpf_covers_hr_data.<COUNTRY>`, `processing.includes_non_hr_data`, "
             "`processing.includes_hr_data`; for `derogation_art49`, "
             "`transfers.occasional_and_not_repetitive.<COUNTRY>`; for an Art. 46 safeguard to a destination "
-            "whose adequacy decision has a scope limit, `transfers.transfer_impact_assessment`"
+            "whose adequacy decision has a scope limit (the US included), `transfers.transfer_impact_assessment`"
         )
     if rule_id == "transfer.subprocessor.<name>":
         return (
@@ -232,7 +232,7 @@ def _reads(rule_id: str, dpa: dict) -> str:
             "`subprocessors[].dpf_covers_hr_data`, `processing.includes_non_hr_data`, "
             "`processing.includes_hr_data`; for `derogation_art49`, "
             "`subprocessors[].occasional_and_not_repetitive`; for an Art. 46 safeguard to a country whose "
-            "adequacy decision has a scope limit, `transfers.transfer_impact_assessment`"
+            "adequacy decision has a scope limit (the US included), `transfers.transfer_impact_assessment`"
         )
     return ", ".join(f"`{format_path(path)}`" for path in rule_facts(dpa, rule_id))
 
@@ -243,7 +243,8 @@ _TRANSFER_BASES = (
     ("EEA member state (e.g. DE)", "DE"),
     ("Adequacy decision without a scope limit (e.g. CH)", "CH"),
     ("Adequacy decision with a scope limit (e.g. JP)", "JP"),
-    ("Other third country (e.g. US)", "US"),
+    ("United States (DPF decision)", "US"),
+    ("Third country without an adequacy decision (e.g. IN)", "IN"),
 )
 
 
@@ -316,7 +317,7 @@ def rules() -> str:
         if rule_id == "transfer.impact_assessment":
             absent_status += (
                 "; checked only when an Art. 46 safeguard is relied on for a transfer to a third country "
-                "with no adequacy decision on the tool's list"
+                "with no adequacy decision (the United States has one, the DPF decision)"
             )
         lines.append(
             f"| `{rule_id}` | {_cell(finding.title)} | {citation} | {severity} "
@@ -335,7 +336,9 @@ def rules() -> str:
         "a safeguard recorded for a destination with a decision is not needed where the decision covers the "
         "importer. Where the decision has a scope limit the tool cannot check, the finding asks whether the "
         "importer is within it; once a transfer impact assessment is recorded that finding is LOW instead of "
-        "MEDIUM.",
+        "MEDIUM. The United States has such a decision: Implementing Decision (EU) 2023/1795 covers only "
+        "organisations on the Data Privacy Framework List, so a safeguard recorded for the US gets the same "
+        "question, about that list.",
         "",
         "| Mechanism | Provision | " + " | ".join(label for label, _ in _TRANSFER_BASES) + " |",
         "| --- | --- |" + " --- |" * len(_TRANSFER_BASES),

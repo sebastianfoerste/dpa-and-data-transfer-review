@@ -316,9 +316,10 @@ CONTRACT: dict[str, Field] = {
             ),
             "transfer_impact_assessment": _flag(
                 "A transfer impact assessment is recorded. Read when an Art. 46 safeguard is recorded for a "
-                "destination or sub-processor in a third country: with no adequacy decision on the tool's "
-                "list, by rule transfer.impact_assessment; with a scope-limited adequacy decision, by the "
-                "transfer rule, which asks whether the importer is within the decision's scope."
+                "destination or sub-processor in a third country: with no adequacy decision, by rule "
+                "transfer.impact_assessment; with a scope-limited adequacy decision (the United States and "
+                "its DPF decision included), by the transfer rule, which asks whether the importer is within "
+                "the decision's scope."
             ),
         },
     ),

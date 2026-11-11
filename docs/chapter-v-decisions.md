@@ -51,9 +51,13 @@ safeguard recorded for an adequate destination:
   the transfer; if not, the safeguard carries it and needs a transfer impact assessment. The finding is
   `MEDIUM` while no assessment is recorded and `LOW` once one is, the severity the safeguard path would
   give. It replaces the generic `transfer.impact_assessment` finding for that transfer.
-- **The United States** has no country-wide decision: Implementing Decision (EU) 2023/1795 covers only
-  organisations on the Data Privacy Framework List. A safeguard recorded for the US keeps the Art. 46 path,
-  with its assessment, and the finding adds that a certified importer can be recorded as `dpf`.
+- **The United States** has a decision that covers only some importers: Article 1 of Implementing
+  Decision (EU) 2023/1795 covers organisations on the Data Privacy Framework List. A safeguard recorded
+  for a US importer therefore gets the same scope question: if the importer is certified on that list,
+  with a certification that covers the data transferred, record the mechanism as `dpf` and the decision
+  covers the transfer; if it is not, the safeguard carries the transfer and needs a transfer impact
+  assessment (`MEDIUM` until one is recorded, then `LOW`). The finding also carries the status note of
+  section 3.
 
 A finding that relies on a decision cites Art. 45(1) and the decision. A decision adopted under Article
 25(6) of Directive 95/46/EC also cites Art. 45(9), which keeps it in force.

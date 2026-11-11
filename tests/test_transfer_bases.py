@@ -310,13 +310,95 @@ class SafeguardForAnAdequateDestination(unittest.TestCase):
         self.assertEqual(edge["status"], "review")
         self.assertEqual(edge["control_refs"], ["transfer.kr"])
 
-    def test_the_us_safeguard_path_still_needs_the_assessment_and_points_to_the_dpf(self):
+
+
+class SafeguardForTheUnitedStates(unittest.TestCase):
+    """Implementing Decision (EU) 2023/1795, Article 1: the US decision covers only organisations on the
+    'Data Privacy Framework List'. A safeguard recorded for the US gets the same scope question as one
+    recorded for Japan or Korea, about that list, instead of the generic assessment finding."""
+
+    def test_every_safeguard_asks_whether_the_importer_is_on_the_list(self):
+        for mechanism, safeguard in SAFEGUARDS.items():
+            with self.subTest(mechanism=mechanism):
+                status, severity, detail = assess_transfer("US", mechanism)
+                self.assertEqual((status, severity), ("NEEDS_REVIEW", "MEDIUM"))
+                self.assertIn("An adequacy decision covers some importers in US (Art. 45(1); "
+                              "Commission Implementing Decision (EU) 2023/1795 of 10 July 2023).", detail)
+                self.assertIn(DPF_ADEQUACY.scope_limit, detail)
+                self.assertIn(f"The transfer is recorded as relying on {safeguard.label}.", detail)
+                self.assertIn("If it is, with a certification that covers the data transferred, the decision "
+                              "covers the transfer: record the mechanism as dpf", detail)
+                self.assertIn(f"If it is not, the transfer relies on {safeguard.short}", detail)
+                self.assertIn("The input records no transfer impact assessment.", detail)
+                self.assertTrue(detail.endswith(DPF_STATUS_NOTE))
+                self.assertFalse(relies_on_art46_safeguard("US", mechanism))
+
+    def test_a_recorded_assessment_lowers_it_to_low(self):
+        status, severity, detail = assess_transfer("US", "bcr", impact_assessment_recorded=True)
+        self.assertEqual((status, severity), ("NEEDS_REVIEW", "LOW"))
+        self.assertIn("A transfer impact assessment is recorded.", detail)
+
+    def test_the_direct_transfer_finding(self):
         packet = build_packet(_clean_dpa("US", "sccs"))
         finding = _by_id(packet, "transfer.us")
-        self.assertEqual((finding.status, finding.severity), ("NEEDS_REVIEW", "LOW"))
-        self.assertIn("covers only organisations on the Data Privacy Framework List", finding.detail)
-        self.assertIn("record the mechanism as dpf", finding.detail)
-        self.assertEqual(_by_id(packet, "transfer.impact_assessment").status, "NEEDS_REVIEW")
+        self.assertEqual((finding.status, finding.severity), ("NEEDS_REVIEW", "MEDIUM"))
+        self.assertEqual(
+            finding.citation,
+            "GDPR Art. 44, 45(1), 46(2)(c); Commission Implementing Decision (EU) 2023/1795; "
+            f"{SCC_DECISION}; EDPB Recommendations 01/2020",
+        )
+        self.assertEqual(
+            finding.remediation,
+            "Confirm whether the importer in US is within the scope of Article 1 of Commission Implementing "
+            "Decision (EU) 2023/1795: on the Data Privacy Framework List, with a certification that covers the "
+            "data transferred. If it is, record the mechanism as dpf with that certification; if not, confirm "
+            f"that the SCCs of {SCC_DECISION} cover the transfer to US, with a transfer impact assessment and "
+            "any supplementary measures (EDPB Recommendations 01/2020).",
+        )
+        self.assertNotIn("transfer.impact_assessment", _rule_ids(packet))
+        self.assertEqual(packet.review_state, "NEEDS_REVIEW")
+        self.assertIn(("transfers", "transfer_impact_assessment"), rule_facts(_clean_dpa("US", "sccs"), "transfer.us"))
+        cured = build_packet(_clean_dpa("US", "sccs", tia=True))
+        self.assertEqual(_by_id(cured, "transfer.us").severity, "LOW")
+        self.assertEqual(cured.review_state, "NEEDS_REVIEW")
+
+    def test_a_sub_processor_gets_the_question_by_name(self):
+        dpa = _clean_dpa("JP", "adequacy")
+        dpa["subprocessors"].append(
+            {"name": "Example Support Inc", "country": "US", "transfer_mechanism": "bcr"}
+        )
+        packet = build_packet(dpa)
+        finding = _by_id(packet, "transfer.subprocessor.example_support_inc")
+        self.assertEqual((finding.status, finding.severity), ("NEEDS_REVIEW", "MEDIUM"))
+        self.assertEqual(
+            finding.citation,
+            "GDPR Art. 28(4) / Art. 44, 45(1), 46(2)(b), 47; Commission Implementing Decision (EU) 2023/1795; "
+            "EDPB Recommendations 01/2020",
+        )
+        self.assertTrue(
+            finding.remediation.startswith(
+                "Confirm whether Example Support Inc is within the scope of Article 1 of Commission "
+                "Implementing Decision (EU) 2023/1795: on the Data Privacy Framework List"
+            )
+        )
+        self.assertIn("the transfer to Example Support Inc in US", finding.remediation)
+        self.assertNotIn("transfer.impact_assessment", _rule_ids(packet))
+        self.assertIn(
+            ("transfers", "transfer_impact_assessment"),
+            rule_facts(dpa, "transfer.subprocessor.example_support_inc"),
+        )
+
+    def test_the_graph_shows_the_question_without_the_assessment(self):
+        dpa = _clean_dpa("US", "sccs")
+        edges = {edge["edge_id"]: edge for edge in build_transfer_evidence_graph(dpa, build_packet(dpa))["edges"]}
+        self.assertEqual(edges["processor-direct-to-us"]["status"], "review")
+        self.assertEqual(edges["processor-direct-to-us"]["control_refs"], ["transfer.us"])
+
+    def test_other_us_mechanisms_are_unchanged(self):
+        # Adequacy recorded for the US still points to the dpf mechanism, and a missing basis still blocks.
+        self.assertEqual(assess_transfer("US", "adequacy")[:2], ("MISSING", "HIGH"))
+        self.assertEqual(assess_transfer("US", "none")[:2], ("MISSING", "HIGH"))
+        self.assertEqual(assess_transfer("US", "dpf")[:2], ("MISSING", "HIGH"))
 
 
 class DataPrivacyFrameworkStatus(unittest.TestCase):

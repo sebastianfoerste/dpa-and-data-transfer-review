@@ -116,7 +116,7 @@ Required, an object. Transfers of personal data that the processor makes directl
 | `transfers.dpf_covers_non_hr_data` | object keyed by country code → boolean, or null, or null | no | For a dpf mechanism, per destination: the importer's DPF certification covers non-HR data. |
 | `transfers.dpf_covers_hr_data` | object keyed by country code → boolean, or null, or null | no | For a dpf mechanism, per destination: the importer's DPF certification covers HR data. |
 | `transfers.occasional_and_not_repetitive` | object keyed by country code → boolean, or null, or null | no | For a derogation_art49 mechanism, per destination: the transfer is occasional and not repetitive. Otherwise the derogation is treated like a missing basis. |
-| `transfers.transfer_impact_assessment` | boolean, or null | no | A transfer impact assessment is recorded. Read when an Art. 46 safeguard is recorded for a destination or sub-processor in a third country: with no adequacy decision on the tool's list, by rule transfer.impact_assessment; with a scope-limited adequacy decision, by the transfer rule, which asks whether the importer is within the decision's scope. |
+| `transfers.transfer_impact_assessment` | boolean, or null | no | A transfer impact assessment is recorded. Read when an Art. 46 safeguard is recorded for a destination or sub-processor in a third country: with no adequacy decision, by rule transfer.impact_assessment; with a scope-limited adequacy decision (the United States and its DPF decision included), by the transfer rule, which asks whether the importer is within the decision's scope. |
 
 ### `ccpa`
 

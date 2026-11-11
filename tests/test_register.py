@@ -44,6 +44,7 @@ class RegisterMode(unittest.TestCase):
             "03-sccs-with-tia.json",
             "04-sccs-without-tia.json",
             "07-vague-breach-timing.json",
+            "15-other-art46-safeguards.json",
         )
         self.assertEqual(self.review()[0], 2)
         data = self.summary()
@@ -52,13 +53,20 @@ class RegisterMode(unittest.TestCase):
         self.assertEqual(data["exit_code"], 2)
         self.assertEqual(
             data["counts"],
-            {"dpas": 4, "blocked": 1, "needs_review": 2, "cleared_for_review": 1, "invalid_input": 0},
+            {"dpas": 5, "blocked": 1, "needs_review": 3, "cleared_for_review": 1, "invalid_input": 0},
         )
-        # transfer.us is open in two DPAs, so it ranks first although it is only LOW.
+        # transfer.us is open in two DPAs, so it ranks first although breach.processor_notifies is HIGH;
+        # rules open in one DPA rank by severity, then by rule id.
         ranked = [(rule["rule_id"], rule["dpa_count"]) for rule in data["open_rules"]]
         self.assertEqual(
             ranked,
-            [("transfer.us", 2), ("breach.processor_notifies", 1), ("transfer.impact_assessment", 1)],
+            [
+                ("transfer.us", 2),
+                ("breach.processor_notifies", 1),
+                ("transfer.impact_assessment", 1),
+                ("transfer.in", 1),
+                ("transfer.subprocessor.example_ledger_pvt_ltd", 1),
+            ],
         )
         self.assertEqual(data["invalid_inputs"], [])
 

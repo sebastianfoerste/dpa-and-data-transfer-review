@@ -11,7 +11,7 @@ The fixtures freeze what the rules do today. Where a result looks legally questi
 | [`01-eea-only.json`](../tests/fixtures/01-eea-only.json) | Every Art. 28 clause present, one sub-processor in Germany, no direct transfers; three facts carry evidence quotes. | `CLEARED_FOR_REVIEW` | 0 | none |
 | [`02-adequacy-only.json`](../tests/fixtures/02-adequacy-only.json) | Direct transfers to Japan and Switzerland and a UK sub-processor, all on adequacy decisions. | `CLEARED_FOR_REVIEW` | 0 | none |
 | [`03-sccs-with-tia.json`](../tests/fixtures/03-sccs-with-tia.json) | A direct transfer to the US on SCCs, with a transfer impact assessment recorded. | `NEEDS_REVIEW` | 1 | `transfer.us` |
-| [`04-sccs-without-tia.json`](../tests/fixtures/04-sccs-without-tia.json) | The same SCC transfer to the US, without a transfer impact assessment. | `NEEDS_REVIEW` | 1 | `transfer.impact_assessment`, `transfer.us` |
+| [`04-sccs-without-tia.json`](../tests/fixtures/04-sccs-without-tia.json) ⚑ | The same SCC transfer to the US, without a transfer impact assessment. | `NEEDS_REVIEW` | 1 | `transfer.us` |
 | [`05-dpf-us-importer.json`](../tests/fixtures/05-dpf-us-importer.json) ⚑ | A direct transfer to a US importer certified under the EU-US Data Privacy Framework. | `CLEARED_FOR_REVIEW` | 0 | none |
 | [`06-art49-derogation.json`](../tests/fixtures/06-art49-derogation.json) ⚑ | A direct transfer to India on an Art. 49 derogation. | `BLOCKED` | 2 | `transfer.in` |
 | [`07-vague-breach-timing.json`](../tests/fixtures/07-vague-breach-timing.json) ⚑ | The processor notifies breaches "within a reasonable time" instead of without undue delay. | `BLOCKED` | 2 | `breach.processor_notifies` |
@@ -26,6 +26,7 @@ The fixtures freeze what the rules do today. Where a result looks legally questi
 
 ## ⚑ Flagged for legal review
 
+- **`04-sccs-without-tia.json`**: Changed: Article 1 of Implementing Decision (EU) 2023/1795 covers only organisations on the Data Privacy Framework List, so SCCs recorded for a US importer now get the scope question every destination with a scope-limited adequacy decision gets. transfer.us asks whether the importer is on that list for the data transferred and, if not, for a transfer impact assessment; it is MEDIUM until one is recorded and replaces the generic transfer.impact_assessment finding. The review state is unchanged. Confirm the changed expected result.
 - **`05-dpf-us-importer.json`**: Changed by PR #4: the DPF is treated as an Art. 45 adequacy decision (Implementing Decision (EU) 2023/1795), not an Art. 46 safeguard, so a transfer to an importer recorded as actively certified on the Data Privacy Framework List for the data transferred is PRESENT and asks for no transfer impact assessment. The fixture now records that certification and the data it covers. Confirm the changed expected result.
 - **`06-art49-derogation.json`**: Changed by PR #4: a derogation not recorded as occasional and not repetitive is treated like a missing basis (HIGH), so this fixture is now BLOCKED instead of NEEDS_REVIEW (MEDIUM). EDPB Guidelines 2/2018, section 1, read the derogations restrictively. Confirm the changed expected result.
 - **`07-vague-breach-timing.json`**: Any timing wording without "undue delay" or "without delay" (also "within 24 hours") is an open HIGH finding and blocks the packet. Confirm that this is the intended threshold.
