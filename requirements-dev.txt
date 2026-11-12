@@ -2,4 +2,4 @@
 # Pinned so a tool release cannot change a CI result; Dependabot watches this file.
 coverage==7.16.2
 jsonschema==4.26.0
-ruff==0.17.3
+ruff==0.17.4
