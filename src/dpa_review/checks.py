@@ -1357,7 +1357,9 @@ def _interpretations(route: _Route) -> list[str]:
     """The readings behind the conditions that decided the route, and the entry's own reading of its scope."""
     notes = [f"Interpretation: {text}" for text in route.interpretations]
     decision = route.decision
-    if decision is not None and decision.scope_reading and route.outcome == COVERED and route.kind != "scope_question":
+    if decision is not None and decision.scope_reading and route.outcome == COVERED and (
+        route.kind != "scope_question"
+    ):
         notes.append(f"Interpretation: {decision.scope_reading}.")
     return notes
 
@@ -1372,7 +1374,9 @@ def _date_notes(decision: AdequacyDecision, on: date | None) -> list[str]:
     if decision.expires and on == _day(decision.expires):
         notes.append(decision.expiry_note)
     if on > date.fromisoformat(TABLE_AS_OF):
-        notes.append(f"The adequacy table was last checked on {TABLE_AS_OF}, so later Commission acts are not reflected.")
+        notes.append(
+            f"The adequacy table was last checked on {TABLE_AS_OF}, so later Commission acts are not reflected."
+        )
     return notes
 
 
@@ -1380,7 +1384,9 @@ def _sentences(*parts: str) -> str:
     return " ".join(part for part in parts if part)
 
 
-def _assess_adequate_destination(route: _Route, mech: str, impact_assessment_recorded: bool, on: date | None) -> tuple[str, str, str]:
+def _assess_adequate_destination(
+    route: _Route, mech: str, impact_assessment_recorded: bool, on: date | None
+) -> tuple[str, str, str]:
     """A destination whose own adequacy decision applied on the review date (or with no review date).
 
     Art. 45(1): a transfer on an adequacy decision needs no specific authorisation, and Art. 46(1)
@@ -1448,7 +1454,11 @@ def _assess_adequate_destination(route: _Route, mech: str, impact_assessment_rec
             ),
         )
     if route.kind == "covered_safeguard":
-        return ("PRESENT", "LOW", _sentences(has_decision, scope, f"Conditions met: {reasons}.", recorded, not_needed, notes))
+        return (
+            "PRESENT",
+            "LOW",
+            _sentences(has_decision, scope, f"Conditions met: {reasons}.", recorded, not_needed, notes),
+        )
     if route.kind == "outside_scope":
         return (
             "NEEDS_REVIEW",
@@ -1625,7 +1635,9 @@ def assess_transfer(
     )
 
 
-def _assess_out_of_date(route: _Route, mech: str, impact_assessment_recorded: bool, on: date | None) -> tuple[str, str, str]:
+def _assess_out_of_date(
+    route: _Route, mech: str, impact_assessment_recorded: bool, on: date | None
+) -> tuple[str, str, str]:
     """A destination whose decision did not stand on the review date as the table models it.
 
     Before its start date or after its expiry the decision does not apply, so a transfer recorded as
@@ -1643,7 +1655,10 @@ def _assess_out_of_date(route: _Route, mech: str, impact_assessment_recorded: bo
         else:
             date_note = decision.expiry_note
         if decision is DPF_ADEQUACY:
-            opening = f"Transfer to {decision.country} is recorded as relying on the EU-US Data Privacy Framework adequacy decision ({decision.basis})"
+            opening = (
+                f"Transfer to {decision.country} is recorded as relying on the EU-US Data Privacy Framework "
+                f"adequacy decision ({decision.basis})"
+            )
         else:
             opening = f"{name} has an adequacy decision ({decision.basis})"
         return (
@@ -1724,6 +1739,10 @@ def _cite(articles: tuple[str, ...], documents: tuple[str, ...] = ()) -> str:
     return "Art. " + ", ".join(articles) + "".join(f"; {document}" for document in documents)
 
 
+# Routes whose finding cites the destination's decision alone.
+_CITES_THE_DECISION = {"adequacy", "lapsed", "earlier_version", "redundant", "covered_safeguard"}
+
+
 def _transfer_articles(
     country: str,
     mechanism: str | None,
@@ -1742,7 +1761,7 @@ def _transfer_articles(
             ("44", *decision.articles, *safeguard.articles),
             (*decision.documents, *safeguard.documents, SUPPLEMENTARY_MEASURES),
         )
-    if decision is not None and route.kind in {"adequacy", "lapsed", "earlier_version", "redundant", "covered_safeguard"}:
+    if decision is not None and route.kind in _CITES_THE_DECISION:
         return _cite(("44", *decision.articles), decision.documents)
     if route.kind == "dpf":
         return _cite(("44", "45(1)"), DPF_ADEQUACY.documents)
