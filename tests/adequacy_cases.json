@@ -389,6 +389,26 @@
       "expected": {"status": "MISSING", "severity": "HIGH", "cites": "Commission Implementing Decision (EU) 2023/1795, Art. 1"}
     },
     {
+      "id": "us-dpf-on-adoption-day",
+      "interpretation": "As brazil-day-before-adoption.",
+      "source": {"celex": "32023D1795", "pinpoint": "Implementing Decision (EU) 2023/1795, date of adoption", "quote": "Done at Brussels, 10 July 2023."},
+      "input": {"review_date": "2023-07-10", "processing": {"includes_hr_data": false, "includes_non_hr_data": true}, "transfers": {"destinations": ["US"], "mechanisms": {"US": "dpf"}, "dpf_certified": {"US": true}, "dpf_covers_non_hr_data": {"US": true}}},
+      "expected": {"status": "PRESENT", "severity": "LOW", "cites": "Commission Implementing Decision (EU) 2023/1795, Art. 1", "detail_contains": "so the tool reads it as applying from its date of adoption"}
+    },
+    {
+      "id": "us-dpf-day-after-adoption",
+      "interpretation": "As brazil-day-before-adoption.",
+      "source": {"celex": "32023D1795", "pinpoint": "Implementing Decision (EU) 2023/1795, date of adoption", "quote": "Done at Brussels, 10 July 2023."},
+      "input": {"review_date": "2023-07-11", "processing": {"includes_hr_data": false, "includes_non_hr_data": true}, "transfers": {"destinations": ["US"], "mechanisms": {"US": "dpf"}, "dpf_certified": {"US": true}, "dpf_covers_non_hr_data": {"US": true}}},
+      "expected": {"status": "PRESENT", "severity": "LOW", "cites": "Commission Implementing Decision (EU) 2023/1795, Art. 1"}
+    },
+    {
+      "id": "us-dpf-review-date-after-the-table",
+      "source": {"celex": "32023D1795", "pinpoint": "Implementing Decision (EU) 2023/1795, Art. 3(5)", "quote": "it will decide to suspend, amend or repeal this Decision, or limit its scope"},
+      "input": {"review_date": "2027-03-01", "processing": {"includes_hr_data": false, "includes_non_hr_data": true}, "transfers": {"destinations": ["US"], "mechanisms": {"US": "dpf"}, "dpf_certified": {"US": true}, "dpf_covers_non_hr_data": {"US": true}}},
+      "expected": {"status": "PRESENT", "severity": "LOW", "cites": "Commission Implementing Decision (EU) 2023/1795, Art. 1", "detail_contains": "later Commission acts are not reflected"}
+    },
+    {
       "id": "us-sccs-review-date-before-the-dpf-decision",
       "source": {"celex": "32016R0679", "pinpoint": "GDPR Art. 46(1)", "quote": "In the absence of a decision pursuant to Article 45(3)"},
       "input": {"review_date": "2023-07-09", "transfers": {"destinations": ["US"], "mechanisms": {"US": "sccs"}}},

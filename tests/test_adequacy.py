@@ -133,6 +133,7 @@ class AdequacyCasesGiveTheirExpectedFindings(unittest.TestCase):
             "uruguay-no-automation-condition",
             "faroe-islands-no-recipient-input",
             "brazil-on-adoption-day",
+            "us-dpf-on-adoption-day",
             "united-kingdom-on-expiry-day",
             "united-kingdom-day-after-expiry",
         ):
@@ -203,6 +204,25 @@ class ReviewDate(unittest.TestCase):
                 self.assertEqual(status, "NEEDS_REVIEW")
                 self.assertEqual(severity, "MEDIUM" if mechanism in SAFEGUARDS else "HIGH")
                 self.assertIn("Commission Implementing Decision (EU) 2025/2574 of 19 December 2025", detail)
+
+    def test_the_table_note_starts_the_day_after_the_table_date_for_every_decision(self) -> None:
+        # Regression: the DPF findings (dpf, and a safeguard recorded for a US importer) left the note out.
+        dpf = dict(
+            dpf_certified=True, dpf_covers_non_hr_data=True, includes_hr_data=False, includes_non_hr_data=True
+        )
+        note = f"The adequacy table was last checked on {TABLE_AS_OF}"
+        day_after = date.fromordinal(date.fromisoformat(TABLE_AS_OF).toordinal() + 1)
+        for country, mechanism, facts in (
+            ("CH", "adequacy", {}),
+            ("US", "dpf", dpf),
+            ("US", "sccs", {"impact_assessment_recorded": True}),
+        ):
+            with self.subTest(country=country, mechanism=mechanism):
+                on_table_date = assess_transfer(country, mechanism, review_date=TABLE_AS_OF, **facts)
+                after = assess_transfer(country, mechanism, review_date=day_after, **facts)
+                self.assertNotIn(note, on_table_date[2])
+                self.assertIn(note, after[2])
+                self.assertEqual(on_table_date[:2], after[:2])
 
     def test_a_decision_that_did_not_apply_counts_as_no_decision_for_a_safeguard(self) -> None:
         self.assertTrue(relies_on_art46_safeguard("BR", "sccs", review_date=date(2026, 1, 25)))

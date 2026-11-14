@@ -1579,7 +1579,8 @@ def assess_transfer(
     ):
         return _assess_adequate_destination(route, mech, impact_assessment_recorded, on)
     if route.kind == "scope_question":
-        return _scope_question(DPF_ADEQUACY, SAFEGUARDS[mech], impact_assessment_recorded)
+        status, severity, detail = _scope_question(DPF_ADEQUACY, SAFEGUARDS[mech], impact_assessment_recorded)
+        return (status, severity, _sentences(detail, *_date_notes(DPF_ADEQUACY, on)))
     if route.kind in {"lapsed", "earlier_version", "version_question"}:
         return _assess_out_of_date(route, mech, impact_assessment_recorded, on)
     if route.kind == "unlisted_adequacy":
@@ -1612,7 +1613,7 @@ def assess_transfer(
             ),
         )
     if route.kind == "dpf":
-        return _assess_dpf(
+        status, severity, detail = _assess_dpf(
             country,
             certified=dpf_certified,
             covers_hr_data=dpf_covers_hr_data,
@@ -1620,6 +1621,9 @@ def assess_transfer(
             includes_hr_data=includes_hr_data,
             includes_non_hr_data=includes_non_hr_data,
         )
+        # The DPF decision is dated like any other: its start-date reading and the table's age.
+        notes = _date_notes(route.decision, on) if route.decision is not None else []
+        return (status, severity, _sentences(detail, *notes))
     if route.kind == "derogation":
         return _assess_derogation(country, occasional_and_not_repetitive)
     if route.kind == "safeguard":
