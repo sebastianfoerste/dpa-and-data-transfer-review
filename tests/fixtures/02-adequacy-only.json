@@ -52,6 +52,12 @@
     "mechanisms": {
       "JP": "adequacy",
       "CH": "adequacy"
+    },
+    "recipient_type": {
+      "JP": "private_commercial"
+    },
+    "scope_carve_out": {
+      "JP": "none"
     }
   },
   "ccpa": {

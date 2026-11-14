@@ -18,7 +18,8 @@ error: dpa.json breaks the input contract, so no review state was decided (2 pro
 - A required section or key that is missing or `null` is refused. Record an absence explicitly (`[]`, `false`, `"none"`) instead of leaving the key out.
 - A value of the wrong JSON type is refused: the string `"false"` is not a boolean.
 - A description (`processing.subject_matter`, `processing.duration`, `processing.nature_and_purpose`) that reads as yes or no, such as `"false"`, is refused: record yes/no as a JSON boolean.
-- Country codes are upper-case ISO 3166-1 alpha-2 codes. `UK`, `EL` and `EU` are refused with the code to use instead (`GB`, `GR`, a member state).
+- Country codes are upper-case ISO 3166-1 alpha-2 codes. `UK`, `EL` and `EU` are refused with the code to use instead (`GB`, `GR`, a member state). A direct transfer to the European Patent Organisation, an international organisation with an adequacy decision, is recorded as `EPO`, in `transfers.destinations` and as a key under `transfers`; a sub-processor's `country` stays a country.
+- `review_date` is a calendar date written as `YYYY-MM-DD`; anything else, such as `2031-13-01`, is refused.
 - Every key of `transfers.mechanisms`, and of the other per-country objects under `transfers`, must be a country that `transfers.destinations` lists.
 - Sub-processor names must contain a letter or digit and must differ, ignoring case, spaces and punctuation, because rule ids are derived from them.
 - Every `evidence` key must name a fact the input records.
@@ -39,7 +40,7 @@ A flag that is `false`, `null` or omitted reads as "the DPA does not contain thi
 }
 ```
 
-It is valid, and `BLOCKED`: it records no Art. 28 clause. [`data/sample_dpa.json`](../data/sample_dpa.json) is a complete example, and [`tests/fixtures/`](../tests/fixtures/) holds 15 more.
+It is valid, and `BLOCKED`: it records no Art. 28 clause. [`data/sample_dpa.json`](../data/sample_dpa.json) is a complete example, and [`tests/fixtures/`](../tests/fixtures/) holds 21 more.
 
 ## Keys
 
@@ -48,6 +49,7 @@ It is valid, and `BLOCKED`: it records no Art. 28 clause. [`data/sample_dpa.json
 - `controller` (string): Name of the controller. Labels the transfer evidence graph; no rule reads it.
 - `processor` (string): Name of the processor. Labels the transfer evidence graph; no rule reads it.
 - `roles_defined` (boolean, or null): Whether the DPA defines the controller and processor roles. Recorded only: no rule reads it.
+- `review_date` (date (YYYY-MM-DD), or null): The date the transfers are assessed on, as YYYY-MM-DD. The transfer rules read each adequacy decision as it applied on that date: before the date it applies from or after its last day of validity it does not cover the transfer, and before an amendment that changed its scope or validity the transfer goes to review, because the tool models only the decision as last amended. Null or omitted reads the decisions as the adequacy table states them (checks.TABLE_AS_OF). A date after that table date gets a note that later Commission acts are not reflected.
 
 ### `processing`
 
@@ -103,6 +105,9 @@ Required, a list of objects. Every sub-processor the DPA names or authorises. Ea
 | `subprocessors[].dpf_covers_non_hr_data` | boolean, or null | no | For a dpf mechanism: the sub-processor's DPF certification covers non-HR data. |
 | `subprocessors[].dpf_covers_hr_data` | boolean, or null | no | For a dpf mechanism: the sub-processor's DPF certification covers HR data. |
 | `subprocessors[].occasional_and_not_repetitive` | boolean, or null | no | For a derogation_art49 mechanism: the transfer is occasional and not repetitive. Otherwise the derogation is treated like a missing basis. |
+| `subprocessors[].recipient_type` | one of `private_commercial`, `public_body`, `non_profit`, or null | no | The sub-processor as an importer. What kind of organisation the importer is: "private_commercial" (a private organisation acting in the course of commercial activities), "public_body" (a public authority or body) or "non_profit". Read for Canada (Decision 2002/2/EC, Art. 1 and recital 5: a private commercial organisation is covered, a public body is not, a non-profit goes to review) and Japan (Implementing Decision (EU) 2019/419, Art. 1(1) and recitals 32 and 33: a public body is not covered). Null or omitted leaves the condition unresolved. |
+| `subprocessors[].scope_carve_out` | one of `none`, `applies`, or null | no | The sub-processor as an importer. "none" when the importer falls within none of the exclusions of Art. 1(2) of the Japanese (Implementing Decision (EU) 2019/419) or Korean (Implementing Decision (EU) 2022/254) decision for the data transferred, "applies" when it falls within one. Null or omitted leaves the condition unresolved. |
+| `subprocessors[].automated_processing` | boolean, or null | no | The transfer to the sub-processor. Israel (Decision 2011/61/EU, Art. 1(1)): true when the transfer is automated or the data are subject to further automated processing in Israel, false when neither. Null or omitted leaves the condition unresolved. |
 
 ### `transfers`
 
@@ -110,13 +115,16 @@ Required, an object. Transfers of personal data that the processor makes directl
 
 | Key | Type | Required | Meaning |
 | --- | --- | --- | --- |
-| `transfers.destinations` | list of country codes | yes | Upper-case ISO 3166-1 alpha-2 codes of every country the processor transfers personal data to directly; each is checked (rule transfer.&lt;country&gt;). Record [] when there are none. |
+| `transfers.destinations` | list of country codes | yes | Upper-case ISO 3166-1 alpha-2 codes of every country the processor transfers personal data to directly, and "EPO" for the European Patent Organisation, an international organisation; each is checked (rule transfer.&lt;country&gt;). Record [] when there are none. |
 | `transfers.mechanisms` | object keyed by country code → one of `none`, `adequacy`, `sccs`, `bcr`, `public_bodies_instrument`, `sa_standard_clauses`, `code_of_conduct`, `certification`, `authorised_clauses`, `administrative_arrangement`, `dpf`, `derogation_art49`, or null, or null | no | The Chapter V basis per destination, keyed by a country that destinations lists. A destination without an entry reads as none. "adequacy": an Art. 45 adequacy decision; "dpf": the EU-US Data Privacy Framework (Implementing Decision (EU) 2023/1795); "sccs": Art. 46(2)(c); "bcr": Art. 46(2)(b) and 47; "public_bodies_instrument": Art. 46(2)(a); "sa_standard_clauses": Art. 46(2)(d); "code_of_conduct": Art. 46(2)(e) and 40(3); "certification": Art. 46(2)(f) and 42(2); "authorised_clauses": Art. 46(3)(a); "administrative_arrangement": Art. 46(3)(b); "derogation_art49": an Art. 49 derogation. |
 | `transfers.dpf_certified` | object keyed by country code → boolean, or null, or null | no | For a dpf mechanism, per destination: the importer is actively certified on the Data Privacy Framework List. |
 | `transfers.dpf_covers_non_hr_data` | object keyed by country code → boolean, or null, or null | no | For a dpf mechanism, per destination: the importer's DPF certification covers non-HR data. |
 | `transfers.dpf_covers_hr_data` | object keyed by country code → boolean, or null, or null | no | For a dpf mechanism, per destination: the importer's DPF certification covers HR data. |
 | `transfers.occasional_and_not_repetitive` | object keyed by country code → boolean, or null, or null | no | For a derogation_art49 mechanism, per destination: the transfer is occasional and not repetitive. Otherwise the derogation is treated like a missing basis. |
-| `transfers.transfer_impact_assessment` | boolean, or null | no | A transfer impact assessment is recorded. Read when an Art. 46 safeguard is recorded for a destination or sub-processor in a third country: with no adequacy decision, by rule transfer.impact_assessment; with a scope-limited adequacy decision (the United States and its DPF decision included), by the transfer rule, which asks whether the importer is within the decision's scope. |
+| `transfers.recipient_type` | object keyed by country code → one of `private_commercial`, `public_body`, `non_profit`, or null, or null | no | Per destination, the importer. What kind of organisation the importer is: "private_commercial" (a private organisation acting in the course of commercial activities), "public_body" (a public authority or body) or "non_profit". Read for Canada (Decision 2002/2/EC, Art. 1 and recital 5: a private commercial organisation is covered, a public body is not, a non-profit goes to review) and Japan (Implementing Decision (EU) 2019/419, Art. 1(1) and recitals 32 and 33: a public body is not covered). Null or omitted leaves the condition unresolved. |
+| `transfers.scope_carve_out` | object keyed by country code → one of `none`, `applies`, or null, or null | no | Per destination, the importer. "none" when the importer falls within none of the exclusions of Art. 1(2) of the Japanese (Implementing Decision (EU) 2019/419) or Korean (Implementing Decision (EU) 2022/254) decision for the data transferred, "applies" when it falls within one. Null or omitted leaves the condition unresolved. |
+| `transfers.automated_processing` | object keyed by country code → boolean, or null, or null | no | Per destination. Israel (Decision 2011/61/EU, Art. 1(1)): true when the transfer is automated or the data are subject to further automated processing in Israel, false when neither. Null or omitted leaves the condition unresolved. |
+| `transfers.transfer_impact_assessment` | boolean, or null | no | A transfer impact assessment is recorded. Read when an Art. 46 safeguard is recorded for a destination or sub-processor in a third country: with no adequacy decision, by rule transfer.impact_assessment; with an adequacy decision that may not cover the importer (the United States and its DPF decision included), by the transfer rule, which asks whether the importer is within the decision's scope. |
 
 ### `ccpa`
 

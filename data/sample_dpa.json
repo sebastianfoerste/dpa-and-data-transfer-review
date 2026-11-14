@@ -29,11 +29,14 @@
   "subprocessors": [
     {"name": "EU Hosting SARL", "country": "FR", "purpose": "hosting"},
     {"name": "Support Tools LLC", "country": "US", "purpose": "support desk", "transfer_mechanism": "none"},
-    {"name": "Analytics KK", "country": "JP", "purpose": "product analytics"}
+    {"name": "Analytics KK", "country": "JP", "purpose": "product analytics",
+     "recipient_type": "private_commercial", "scope_carve_out": "none"}
   ],
   "transfers": {
     "destinations": ["FR", "US", "JP"],
     "mechanisms": {"FR": "none", "US": "none", "JP": "adequacy"},
+    "recipient_type": {"JP": "private_commercial"},
+    "scope_carve_out": {"JP": "none"},
     "transfer_impact_assessment": false
   },
   "ccpa": {
