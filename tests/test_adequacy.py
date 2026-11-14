@@ -21,7 +21,10 @@ from dpa_review.checks import (
     relies_on_art46_safeguard,
     table_age,
 )
-from dpa_review.contract import violations
+from dpa_review.contract import json_schema, violations
+from dpa_review.facts import rule_facts
+from dpa_review.review import build_packet
+from dpa_review.transfer_graph import build_transfer_evidence_graph
 from tests.helpers import ROOT
 
 CASES = json.loads((ROOT / "tests" / "adequacy_cases.json").read_text(encoding="utf-8"))["cases"]
@@ -266,6 +269,59 @@ class TableAge(unittest.TestCase):
         report = table_age(date(2026, 11, 21))
         self.assertEqual(report["age_days"], 7)
         self.assertEqual(report["decisions"], len(ADEQUACY) + 1)
+
+
+class InputFactsGraphAndSchema(unittest.TestCase):
+    def test_the_facts_a_condition_reads_are_the_findings_evidence(self) -> None:
+        dpa = _dpa(
+            {
+                "review_date": "2026-11-14",
+                "transfers": {
+                    "destinations": ["CA", "CH"],
+                    "mechanisms": {"CA": "adequacy", "CH": "adequacy"},
+                    "recipient_type": {"CA": "private_commercial", "CH": "public_body"},
+                },
+            }
+        )
+        self.assertEqual(
+            rule_facts(dpa, "transfer.ca"),
+            [
+                ("transfers", "destinations", 0),
+                ("transfers", "mechanisms", "CA"),
+                ("transfers", "recipient_type", "CA"),
+                ("review_date",),
+            ],
+        )
+        # Switzerland's decision has no condition, so a recorded recipient_type is not its evidence.
+        self.assertNotIn(("transfers", "recipient_type", "CH"), rule_facts(dpa, "transfer.ch"))
+        no_decision = _dpa({"review_date": "2026-11-14", "transfers": {"destinations": ["IN"]}})
+        self.assertNotIn(("review_date",), rule_facts(no_decision, "transfer.in"))
+
+    def test_the_graph_draws_the_european_patent_organisation_as_an_organisation(self) -> None:
+        dpa = _dpa({"transfers": {"destinations": ["EPO"], "mechanisms": {"EPO": "adequacy"}}})
+        graph = build_transfer_evidence_graph(dpa, build_packet(dpa))
+        node = next(node for node in graph["nodes"] if node["label"] == "EPO")
+        self.assertEqual((node["kind"], node["eea"]), ("international_organisation", False))
+        edge = next(edge for edge in graph["edges"] if edge["edge_id"] == "processor-direct-to-epo")
+        self.assertEqual(edge["status"], "pass")
+
+    def test_the_graph_adds_the_assessment_where_a_decision_did_not_apply(self) -> None:
+        dpa = _dpa({"review_date": "2031-12-28", "transfers": {"destinations": ["GB"], "mechanisms": {"GB": "sccs"}}})
+        graph = build_transfer_evidence_graph(dpa, build_packet(dpa))
+        edge = next(edge for edge in graph["edges"] if edge["edge_id"] == "processor-direct-to-gb")
+        self.assertEqual(edge["control_refs"], ["transfer.gb", "transfer.impact_assessment"])
+
+    def test_the_schema_accepts_the_european_patent_organisation_only_as_a_destination(self) -> None:
+        schema = json_schema()
+        transfers = schema["properties"]["transfers"]["properties"]
+        self.assertEqual(transfers["destinations"]["items"]["pattern"], "^([A-Z]{2}|EPO)$")
+        self.assertEqual(transfers["recipient_type"]["propertyNames"]["pattern"], "^([A-Z]{2}|EPO)$")
+        entry = schema["properties"]["subprocessors"]["items"]["properties"]
+        self.assertEqual(entry["country"]["pattern"], "^[A-Z]{2}$")
+        self.assertEqual(schema["properties"]["review_date"]["format"], "date")
+        sub_processor = _dpa({"subprocessors": [{"name": "Example Office", "country": "EPO"}]})
+        self.assertTrue(violations(sub_processor))
+        self.assertTrue(violations(_dpa({"transfers": {"destinations": ["epo"]}})))
 
 
 if __name__ == "__main__":

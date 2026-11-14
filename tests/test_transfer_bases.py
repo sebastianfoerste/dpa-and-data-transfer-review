@@ -4,6 +4,8 @@ Every expected value below was read on EUR-Lex on 2026-11-10: the GDPR (CELEX 32
 42(2), 45(1), 45(9) and 46; the operative part of each adequacy decision, its date and its Official
 Journal reference; the EUR-Lex record of each decision's status and amendments; and the General Court's
 judgment in Latombe v Commission (T-553/23, CELEX 62023TJ0553) with the appeal EUR-Lex records against it.
+The scope conditions, start dates and the European Patent Organisation are tested in test_adequacy.py
+against the Official Journal snapshots under sources/oj.
 """
 
 import json
@@ -46,6 +48,15 @@ DECISIONS = {
     "NZ": ("Commission Implementing Decision 2013/65/EU", "19 December 2012", "OJ L 28, 30.1.2013, p. 12", True),
     "UY": ("Commission Implementing Decision 2012/484/EU", "21 August 2012", "OJ L 227, 23.8.2012, p. 11", True),
 }
+# Commission Implementing Decision (EU) 2025/1382 of 15 July 2025, an international organisation (Art. 44).
+EPO = ("Commission Implementing Decision (EU) 2025/1382", "15 July 2025", "OJ L, 2025/1382, 18.7.2025", False)
+# Facts that meet every scope condition the decision for a country sets (test_adequacy.py tests each one).
+CONDITIONS_MET = {
+    "CA": {"recipient_type": "private_commercial"},
+    "IL": {"automated_processing": True},
+    "JP": {"recipient_type": "private_commercial", "scope_carve_out": "none"},
+    "KR": {"scope_carve_out": "none"},
+}
 
 # The words of each decision's own scope limit (Article 1, and Article 2 for Israel).
 SCOPE_WORDS = {
@@ -74,6 +85,8 @@ SCOPE_WORDS = {
 }
 LIMITED = set(SCOPE_WORDS)
 UNLIMITED = set(DECISIONS) - LIMITED
+# Scope limits the input records no fact for; the tool reads every importer as covered (interpretation).
+UNMODELLED = LIMITED - set(CONDITIONS_MET)
 NEW_SAFEGUARDS = (
     "public_bodies_instrument",
     "sa_standard_clauses",
@@ -85,8 +98,11 @@ NEW_SAFEGUARDS = (
 SCC_DECISION = "Commission Implementing Decision (EU) 2021/914"
 
 
-def _clean_dpa(country, mechanism, tia=False):
-    """The sample with its planted defects cured and one direct transfer, to `country` on `mechanism`."""
+def _clean_dpa(country, mechanism, tia=False, facts=None):
+    """The sample with its planted defects cured and one direct transfer, to `country` on `mechanism`.
+
+    `facts` are the importer's facts the destination's scope conditions read, recorded under `transfers`.
+    """
     dpa = json.loads(json.dumps(SAMPLE))
     dpa["art28_clauses"]["subprocessor_flowdown"] = True
     dpa["subprocessors"] = [{"name": "EU Hosting SARL", "country": "FR", "purpose": "hosting"}]
@@ -95,6 +111,8 @@ def _clean_dpa(country, mechanism, tia=False):
         "mechanisms": {country: mechanism},
         "transfer_impact_assessment": tia,
     }
+    for fact, value in (facts or {}).items():
+        dpa["transfers"][fact] = {country: value}
     return dpa
 
 
@@ -109,10 +127,10 @@ def _rule_ids(packet):
 class AdequacyReferenceData(unittest.TestCase):
     def test_the_list_is_the_verified_list(self):
         self.assertEqual(ADEQUACY_VERIFIED_ON, "2026-11-10")
-        self.assertEqual(set(ADEQUACY), set(DECISIONS))
+        self.assertEqual(set(ADEQUACY), set(DECISIONS) | {"EPO"})
 
     def test_every_entry_matches_its_decision(self):
-        for code, (act, adopted, oj, directive_era) in DECISIONS.items():
+        for code, (act, adopted, oj, directive_era) in {**DECISIONS, "EPO": EPO}.items():
             with self.subTest(country=code):
                 decision = ADEQUACY[code]
                 self.assertEqual(decision.country, code)
@@ -160,21 +178,25 @@ class AdequacyFindings(unittest.TestCase):
     """A destination on the list is PRESENT; the finding names the decision and any scope limit."""
 
     def test_every_listed_country_is_covered_by_its_decision(self):
+        # With the facts its scope conditions read; without them see test_adequacy.py.
         for code, (act, adopted, _, directive_era) in DECISIONS.items():
             for mechanism in ("adequacy", "none"):
                 with self.subTest(country=code, mechanism=mechanism):
-                    status, severity, detail = assess_transfer(code, mechanism)
+                    status, severity, detail = assess_transfer(code, mechanism, recipient=CONDITIONS_MET.get(code))
                     self.assertEqual((status, severity), ("PRESENT", "LOW"))
                     self.assertIn(f"Art. 45(1); {act} of {adopted}", detail)
                     self.assertEqual("in force under Art. 45(9)" in detail, directive_era)
-                    self.assertEqual("Confirm that the importer is within it." in detail, code in LIMITED)
+                    self.assertEqual("Confirm that the importer is within it." in detail, code in UNMODELLED)
+                    self.assertEqual("Conditions met:" in detail, code in CONDITIONS_MET)
 
     def test_brazil_recorded_as_adequacy_is_covered(self):
         # Brazil used to be off the list, so this transfer was MISSING (HIGH) and the packet BLOCKED.
         packet = build_packet(_clean_dpa("BR", "adequacy"))
         finding = _by_id(packet, "transfer.br")
         self.assertEqual((finding.status, finding.severity), ("PRESENT", "LOW"))
-        self.assertEqual(finding.citation, "GDPR Art. 44, 45(1); Commission Implementing Decision (EU) 2026/179")
+        self.assertEqual(
+            finding.citation, "GDPR Art. 44, 45(1); Commission Implementing Decision (EU) 2026/179, Art. 1"
+        )
         self.assertIn("26 January 2026", finding.detail)
         self.assertIn("General Data Protection Law (LGPD)", finding.detail)
         self.assertEqual(packet.review_state, "CLEARED_FOR_REVIEW")
@@ -182,14 +204,14 @@ class AdequacyFindings(unittest.TestCase):
     def test_a_directive_era_decision_cites_article_45_9(self):
         self.assertEqual(
             _by_id(build_packet(_clean_dpa("CA", "adequacy")), "transfer.ca").citation,
-            "GDPR Art. 44, 45(1), 45(9); Commission Decision 2002/2/EC",
+            "GDPR Art. 44, 45(1), 45(9); Commission Decision 2002/2/EC, Art. 1",
         )
 
     def test_the_uk_citation_names_the_amending_decision(self):
         finding = _by_id(build_packet(_clean_dpa("GB", "adequacy")), "transfer.gb")
         self.assertEqual(
             finding.citation,
-            "GDPR Art. 44, 45(1); Commission Implementing Decision (EU) 2021/1772; "
+            "GDPR Art. 44, 45(1); Commission Implementing Decision (EU) 2021/1772, Art. 1(1); "
             "Commission Implementing Decision (EU) 2025/2574",
         )
         self.assertIn("which expires on 27 December 2031", finding.detail)
@@ -198,9 +220,9 @@ class AdequacyFindings(unittest.TestCase):
         # The list is verified and dated, so adequacy recorded for a country off it is a missing basis.
         status, severity, detail = assess_transfer("IN", "adequacy")
         self.assertEqual((status, severity), ("MISSING", "HIGH"))
-        self.assertIn("checked against the decisions on EUR-Lex on 2026-11-10", detail)
+        self.assertIn("The list was last checked for later decisions on 2026-11-14", detail)
         remediation = _by_id(build_packet(_clean_dpa("IN", "adequacy")), "transfer.in").remediation
-        self.assertIn("checked against EUR-Lex on 2026-11-10", remediation)
+        self.assertIn("last checked for later decisions on 2026-11-14", remediation)
 
 
 class SafeguardForAnAdequateDestination(unittest.TestCase):
@@ -220,7 +242,7 @@ class SafeguardForAnAdequateDestination(unittest.TestCase):
         packet = build_packet(_clean_dpa("CH", "sccs"))
         finding = _by_id(packet, "transfer.ch")
         self.assertEqual(finding.status, "PRESENT")
-        self.assertEqual(finding.citation, "GDPR Art. 44, 45(1), 45(9); Commission Decision 2000/518/EC")
+        self.assertEqual(finding.citation, "GDPR Art. 44, 45(1), 45(9); Commission Decision 2000/518/EC, Art. 1")
         self.assertNotIn("transfer.impact_assessment", _rule_ids(packet))
         self.assertEqual(packet.review_state, "CLEARED_FOR_REVIEW")
         self.assertFalse(relies_on_art46_safeguard("CH", "sccs"))
@@ -247,13 +269,14 @@ class SafeguardForAnAdequateDestination(unittest.TestCase):
         self.assertEqual((finding.status, finding.severity), ("NEEDS_REVIEW", "MEDIUM"))
         self.assertEqual(
             finding.citation,
-            "GDPR Art. 44, 45(1), 46(2)(c); Commission Implementing Decision (EU) 2019/419; "
+            "GDPR Art. 44, 45(1), 46(2)(c); Commission Implementing Decision (EU) 2019/419, Art. 1; "
             f"{SCC_DECISION}; EDPB Recommendations 01/2020",
         )
         self.assertEqual(
             finding.remediation,
             "Confirm whether the importer in JP is within the scope of Article 1 of Commission Implementing "
-            "Decision (EU) 2019/419. If it is, record the mechanism as adequacy; if not, confirm that the SCCs "
+            "Decision (EU) 2019/419, and record recipient_type and scope_carve_out. If it is, record the "
+            "mechanism as adequacy; if not, confirm that the SCCs "
             f"of {SCC_DECISION} cover the transfer to JP, with a transfer impact assessment and any "
             "supplementary measures (EDPB Recommendations 01/2020).",
         )
@@ -267,7 +290,8 @@ class SafeguardForAnAdequateDestination(unittest.TestCase):
         finding = _by_id(build_packet(_clean_dpa("CA", "bcr")), "transfer.ca")
         self.assertEqual(
             finding.citation,
-            "GDPR Art. 44, 45(1), 45(9), 46(2)(b), 47; Commission Decision 2002/2/EC; EDPB Recommendations 01/2020",
+            "GDPR Art. 44, 45(1), 45(9), 46(2)(b), 47; Commission Decision 2002/2/EC, Art. 1; "
+            "EDPB Recommendations 01/2020",
         )
 
     def test_a_sub_processor_gets_the_same_question_by_name(self):
@@ -280,7 +304,7 @@ class SafeguardForAnAdequateDestination(unittest.TestCase):
         self.assertEqual((finding.status, finding.severity), ("NEEDS_REVIEW", "MEDIUM"))
         self.assertEqual(
             finding.citation,
-            "GDPR Art. 28(4) / Art. 44, 45(1), 45(9), 46(2)(c); Commission Decision 2002/2/EC; "
+            "GDPR Art. 28(4) / Art. 44, 45(1), 45(9), 46(2)(c); Commission Decision 2002/2/EC, Art. 1; "
             f"{SCC_DECISION}; EDPB Recommendations 01/2020",
         )
         self.assertTrue(finding.remediation.startswith("Confirm whether Maple Support Inc is within the scope"))
@@ -323,7 +347,7 @@ class SafeguardForTheUnitedStates(unittest.TestCase):
                 status, severity, detail = assess_transfer("US", mechanism)
                 self.assertEqual((status, severity), ("NEEDS_REVIEW", "MEDIUM"))
                 self.assertIn("An adequacy decision covers some importers in US (Art. 45(1); "
-                              "Commission Implementing Decision (EU) 2023/1795 of 10 July 2023).", detail)
+                              "Commission Implementing Decision (EU) 2023/1795 of 10 July 2023, Art. 1).", detail)
                 self.assertIn(DPF_ADEQUACY.scope_limit, detail)
                 self.assertIn(f"The transfer is recorded as relying on {safeguard.label}.", detail)
                 self.assertIn("If it is, with a certification that covers the data transferred, the decision "
@@ -344,7 +368,7 @@ class SafeguardForTheUnitedStates(unittest.TestCase):
         self.assertEqual((finding.status, finding.severity), ("NEEDS_REVIEW", "MEDIUM"))
         self.assertEqual(
             finding.citation,
-            "GDPR Art. 44, 45(1), 46(2)(c); Commission Implementing Decision (EU) 2023/1795; "
+            "GDPR Art. 44, 45(1), 46(2)(c); Commission Implementing Decision (EU) 2023/1795, Art. 1; "
             f"{SCC_DECISION}; EDPB Recommendations 01/2020",
         )
         self.assertEqual(
@@ -372,8 +396,8 @@ class SafeguardForTheUnitedStates(unittest.TestCase):
         self.assertEqual((finding.status, finding.severity), ("NEEDS_REVIEW", "MEDIUM"))
         self.assertEqual(
             finding.citation,
-            "GDPR Art. 28(4) / Art. 44, 45(1), 46(2)(b), 47; Commission Implementing Decision (EU) 2023/1795; "
-            "EDPB Recommendations 01/2020",
+            "GDPR Art. 28(4) / Art. 44, 45(1), 46(2)(b), 47; Commission Implementing Decision (EU) 2023/1795, "
+            "Art. 1; EDPB Recommendations 01/2020",
         )
         self.assertTrue(
             finding.remediation.startswith(
