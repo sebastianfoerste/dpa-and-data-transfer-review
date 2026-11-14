@@ -1,0 +1,21 @@
+{
+  "note": "Allowlist of fictional organisation names for structured synthetic data. tests/test_synthetic_names.py fails when an organisation-name field in data/, examples/, tests/fixtures/ or tests/adequacy_cases.json holds a name not listed here. Add a name only if it is invented for this repository; never add a real organisation's name.",
+  "names": [
+    "Acme SaaS GmbH (synthetic)",
+    "Analytics KK",
+    "EU Hosting SARL",
+    "Example Analytics Co Ltd",
+    "Example Analytics KK",
+    "Example Analytics Pvt Ltd",
+    "Example Controller GmbH (synthetic)",
+    "Example Hosting GmbH",
+    "Example Ledger Pvt Ltd",
+    "Example Processor SE (synthetic)",
+    "Example Records Office",
+    "Example Support AG",
+    "Example Support Inc",
+    "Example Support Ltd",
+    "Support Tools LLC",
+    "Vendor Cloud Inc. (synthetic)"
+  ]
+}
