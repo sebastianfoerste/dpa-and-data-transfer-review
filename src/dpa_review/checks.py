@@ -105,7 +105,8 @@ class AdequacyDecision:
     transferred from the Union without such a limit. `conditions` model that limit as facts the input
     records about the importer; a decision with a scope limit and no conditions (Brazil, the Faroe
     Islands) is read as covering every importer, a reading `scope_reading` states, and a finding that
-    relies on it asks the reviewer to confirm the limit. `directive_era` marks a decision adopted under
+    relies on it asks the reviewer to confirm the limit. A decision whose conditions model only part of
+    its limit (Israel: Article 2) states the reading of the rest in `scope_reading` too. `directive_era` marks a decision adopted under
     Article 25(6) of Directive 95/46/EC, which stays in force under Art. 45(9) GDPR until amended,
     replaced or repealed. `amending_acts` are the acts its citation names; `amended` says what they
     changed, for the reference table in docs/rules.md; `amendments` are the acts that changed its scope
@@ -271,8 +272,10 @@ _CANADA_RECIPIENTS = (
     "commercial activities, not to organisations under the Federal Privacy Act or regulated by the public "
     "sector at a provincial level, nor to non-profit organisations and charitable activities unless they "
     "are of a commercial nature; the tool reads a private commercial organisation as covered, a public body "
-    "as not covered and a non-profit as unresolved, and does not model the exemptions for organisations "
-    "under substantially similar provincial laws (recital 6)."
+    "as not covered and a non-profit as unresolved. It does not model recital 5's statement that the Act does "
+    "not cover employment data used for non-commercial purposes other than that relating to employees in the "
+    "federally regulated private sector, or the exemptions for organisations under substantially similar "
+    "provincial laws (recital 6)."
 )
 _JAPAN_RECIPIENTS = (
     "recital 32 excludes the government and administrative agencies at central and local level from the "
@@ -394,6 +397,10 @@ ADEQUACY: dict[str, AdequacyDecision] = {
                 "with international law."
             ),
             provision="Art. 1(1)",
+            scope_reading=(
+                "the input records no fact for the limit of Article 2, and the tool reads every importer as "
+                "located in the State of Israel as defined in accordance with international law"
+            ),
             conditions=(
                 Condition(
                     "automated_processing",

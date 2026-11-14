@@ -476,7 +476,7 @@ def rules() -> str:
         "",
         "Uruguay: " + ADEQUACY["UY"].scope_reading + " (interpretation). Brazil: "
         + ADEQUACY["BR"].scope_reading + " (interpretation). Faroe Islands: " + ADEQUACY["FO"].scope_reading
-        + " (interpretation).",
+        + " (interpretation). Israel: " + ADEQUACY["IL"].scope_reading + " (interpretation).",
         "",
     ]
     return "\n".join(lines)

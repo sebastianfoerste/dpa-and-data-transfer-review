@@ -165,6 +165,7 @@
     },
     {
       "id": "israel-automated-transfer",
+      "interpretation": "The input records no fact for the territorial limit of Article 2; the tool reads every importer as located in the State of Israel as defined in accordance with international law.",
       "source": {"celex": "32011D0061", "pinpoint": "Decision 2011/61/EU, Art. 1(1)", "quote": "in relation to automated international transfers of personal data from the European Union or, where they are not automated, they are subject to further automated processing in the State of Israel"},
       "input": {"transfers": {"destinations": ["IL"], "mechanisms": {"IL": "adequacy"}, "automated_processing": {"IL": true}}},
       "expected": {"status": "PRESENT", "severity": "LOW", "cites": "Commission Decision 2011/61/EU, Art. 1(1)"}

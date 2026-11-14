@@ -136,6 +136,7 @@ class AdequacyCasesGiveTheirExpectedFindings(unittest.TestCase):
             "us-dpf-on-adoption-day",
             "united-kingdom-on-expiry-day",
             "united-kingdom-day-after-expiry",
+            "israel-automated-transfer",
         ):
             with self.subTest(case=case_id):
                 case = next(item for item in CASES if item["id"] == case_id)
@@ -175,6 +176,29 @@ class UnknownNeverYieldsAdequacy(unittest.TestCase):
         self.assertEqual((status, severity), ("MISSING", "HIGH"))
         self.assertIn("Art. 1(2)", detail)
         self.assertNotIn("recipient_type not recorded", detail)
+
+
+class UnmodelledLimitsAreStated(unittest.TestCase):
+    # Regression: a covered finding stated neither the employment-data limit of the Canadian recital 5 the
+    # condition rests on, nor the territorial limit of Article 2 of the Israeli decision, as not modelled.
+    def test_canada_states_the_employment_data_limit_it_does_not_model(self) -> None:
+        detail = assess_transfer("CA", "adequacy", recipient={"recipient_type": "private_commercial"})[2]
+        self.assertIn("does not cover employment data used for non-commercial purposes", detail)
+        self.assertIn(
+            "Similarly it does not cover employment data used for non-commercial purposes other than that relating "
+            "to employees in the federally regulated private sector",
+            snapshot_text("32002D0002"),
+        )
+
+    def test_israel_states_the_territorial_limit_it_does_not_model(self) -> None:
+        status, _, detail = assess_transfer("IL", "adequacy", recipient={"automated_processing": True})
+        self.assertEqual(status, "PRESENT")
+        self.assertIn("Interpretation: the input records no fact for the limit of Article 2", detail)
+        self.assertIn(
+            "This Decision concerns only the adequacy of protection provided in the State of Israel, as defined in "
+            "accordance with international law",
+            snapshot_text("32011D0061"),
+        )
 
 
 class ReviewDate(unittest.TestCase):
