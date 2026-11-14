@@ -205,6 +205,18 @@ class ReviewDate(unittest.TestCase):
                 self.assertEqual(severity, "MEDIUM" if mechanism in SAFEGUARDS else "HIGH")
                 self.assertIn("Commission Implementing Decision (EU) 2025/2574 of 19 December 2025", detail)
 
+    def test_an_earlier_version_names_every_later_amendment(self) -> None:
+        # Regression: a date before 2025/1226 named only that act, which moved the expiry, and not 2025/2574,
+        # which repealed the immigration exclusion that decided whether the earlier version covered a transfer.
+        detail = assess_transfer("GB", "adequacy", review_date="2023-01-01")[2]
+        first = detail.index("Commission Implementing Decision (EU) 2025/1226 of 24 June 2025")
+        second = detail.index("Commission Implementing Decision (EU) 2025/2574 of 19 December 2025")
+        self.assertLess(first, second)
+        self.assertIn("repealed its Article 1(2)", detail)
+        between = assess_transfer("GB", "adequacy", review_date="2025-06-24")[2]
+        self.assertNotIn("2025/1226 of 24 June 2025, which", between)
+        self.assertIn("2025/2574 of 19 December 2025, which", between)
+
     def test_the_table_note_starts_the_day_after_the_table_date_for_every_decision(self) -> None:
         # Regression: the DPF findings (dpf, and a safeguard recorded for a US importer) left the note out.
         dpf = dict(

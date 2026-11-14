@@ -308,6 +308,12 @@
       "expected": {"status": "NEEDS_REVIEW", "severity": "HIGH", "cites": "Commission Implementing Decision (EU) 2021/1772, Art. 1(1)"}
     },
     {
+      "id": "united-kingdom-review-date-while-the-immigration-exclusion-applied",
+      "source": {"celex": "32021D1772", "pinpoint": "Implementing Decision (EU) 2021/1772, Art. 1(2), repealed by Art. 1 of Implementing Decision (EU) 2025/2574", "quote": "This decision does not cover personal data that is transferred for purposes of United Kingdom immigration control"},
+      "input": {"review_date": "2023-01-01", "transfers": {"destinations": ["GB"], "mechanisms": {"GB": "adequacy"}}},
+      "expected": {"status": "NEEDS_REVIEW", "severity": "HIGH", "cites": "Commission Implementing Decision (EU) 2021/1772, Art. 1(1)", "detail_contains": "repealed its Article 1(2), the exclusion of data transferred for purposes of United Kingdom immigration control"}
+    },
+    {
       "id": "united-kingdom-sccs-review-date-before-an-amendment",
       "source": {"celex": "32021D1772", "pinpoint": "Implementing Decision (EU) 2021/1772, Art. 1(2) (repealed by Implementing Decision (EU) 2025/2574)", "quote": "This decision does not cover personal data that is transferred for purposes of United Kingdom immigration control"},
       "input": {"review_date": "2025-12-01", "transfers": {"destinations": ["GB"], "mechanisms": {"GB": "sccs"}}},

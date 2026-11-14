@@ -184,7 +184,9 @@ class AdequacyDecision:
 
         Without a review date the decision is read as it stands in this table. Before its start date
         or after its expiry it does not apply. Before an amending act that changed its scope or validity
-        it stood in an earlier version, which the table does not model.
+        it stood in an earlier version, which the table does not model; the reason names every such act
+        adopted after the review date, because an earlier one may change only the expiry while a later one
+        changes the scope.
         """
         if review_date is None:
             return IN_FORCE, ""
@@ -198,12 +200,12 @@ class AdequacyDecision:
             return NOT_YET_APPLICABLE, f"{on}, it did not yet apply: {start}"
         if self.expires and review_date > _day(self.expires):
             return EXPIRED, f"{on}, it had expired: the tool reads {self.expires} as its last day of validity"
-        for amendment in self.amendments:
-            if review_date < _day(amendment.adopted):
-                return EARLIER_VERSION, (
-                    f"{on}, it stood before {amendment.act} of {amendment.adopted}, which {amendment.effect}, "
-                    "and the tool models only the decision as last amended"
-                )
+        later = [amendment for amendment in self.amendments if review_date < _day(amendment.adopted)]
+        if later:
+            acts = ", and before ".join(f"{a.act} of {a.adopted}, which {a.effect}" for a in later)
+            return EARLIER_VERSION, (
+                f"{on}, it stood before {acts}; the tool models only the decision as last amended"
+            )
         return IN_FORCE, ""
 
     def evaluate(self, facts: Mapping[str, Any]) -> tuple[str, tuple[str, ...], tuple[str, ...]]:
