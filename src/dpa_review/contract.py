@@ -27,7 +27,15 @@ import unicodedata
 from dataclasses import dataclass, field
 from typing import Any, Union
 
-from dpa_review.checks import TRANSFER_MECHANISMS, VALID_TRANSFER_MECHANISMS, subprocessor_rule_id
+from dpa_review.checks import (
+    INTERNATIONAL_ORGANISATIONS,
+    RECIPIENT_TYPES,
+    SCOPE_CARVE_OUT_VALUES,
+    TRANSFER_MECHANISMS,
+    VALID_TRANSFER_MECHANISMS,
+    parse_review_date,
+    subprocessor_rule_id,
+)
 
 SCHEMA_ID = (
     "https://raw.githubusercontent.com/sebastianfoerste/dpa-and-data-transfer-review/"
@@ -51,6 +59,10 @@ MECHANISM_VALUES = (
 )
 
 COUNTRY_PATTERN = "^[A-Z]{2}$"
+# A transfer destination is a country or an international organisation with an adequacy decision, such as
+# "EPO" for the European Patent Organisation. A sub-processor's country stays a country.
+DESTINATION_PATTERN = "^([A-Z]{2}|" + "|".join(sorted(INTERNATIONAL_ORGANISATIONS)) + ")$"
+DATE_PATTERN = r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
 # Two-letter codes that look right but are not ISO 3166-1 alpha-2 country codes.
 NOT_ISO_COUNTRIES = {
     "UK": '"GB" (the ISO code for the United Kingdom)',
@@ -73,10 +85,11 @@ class Field:
 
     kind is one of: flag (a JSON boolean), text (a string), name (a non-empty string),
     description (a string or a boolean, but not a string that reads as yes or no), country (a
-    two-letter code), choice (one of `options`), labels (a list of non-empty strings),
-    countries (a list of country codes),
+    two-letter code), date (a calendar date as YYYY-MM-DD), choice (one of `options`), labels (a
+    list of non-empty strings), countries (a list of destination codes: country codes, or the code
+    of an international organisation with an adequacy decision),
     section (an object with `fields`), entries (a list of objects with `fields`),
-    by_country (an object keyed by country code, each value a `value`), evidence (the
+    by_country (an object keyed by destination code, each value a `value`), evidence (the
     evidence map). An optional key may also be null, which reads as not recorded, unless
     `nullable` is False.
     """
@@ -97,6 +110,25 @@ def _flag(description: str) -> Field:
 
 
 _ART28 = "true when the DPA contains the clause; false, null or omitted when it was not found."
+# The facts about an importer that the scope conditions of an adequacy decision read. Null or omitted
+# leaves the condition unresolved, which never counts as adequacy.
+_RECIPIENT_TYPE = (
+    'What kind of organisation the importer is: "private_commercial" (a private organisation acting in the '
+    'course of commercial activities), "public_body" (a public authority or body) or "non_profit". Read for '
+    "Canada (Decision 2002/2/EC, Art. 1 and recital 5: a private commercial organisation is covered, a public "
+    "body is not, a non-profit goes to review) and Japan (Implementing Decision (EU) 2019/419, Art. 1(1) and "
+    "recitals 32 and 33: a public body is not covered). Null or omitted leaves the condition unresolved."
+)
+_SCOPE_CARVE_OUT = (
+    '"none" when the importer falls within none of the exclusions of Art. 1(2) of the Japanese '
+    "(Implementing Decision (EU) 2019/419) or Korean (Implementing Decision (EU) 2022/254) decision for the "
+    'data transferred, "applies" when it falls within one. Null or omitted leaves the condition unresolved.'
+)
+_AUTOMATED_PROCESSING = (
+    "Israel (Decision 2011/61/EU, Art. 1(1)): true when the transfer is automated or the data are subject to "
+    "further automated processing in Israel, false when neither. Null or omitted leaves the condition "
+    "unresolved."
+)
 # A description that reads as an answer to a yes/no question; record yes/no as a JSON boolean.
 YES_NO_PATTERN = r"^\s*([Tt][Rr][Uu][Ee]|[Ff][Aa][Ll][Ss][Ee]|[Yy][Ee][Ss]|[Nn][Oo])\s*$"
 _YES_NO = re.compile(YES_NO_PATTERN)
@@ -112,6 +144,15 @@ CONTRACT: dict[str, Field] = {
     "controller": Field("text", "Name of the controller. Labels the transfer evidence graph; no rule reads it.", nullable=False),
     "processor": Field("text", "Name of the processor. Labels the transfer evidence graph; no rule reads it.", nullable=False),
     "roles_defined": _flag("Whether the DPA defines the controller and processor roles. Recorded only: no rule reads it."),
+    "review_date": Field(
+        "date",
+        "The date the transfers are assessed on, as YYYY-MM-DD. The transfer rules read each adequacy decision "
+        "as it applied on that date: before the date it applies from or after its last day of validity it does "
+        "not cover the transfer, and before an amendment that changed its scope or validity the transfer goes "
+        "to review, because the tool models only the decision as last amended. Null or omitted reads the "
+        "decisions as the adequacy table states them (checks.TABLE_AS_OF). A date after that table date gets "
+        "a note that later Commission acts are not reflected.",
+    ),
     "processing": Field(
         "section",
         "The processing details GDPR Art. 28(3) requires the DPA to set out. Read by the processing.* rules.",
@@ -266,6 +307,13 @@ CONTRACT: dict[str, Field] = {
                 "For a derogation_art49 mechanism: the transfer is occasional and not repetitive. "
                 "Otherwise the derogation is treated like a missing basis."
             ),
+            "recipient_type": Field(
+                "choice", "The sub-processor as an importer. " + _RECIPIENT_TYPE, options=RECIPIENT_TYPES
+            ),
+            "scope_carve_out": Field(
+                "choice", "The sub-processor as an importer. " + _SCOPE_CARVE_OUT, options=SCOPE_CARVE_OUT_VALUES
+            ),
+            "automated_processing": _flag("The transfer to the sub-processor. " + _AUTOMATED_PROCESSING),
         },
     ),
     "transfers": Field(
@@ -277,7 +325,8 @@ CONTRACT: dict[str, Field] = {
             "destinations": Field(
                 "countries",
                 "Upper-case ISO 3166-1 alpha-2 codes of every country the processor transfers personal data "
-                "to directly; each is checked (rule transfer.<country>). Record [] when there are none.",
+                'to directly, and "EPO" for the European Patent Organisation, an international organisation; '
+                "each is checked (rule transfer.<country>). Record [] when there are none.",
                 required=True,
                 hint='record "destinations": [] if the processor makes no direct transfer',
             ),
@@ -314,12 +363,36 @@ CONTRACT: dict[str, Field] = {
                 value=Field("flag", "The transfer is occasional and not repetitive."),
                 example='{"IN": true}',
             ),
+            "recipient_type": Field(
+                "by_country",
+                "Per destination, the importer. " + _RECIPIENT_TYPE,
+                value=Field("choice", "What kind of organisation the importer is.", options=RECIPIENT_TYPES),
+                example='{"CA": "private_commercial"}',
+            ),
+            "scope_carve_out": Field(
+                "by_country",
+                "Per destination, the importer. " + _SCOPE_CARVE_OUT,
+                value=Field(
+                    "choice",
+                    "Whether the importer falls within an exclusion of Art. 1(2).",
+                    options=SCOPE_CARVE_OUT_VALUES,
+                ),
+                example='{"JP": "none"}',
+            ),
+            "automated_processing": Field(
+                "by_country",
+                "Per destination. " + _AUTOMATED_PROCESSING,
+                value=Field(
+                    "flag", "The transfer is automated or the data are subject to further automated processing."
+                ),
+                example='{"IL": true}',
+            ),
             "transfer_impact_assessment": _flag(
                 "A transfer impact assessment is recorded. Read when an Art. 46 safeguard is recorded for a "
                 "destination or sub-processor in a third country: with no adequacy decision, by rule "
-                "transfer.impact_assessment; with a scope-limited adequacy decision (the United States and "
-                "its DPF decision included), by the transfer rule, which asks whether the importer is within "
-                "the decision's scope."
+                "transfer.impact_assessment; with an adequacy decision that may not cover the importer (the "
+                "United States and its DPF decision included), by the transfer rule, which asks whether the "
+                "importer is within the decision's scope."
             ),
         },
     ),
@@ -487,6 +560,11 @@ def _check(value: Any, spec: Field, path: KeyPath, out: list[Violation]) -> None
             )
     elif kind == "country":
         _check_country(value, path, out)
+    elif kind == "date":
+        try:
+            parse_review_date(value, where)
+        except ValueError:
+            refuse('a calendar date written as YYYY-MM-DD, such as "2026-11-14"')
     elif kind == "choice":
         if not isinstance(value, str) or value not in spec.options:
             suggestion = _suggest(value, list(spec.options)) if isinstance(value, str) else ""
@@ -501,7 +579,7 @@ def _check(value: Any, spec: Field, path: KeyPath, out: list[Violation]) -> None
             refuse('a list of non-empty strings (two-letter country codes such as ["US"]); it')
             return
         for index, item in enumerate(value):
-            _check_country(item, path + (index,), out)
+            _check_country(item, path + (index,), out, destination=True)
     elif kind == "section":
         if not isinstance(value, dict):
             refuse("an object")
@@ -524,7 +602,7 @@ def _check(value: Any, spec: Field, path: KeyPath, out: list[Violation]) -> None
             refuse(f"an object keyed by country code, such as {spec.example}; it")
             return
         for key, item in value.items():
-            problem = _country_problem(key)
+            problem = _country_problem(key, destination=True)
             if problem:
                 out.append(Violation(path + (key,), f"{where} is keyed by country code: the key {key!r} {problem}."))
             _check(item, spec.value, path + (key,), out)
@@ -558,9 +636,20 @@ def _check(value: Any, spec: Field, path: KeyPath, out: list[Violation]) -> None
         raise AssertionError(f"unknown contract kind {kind!r}")
 
 
-def _country_problem(value: Any) -> str:
-    """Why `value` is not a country code the rules can match, or "" when it is one."""
+def _country_problem(value: Any, destination: bool = False) -> str:
+    """Why `value` is not a country code the rules can match, or "" when it is one.
+
+    A transfer destination may also be the code of an international organisation with an adequacy
+    decision ("EPO"); a sub-processor's country may not.
+    """
+    if destination and isinstance(value, str) and value.upper() in INTERNATIONAL_ORGANISATIONS:
+        return "" if value in INTERNATIONAL_ORGANISATIONS else f"must be upper case: use {value.upper()!r}"
     if not isinstance(value, str) or not re.fullmatch("[A-Za-z]{2}", value):
+        if destination:
+            return (
+                'is not a two-letter ISO 3166-1 alpha-2 code such as "US", or the code of an international '
+                "organisation with an adequacy decision (" + ", ".join(sorted(INTERNATIONAL_ORGANISATIONS)) + ")"
+            )
         return 'is not a two-letter ISO 3166-1 alpha-2 code such as "US"'
     if value in NOT_ISO_COUNTRIES:
         return f"is not an ISO 3166-1 alpha-2 country code; use {NOT_ISO_COUNTRIES[value]}"
@@ -572,8 +661,8 @@ def _country_problem(value: Any) -> str:
     return ""
 
 
-def _check_country(value: Any, path: KeyPath, out: list[Violation]) -> None:
-    problem = _country_problem(value)
+def _check_country(value: Any, path: KeyPath, out: list[Violation], destination: bool = False) -> None:
+    problem = _country_problem(value, destination)
     if problem:
         out.append(Violation(path, f"{format_path(path)} {problem}, got {value!r}."))
 
@@ -608,14 +697,16 @@ def _check_cross_field(dpa: dict, out: list[Violation]) -> None:
                     )
                 listed.setdefault(country, index)
         # Checked only once every destination is a valid code, so one typo is reported once.
-        if isinstance(destinations, list) and not any(_country_problem(country) for country in destinations):
+        if isinstance(destinations, list) and not any(
+            _country_problem(country, destination=True) for country in destinations
+        ):
             for name, spec in CONTRACT["transfers"].fields.items():
                 recorded = transfers.get(name)
                 if spec.kind != "by_country" or not isinstance(recorded, dict):
                     continue
                 what = "mechanism" if name == "mechanisms" else name
                 for key in recorded:
-                    if not _country_problem(key) and key not in listed:
+                    if not _country_problem(key, destination=True) and key not in listed:
                         out.append(
                             Violation(
                                 ("transfers", name, key),
@@ -713,6 +804,7 @@ def _types(spec: Field, *names: str) -> str | list[str]:
 
 
 _COUNTRY_SCHEMA: dict[str, Any] = {"pattern": COUNTRY_PATTERN, "not": {"enum": sorted(NOT_ISO_COUNTRIES)}}
+_DESTINATION_SCHEMA: dict[str, Any] = {"pattern": DESTINATION_PATTERN, "not": {"enum": sorted(NOT_ISO_COUNTRIES)}}
 
 
 def _object(fields: dict[str, Field]) -> dict[str, Any]:
@@ -739,6 +831,8 @@ def _schema(spec: Field) -> dict[str, Any]:
         schema.update(type=_types(spec, "boolean", "string"), **{"not": {"type": "string", "pattern": YES_NO_PATTERN}})
     elif kind == "country":
         schema.update(type=_types(spec, "string"), **_COUNTRY_SCHEMA)
+    elif kind == "date":
+        schema.update(type=_types(spec, "string"), pattern=DATE_PATTERN, format="date")
     elif kind == "choice":
         nullable = spec.nullable and not spec.required
         schema.update(type=_types(spec, "string"), enum=[*spec.options] + ([None] if nullable else []))
@@ -747,7 +841,7 @@ def _schema(spec: Field) -> dict[str, Any]:
     elif kind == "countries":
         schema.update(
             type=_types(spec, "array"),
-            items={"type": "string", **_COUNTRY_SCHEMA},
+            items={"type": "string", **_DESTINATION_SCHEMA},
             uniqueItems=True,
         )
     elif kind == "section":
@@ -757,7 +851,7 @@ def _schema(spec: Field) -> dict[str, Any]:
     elif kind == "by_country":
         schema.update(
             type=_types(spec, "object"),
-            propertyNames=_COUNTRY_SCHEMA,
+            propertyNames=_DESTINATION_SCHEMA,
             additionalProperties=_schema(spec.value),
         )
     elif kind == "evidence":
@@ -791,8 +885,8 @@ def json_schema() -> dict[str, Any]:
             "every key. The CLI enforces this schema and, beyond it, a few cross-field rules: every "
             "key of transfers.mechanisms and of the other per-country objects under transfers is a "
             "listed destination, "
-            "sub-processor names are unique ignoring case, spaces and punctuation, and every evidence "
-            "key names a fact the input records. Input that breaks any of them exits 3."
+            "sub-processor names are unique ignoring case, spaces and punctuation, review_date is a calendar "
+            "date, and every evidence key names a fact the input records. Input that breaks any of them exits 3."
         ),
         "type": "object",
         **_object(CONTRACT),

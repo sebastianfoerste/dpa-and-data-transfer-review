@@ -15,8 +15,14 @@ import re
 from typing import Any
 
 from dpa_review.checks import (
+    ADEQUACY,
+    DPF_COUNTRY,
+    RECIPIENT_FACTS,
     SUBPROCESSOR_TRANSFER_PREFIX,
+    destination_facts,
+    recorded_review_date,
     scope_question_reads_impact_assessment,
+    subprocessor_facts,
     subprocessor_rule_id,
 )
 from dpa_review.contract import KeyPath, format_path, parse_fact_path
@@ -55,17 +61,36 @@ def _data_transferred(dpa: dict, mechanism: Any) -> list[KeyPath]:
 _IMPACT_ASSESSMENT = ("transfers", "transfer_impact_assessment")
 
 
-def _impact_assessment(dpa: dict, country: Any, mechanism: Any) -> list[KeyPath]:
+def _impact_assessment(dpa: dict, country: Any, mechanism: Any, facts: dict[str, Any]) -> list[KeyPath]:
     """The recorded transfer impact assessment, which the transfer rule reads for an Art. 46
-    safeguard recorded for a destination whose adequacy decision has a scope limit."""
+    safeguard recorded for a destination whose adequacy decision may not cover the importer."""
     if not isinstance(country, str) or not isinstance(mechanism, str):
         return []
-    if not scope_question_reads_impact_assessment(country, mechanism):
+    if not scope_question_reads_impact_assessment(country, mechanism, facts, recorded_review_date(dpa)):
         return []
     transfers = dpa.get("transfers")
     if not isinstance(transfers, dict) or _IMPACT_ASSESSMENT[1] not in transfers:
         return []
     return [_IMPACT_ASSESSMENT]
+
+
+def _review_date(dpa: dict, country: Any) -> list[KeyPath]:
+    """The recorded review date, which a transfer rule reads for a destination with an adequacy decision."""
+    if dpa.get("review_date") is None or not isinstance(country, str):
+        return []
+    return [("review_date",)] if country.upper() in ADEQUACY or country.upper() == DPF_COUNTRY else []
+
+
+def _recipient_facts(transfers: dict, code: str) -> list[KeyPath]:
+    """The facts about the importer at a destination that its adequacy decision's conditions read."""
+    decision = ADEQUACY.get(code.upper())
+    read = {condition.fact for condition in decision.conditions} if decision else set()
+    found: list[KeyPath] = []
+    for name in RECIPIENT_FACTS:
+        recorded = transfers.get(name)
+        if name in read and isinstance(recorded, dict):
+            found += [("transfers", name, key) for key in recorded if key.lower() == code]
+    return found
 
 
 def rule_facts(dpa: dict, rule_id: str) -> list[KeyPath]:
@@ -94,7 +119,10 @@ def rule_facts(dpa: dict, rule_id: str) -> list[KeyPath]:
             if isinstance(entry, dict) and _subprocessor_rule_id(entry, index) == rule_id:
                 matched.append(("subprocessors", index))
                 matched += _data_transferred(dpa, entry.get("transfer_mechanism"))
-                matched += _impact_assessment(dpa, entry.get("country"), entry.get("transfer_mechanism"))
+                matched += _impact_assessment(
+                    dpa, entry.get("country"), entry.get("transfer_mechanism"), subprocessor_facts(entry, index)
+                )
+                matched += _review_date(dpa, entry.get("country"))
         return matched
     if rule_id.startswith("transfer."):
         code = rule_id.split(".", 1)[1]
@@ -119,7 +147,13 @@ def rule_facts(dpa: dict, rule_id: str) -> list[KeyPath]:
                     facts.append(("transfers", name, key))
                     if name == "mechanisms":
                         mechanism = value
-        return facts + _data_transferred(dpa, mechanism) + _impact_assessment(dpa, code, mechanism)
+        return (
+            facts
+            + _recipient_facts(transfers, code)
+            + _data_transferred(dpa, mechanism)
+            + _impact_assessment(dpa, code, mechanism, destination_facts(dpa, code))
+            + _review_date(dpa, code)
+        )
     return []
 
 
