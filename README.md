@@ -26,6 +26,7 @@ cd dpa-and-data-transfer-review
 make install   # no third-party dependencies, standard library only
 make test      # deterministic unit tests
 make demo      # prints the packet and writes it, plus the transfer evidence graph, to examples/ (md + json)
+make table-age # how old the adequacy table is; --max-age-days N exits 1 when it is older
 ```
 
 `make demo` runs end to end, offline and deterministically, against the synthetic DPA in `data/sample_dpa.json`. Because the sample is blocked, the CLI exits `2` and `make` then reports the recipe as failed with `Error 2`: that is make passing on the gating exit code, not a crash. `make test` fails if the committed files in `examples/` or the excerpt below drift from what `make demo` produces.
@@ -69,7 +70,7 @@ Fix the three defects in the input (add the flow-down clause, and record SCCs fo
 A legal team or reviewer at an AI SaaS company can use this as a privacy review surface before signature:
 
 1. **DPA defects:** the sample packet catches missing sub-processor flow-down and a missing transfer mechanism, both for the direct US transfer and for the US sub-processor. The sample relies on no Art. 46 safeguard, so the transfer impact assessment check does not fire on it.
-2. **Transfer mechanism:** the review distinguishes adequacy (including the EU-US Data Privacy Framework), every Art. 46 safeguard, and Art. 49 derogations per destination and sub-processor. Each adequacy finding names the decision it relies on and the decision's own scope limit.
+2. **Transfer mechanism:** the review distinguishes adequacy (including the EU-US Data Privacy Framework), every Art. 46 safeguard, and Art. 49 derogations per destination and sub-processor. Each adequacy finding names the decision and its operative provision, and checks the decision's scope conditions against the facts recorded about the importer.
 3. **Transfer impact evidence:** where an Art. 46 safeguard is relied on for a third country with no adequacy decision, a missing transfer impact assessment is an open `MEDIUM` finding that keeps the packet in review. Where the destination's adequacy decision covers only some importers, the finding asks whether the importer is covered instead.
 4. **Blocked state:** high-severity findings produce `BLOCKED` and exit code `2`, so the review can stop a workflow rather than merely warn.
 5. **Lawyer review:** even a remediated packet moves to review, not autonomous approval.
@@ -84,9 +85,9 @@ A legal team or reviewer at an AI SaaS company can use this as a privacy review 
 | Sub-processor flow-down | GDPR Art. 28(4) | Equivalent obligations imposed on sub-processors |
 | Breach notification | GDPR Art. 33(2) | Processor-to-controller notice, "without undue delay" |
 | International transfers | GDPR Art. 44-49 | EEA vs adequacy (Art. 45) vs Art. 46 safeguards vs Art. 49 derogations, per destination **and** per sub-processor |
-| Adequacy decisions | GDPR Art. 45(1), and Art. 45(9) for decisions adopted under Directive 95/46/EC; the decision for the destination | 15 countries, each with its decision, read on EUR-Lex on 2026-11-10 ([reference table](docs/rules.md#reference-data)), Brazil included (Commission Implementing Decision (EU) 2026/179 of 26 January 2026). A finding names the decision and states its scope limit where the decision sets one (Brazil, Canada, the Faroe Islands, Israel, Japan, Korea), because the tool cannot check whether the importer is within it. Adequacy recorded for a country off the list is a missing basis (`HIGH`) |
-| Safeguards for a destination with an adequacy decision | GDPR Art. 45(1), 46(1); the decision for the destination | Art. 46(1) makes a safeguard the basis only in the absence of an adequacy decision. A safeguard recorded for a destination whose decision has no scope limit is covered by the decision: no Art. 46 safeguard and no transfer impact assessment are needed for Chapter V. Where the decision has a scope limit, the United States included (the DPF decision covers only organisations on the Data Privacy Framework List), the finding goes to review and asks whether the importer is within it; if not, the safeguard carries the transfer with a transfer impact assessment (`MEDIUM` until one is recorded, then `LOW`) |
-| EU-US Data Privacy Framework | GDPR Art. 45(1); Commission Implementing Decision (EU) 2023/1795 | Treated as an adequacy basis, not an Art. 46 safeguard, so no transfer impact assessment is triggered. Requires the US importer to be recorded as actively certified on the Data Privacy Framework List, with a certification that covers the data transferred: non-HR data, and HR data where HR data is transferred. A finding the DPF may carry tells the reviewer to re-check the decision's status: the General Court dismissed the action for its annulment (Latombe v Commission, T-553/23, judgment of 3 September 2025), and EUR-Lex records an appeal (Case C-703/25 P). A destination on the tool's adequacy list (for example GB or CH) that is recorded as relying on the DPF or an Art. 49 derogation goes to review, pointing back to its adequacy decision |
+| Adequacy decisions | GDPR Art. 45(1), and Art. 45(9) for decisions adopted under Directive 95/46/EC; the decision for the destination, with its operative provision | 15 countries and the European Patent Organisation, each with its decision transcribed from the Official Journal text snapshotted in [`sources/oj`](sources/oj) ([reference table](docs/rules.md#reference-data), as at 2026-11-14). Where a decision covers only some importers, the facts the input records about the importer decide: Canada (`recipient_type`: private-sector scope, a public body is not covered, a non-profit goes to review), Japan (`recipient_type` and `scope_carve_out`), Korea (`scope_carve_out`) and Israel (`automated_processing`). An unknown condition is `NEEDS_REVIEW` (`HIGH`); a failed one leaves no basis (`HIGH`). Brazil and the Faroe Islands are read as covering every importer, an interpretation the finding states with the scope limit. A transfer to the European Patent Organisation (`EPO`) is a Chapter V transfer although its seat is in Munich (Art. 44). With a `review_date`, each decision is read as it applied on that date: the Faroe Islands decision from 15 June 2010, the others from their date of adoption, the United Kingdom decision through 27 December 2031, and a date before an amendment goes to review. Adequacy recorded for a destination off the list is a missing basis (`HIGH`) |
+| Safeguards for a destination with an adequacy decision | GDPR Art. 45(1), 46(1); the decision for the destination | Art. 46(1) makes a safeguard the basis only in the absence of an adequacy decision. A safeguard recorded for a destination whose decision has no scope limit is covered by the decision: no Art. 46 safeguard and no transfer impact assessment are needed for Chapter V. Where the decision has a scope limit, the United States included (the DPF decision covers only organisations on the Data Privacy Framework List), the finding goes to review and asks whether the importer is within it, unless the recorded facts settle it; if not, the safeguard carries the transfer with a transfer impact assessment (`MEDIUM` until one is recorded, then `LOW`) |
+| EU-US Data Privacy Framework | GDPR Art. 45(1); Commission Implementing Decision (EU) 2023/1795, Art. 1 | Treated as an adequacy basis, not an Art. 46 safeguard, so no transfer impact assessment is triggered. Requires the US importer to be recorded as actively certified on the Data Privacy Framework List, with a certification that covers the data transferred: non-HR data, and HR data where HR data is transferred; a coverage the input leaves open is `NEEDS_REVIEW` (`HIGH`). A finding the DPF may carry tells the reviewer to re-check the decision's status: the General Court dismissed the action for its annulment (Latombe v Commission, T-553/23, judgment of 3 September 2025), and EUR-Lex records an appeal (Case C-703/25 P). A destination on the tool's adequacy list (for example GB or CH) that is recorded as relying on the DPF or an Art. 49 derogation goes to review, pointing back to its adequacy decision |
 | Art. 49 derogations | GDPR Art. 49; EDPB Guidelines 2/2018 on derogations of Article 49 under Regulation 2016/679 (adopted 25 May 2018), section 1 | Derogations apply only where there is no adequacy decision or Art. 46 safeguard, and are interpreted restrictively; a transfer that occurs regularly within a stable relationship can basically be deemed systematic and repeated. Recital 111 expressly limits only the contract and legal-claims derogations (Art. 49(1)(b), (c), (e)) to occasional transfers, and the second subparagraph of Art. 49(1) requires a transfer that is not repetitive; the guidelines read the other derogations as exceptions too. As a conservative default for the ongoing transfers a DPA governs, the tool rates a derogation `HIGH`/missing, like a transfer with no mechanism, unless the transfer is recorded as occasional and not repetitive; then it goes to review |
 | Standard Contractual Clauses | GDPR Art. 46(2)(c); Commission Implementing Decision (EU) 2021/914 of 4 June 2021 on standard contractual clauses for the transfer of personal data to third countries | An SCC transfer goes to review: confirm the SCCs, a transfer impact assessment and any supplementary measures. For the US, the finding adds that a DPF-certified importer can be recorded as `dpf` instead |
 | Other Art. 46 safeguards | GDPR Art. 46(2)(a), (b) with Art. 47, (d), (e) with Art. 40(3), (f) with Art. 42(2); Art. 46(3)(a), (b) | Binding corporate rules, an instrument between public authorities or bodies, standard clauses adopted by a supervisory authority, a code of conduct or a certification with the importer's binding and enforceable commitments, and clauses or administrative arrangements authorised by the competent supervisory authority. The tool cannot verify an approval, an authorisation or a commitment, so each goes to review with what to confirm, and needs a transfer impact assessment like the SCCs |
@@ -95,11 +96,15 @@ A legal team or reviewer at an AI SaaS company can use this as a privacy review 
 
 Every yes/no fact the checks read is a JSON boolean (`true`/`false`); an omitted or `null` fact counts as not recorded, and any other value is refused with exit `3`. Every input is checked against the input contract in [`docs/input-format.md`](docs/input-format.md) before any rule runs, so an unknown key is refused, and so is a wrong type in the keys no check reads: `roles_defined` and `breach_notification.controller_notifies_authority_art33`, which are only recorded, and `controller`, `processor` and a sub-processor's `purpose`, which only label the evidence graph. `processing.subject_matter`, `processing.duration` and `processing.nature_and_purpose` take a short description or `true`; `false`, an empty string or `null` counts as not stated, and a string that reads as yes or no, such as `"false"`, is refused with exit `3`. `processing.data_types`, `processing.data_subjects` and `transfers.destinations` are lists of non-empty strings. Country codes, in destinations and as keys under `transfers`, are upper-case ISO 3166-1 alpha-2 codes, and a country recorded twice is refused.
 
+The facts a decision's scope turns on are recorded per destination under `transfers` (`recipient_type`, `scope_carve_out`, `automated_processing`, keyed by country code) or on the sub-processor entry; [`docs/rules.md`](docs/rules.md#scope-conditions) lists which decision reads which fact and the interpretation behind it. `review_date` (`YYYY-MM-DD`) reads each decision as it applied on that date; without it the decisions are read as the table states them.
+
 For a `dpf` transfer, the input records the importer's DPF List entry as `dpf_certified` (an active certification), `dpf_covers_non_hr_data` and `dpf_covers_hr_data`: on the sub-processor entry, or keyed by country under `transfers` for direct transfers. `processing.includes_non_hr_data` and `processing.includes_hr_data` record whether each type of data is transferred; if one is omitted and the certification is not recorded as covering that type, the transfer is flagged for review. If both are recorded as `false`, which leaves no data to transfer, a DPF transfer with a recorded certification also goes to review. For a `derogation_art49` transfer, `occasional_and_not_repetitive` (on the sub-processor entry, or keyed by country under `transfers`) records an occasional, non-repetitive transfer.
 
 A transfer mechanism is one of `none`, `adequacy`, `sccs`, `bcr`, `public_bodies_instrument` (Art. 46(2)(a)), `sa_standard_clauses` (Art. 46(2)(d)), `code_of_conduct` (Art. 46(2)(e)), `certification` (Art. 46(2)(f)), `authorised_clauses` (Art. 46(3)(a)), `administrative_arrangement` (Art. 46(3)(b)), `dpf` or `derogation_art49`.
 
-Reference data (EEA members, adequacy decisions, valid mechanisms) is explicit and citeable in [`src/dpa_review/checks.py`](src/dpa_review/checks.py). Every adequacy decision on the list was read on EUR-Lex on 2026-11-10, with its scope limit and its amendments; [`docs/rules.md`](docs/rules.md#reference-data) prints the table, and [`docs/chapter-v-decisions.md`](docs/chapter-v-decisions.md) records the transfer decisions and their sources. Decisions are adopted, amended and challenged after that date, so re-check the decision before relying on a result. The tool models countries only, not international organisations.
+Reference data (EEA members, adequacy decisions, valid mechanisms) is explicit and citeable in [`src/dpa_review/checks.py`](src/dpa_review/checks.py). Every adequacy decision on the list rests on its Official Journal text, snapshotted with its URL, retrieval date and SHA-256 under [`sources/`](sources/); tests check each decision's number, date, Official Journal reference and operative provision against the snapshot. On 2026-11-14 every snapshot was re-fetched unchanged and no later adequacy act was found; `make table-age` reports how old that check is. [`docs/rules.md`](docs/rules.md#reference-data) prints the table, and [`docs/chapter-v-decisions.md`](docs/chapter-v-decisions.md) records the transfer decisions and their sources. Decisions are adopted, amended and challenged after that date, so re-check the decision before relying on a result.
+
+DPF litigation: the General Court dismissed the action against the DPF decision in Latombe v Commission (T-553/23) on 3 September 2025, and the appeal, Case C-703/25 P, is pending. That the appeal is still pending rests on secondary sources; the Court's register could not be read.
 
 ## How it is built
 
@@ -110,10 +115,12 @@ Reference data (EEA members, adequacy decisions, valid mechanisms) is explicit a
 
 ```
 src/dpa_review/
-  checks.py   # the rules: each maps a feature of the DPA to a citation + severity
+  checks.py   # the rules and the adequacy table: each rule maps a feature of the DPA to a citation + severity
   review.py   # engine: runs the rules, decides the review state, renders the packet
   transfer_graph.py # transfer-chain evidence graph and weakest-link analysis
   cli.py      # python -m dpa_review.cli --input data/sample_dpa.json --out examples
+  table_age.py # dpa-review-table-age: how old the adequacy table is
+sources/                 # Official Journal snapshots of the adequacy decisions, with their manifest
 data/sample_dpa.json     # synthetic DPA with three planted defects
 examples/                # committed sample output (md + json), checked by tests/test_examples.py
 docs/demo.txt            # captured `make demo` output that docs/demo.png renders, also checked there
@@ -128,11 +135,13 @@ This is a **first-pass triage** tool over a structured representation of a DPA. 
 
 MIT. See [`LICENSE`](LICENSE).
 
-## Human-authored legal judgment
-AI tools assisted the implementation, but the parts that carry the value are
-human-authored: the GDPR Article 28/Chapter V checks, the adequacy reference data, and
-the review-state thresholds. The point of this repository is not code volume; it is showing
-how legal judgment can be made structured, testable, and reviewable.
+## Legal judgment and its review
+AI tools assisted the implementation, including the transcription of the adequacy reference
+data, which tests check against the Official Journal snapshots in `sources/oj`. The judgment
+calls (which GDPR Article 28 and Chapter V checks to run, the review-state thresholds, and every
+reading marked as an interpretation) are recorded as choices for a lawyer to confirm. The point
+of this repository is not code volume; it is showing how legal judgment can be made structured,
+testable, and reviewable.
 
 ## Business use case
 A scaling AI SaaS company receives recurring vendor, customer, and sub-processor
@@ -143,10 +152,11 @@ source visibility, and human judgment.
 ## Known limitations
 A public-safe prototype, not legal advice.
 1. Operates over a structured representation of a DPA, not free-text contracts.
-2. The adequacy reference data was checked against the decisions on EUR-Lex on
-   2026-11-10. It does not update itself: re-check a decision before any real use.
-   A decision's scope limit is stated, not checked, because the input does not
-   record whether the importer is within it.
+2. The adequacy reference data was last checked against the Official Journal on
+   2026-11-14. It does not update itself: re-check a decision before any real use.
+   Scope conditions are checked only as far as the input records the importer's
+   facts; Brazil's and the Faroe Islands' limits are stated, not checked, and the
+   decisions' earlier versions are not modelled.
 3. One jurisdiction lens (GDPR + a CCPA secondary check).
 4. No integration with a real CLM or ticketing system.
 Next production step: free-text ingestion, current adequacy data as a maintained

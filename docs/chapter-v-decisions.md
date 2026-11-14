@@ -1,10 +1,14 @@
 # Chapter V decisions
 
 PR #4 left four legal questions for the owner. The owner delegated them. This page records each
-decision, what the tool now does, and the source text it rests on. Every source below was read on
-EUR-Lex on 2026-11-10. The tests that pin each decision are in
+decision, what the tool now does, and the source text it rests on. Every source in sections 1 to 4 was
+read on EUR-Lex on 2026-11-10. The tests that pin each decision are in
 [`tests/test_transfer_bases.py`](../tests/test_transfer_bases.py); the conformance fixtures 10, 13, 14
-and 15 run them through the CLI ([conformance.md](conformance.md)).
+and 15 run them through the CLI ([conformance.md](conformance.md)). Section 5 records the scope
+conditions, dates and the European Patent Organisation, on the answers given on 10 November 2026 for
+the legal review of 14 October; its sources are the Official Journal snapshots in
+[`sources/oj`](../sources/oj), and its tests are in [`tests/test_adequacy.py`](../tests/test_adequacy.py),
+with fixtures 02 and 16 to 21.
 
 ## 1. Brazil and the adequacy list
 
@@ -25,9 +29,8 @@ and extended it to 27 December 2031. The table in [rules.md](rules.md#reference-
 Adequacy recorded for a country off the list stays a missing basis (`HIGH`). The list is now dated and
 sourced, so a country off it had no decision on that date.
 
-The tool models countries only. Commission Implementing Decision (EU) 2025/1382 of 15 July 2025 finds an
-adequate level of protection for the European Patent Organisation, an international organisation, and is
-not on the list.
+Commission Implementing Decision (EU) 2025/1382 of 15 July 2025 finds an adequate level of protection for
+the European Patent Organisation, an international organisation. Section 5 adds it to the list.
 
 ## 2. A safeguard recorded for a destination with an adequacy decision
 
@@ -63,9 +66,9 @@ A finding that relies on a decision cites Art. 45(1) and the decision. A decisio
 25(6) of Directive 95/46/EC also cites Art. 45(9), which keeps it in force.
 
 A transfer recorded as `adequacy` (or with no mechanism) for a destination with a scope-limited decision
-stays `PRESENT`, and its finding states the limit and asks the reviewer to confirm that the importer is
-within it. The input has no field for that confirmation. Adding one would be a change to the input
-contract beyond these four questions.
+stayed `PRESENT`, and its finding stated the limit and asked the reviewer to confirm that the importer is
+within it; the input had no field for that confirmation. Section 5 adds the fields for Canada, Israel,
+Japan and Korea. Brazil and the Faroe Islands keep the behaviour described here.
 
 ## 3. The status of the EU-US Data Privacy Framework decision
 
@@ -101,7 +104,77 @@ citation and what to confirm, and needs a transfer impact assessment like the SC
 BCR now cite Art. 46(2)(b) with Art. 47, and the SCCs Art. 46(2)(c) with Implementing Decision (EU)
 2021/914, instead of the article ranges they cited before.
 
+## 5. Scope conditions, dates and the European Patent Organisation
+
+**Decision.** The legal review of 14 October 2026 asked about the scope of each decision, its dates and
+the European Patent Organisation. The answers of 10 November 2026 adopt the model of branch
+`fix/chapter-v-adequacy-model`; they are recorded as answers given under the owner's delegation, not as a
+lawyer's sign-off. Each entry in `checks.ADEQUACY` now carries its operative provision, the date it
+applies from, its last day of validity where it has one, the amendments that changed its scope or
+validity, and the scope conditions below, all transcribed from the Official Journal texts in
+[`sources/oj`](../sources/oj).
+
+- **Unknown conditions fail closed.** A condition reads one fact the input records about the importer
+  (per destination under `transfers`, or on the sub-processor entry). A failed condition means the
+  decision does not cover the importer: with no other basis the transfer is `MISSING` (`HIGH`). An
+  unknown condition is `NEEDS_REVIEW` with `HIGH` severity, so it blocks the packet until the fact is
+  recorded. The same applies to a DPF certification whose coverage of the data transferred the input
+  leaves open, which was `MEDIUM` before. With an Art. 46 safeguard recorded, the safeguard carries a
+  transfer the decision does not cover, and the finding keeps the severity of section 2.
+- **Canada** (Decision 2002/2/EC, Art. 1 and recital 5): `recipient_type`. A private commercial
+  organisation is covered and a public body is not; a non-profit goes to review, because recital 5 brings
+  non-profit organisations in only for activities of a commercial nature. Interpretation: mapping the
+  input's categories onto "recipients subject to" PIPEDA through recital 5. Provincial exemptions
+  (recital 6) are not modelled.
+- **Japan** (Implementing Decision (EU) 2019/419, Art. 1(1) and (2), recitals 32 and 33):
+  `recipient_type` (a public body is not a personal information handling business operator; a
+  non-profit is, under recital 33) and `scope_carve_out`, one three-state input for the exclusions of
+  Art. 1(2)(a) to (e): `"none"`, `"applies"`, or not recorded.
+- **Korea** (Implementing Decision (EU) 2022/254, Art. 1(2)): `scope_carve_out`, one three-state input
+  for the exclusions of Art. 1(2)(a) to (c). PIPA covers public and private entities (recital 19).
+- **Israel** (Decision 2011/61/EU, Art. 1(1)): `automated_processing`, true when the transfer is
+  automated or the data are subject to further automated processing in Israel.
+- **Uruguay** (Implementing Decision 2012/484/EU): no condition. The title refers to automated processing;
+  Article 1(1) sets no such limit, and the tool follows Article 1(1) (interpretation).
+- **Brazil and the Faroe Islands**: no input. The tool reads every importer as within the scope limit
+  (Brazil: controllers and processors subject to the LGPD, public or private, recitals 25 and 26; the
+  Faroe Islands: recipients subject to the Faeroese Act), states that interpretation in the finding and
+  asks the reviewer to confirm the limit. A safeguard recorded for either keeps the question of section 2.
+- **The European Patent Organisation** (Implementing Decision (EU) 2025/1382, Art. 1): destination code
+  `EPO`. It is an international organisation with its seat in Munich (recital 7); a transfer to it is a
+  transfer under Chapter V (Art. 44), so the EEA exemption does not apply. A sub-processor's `country`
+  stays a country code.
+- **Citation form.** A finding cites "GDPR Art. 45(1)" (with Art. 45(9) for a decision adopted under
+  Directive 95/46/EC) and the decision with its operative provision, for example "Commission Implementing
+  Decision (EU) 2019/419, Art. 1".
+- **Dates.** A decision with no date of application takes effect on notification, which its Official
+  Journal text does not date; the tool reads it as applying from its date of adoption and dates an
+  amending act the same way (interpretation). The Faroe Islands decision applies from 15 June 2010
+  (Article 7). The United Kingdom decision "shall expire on 27 December 2031" (Article 4 as replaced by
+  Implementing Decision (EU) 2025/2574); the tool reads that day as its last day of validity.
+- **Review date.** `review_date` reads every decision as it applied on that date. Before its start date
+  or after its last day, it does not cover the transfer. Before an amendment that changed its scope or
+  validity (for the United Kingdom, Implementing Decisions (EU) 2025/1226 and 2025/2574), the transfer
+  goes to review (`HIGH`, or the safeguard question where a safeguard is recorded), because the table
+  models only the decision as last amended. A review date after the table date (`TABLE_AS_OF`) gets a
+  note that later acts are not reflected; a value that is not a calendar date is refused (exit `3`).
+- **Out of scope.** The United Kingdom decisions under Directive (EU) 2016/680 (law enforcement) are not
+  snapshotted and not modelled.
+
+The cases behind each answer are in [`tests/adequacy_cases.json`](../tests/adequacy_cases.json), written
+from the snapshots before the rule code; each quotes the provision it rests on, and a test checks every
+quote against its snapshot. On the pending appeal against the DPF decision see section 3; that the
+appeal is still pending rests on secondary sources.
+
 ## Sources
+
+Official Journal texts snapshotted under [`sources/oj`](../sources/oj) (retrieved 2026-10-14, re-fetched
+byte-identical on 2026-11-14; URL, headers and SHA-256 in
+[`sources/manifest.json`](../sources/manifest.json)): every adequacy decision on the list, the amending
+acts 2016/2295, 2025/1226 and 2025/2574, Implementing Decision (EU) 2025/1382, the GDPR with its 2018
+corrigendum, the corrigendum to Implementing Decision (EU) 2021/1772, and Implementing Decision (EU)
+2021/914. A search of the Publications Office's Cellar on 2026-11-14 found no adequacy act later than
+Implementing Decision (EU) 2026/179.
 
 Read on EUR-Lex (English) on 2026-11-10:
 
