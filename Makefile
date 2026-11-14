@@ -1,7 +1,7 @@
 PYTHON ?= python3
 PYTHONPATH := src
 
-.PHONY: install test coverage lint demo docs clean
+.PHONY: install test coverage lint demo docs table-age clean
 
 install:
 	@echo "No third-party dependencies. Pure standard library."
@@ -23,6 +23,10 @@ demo:
 
 docs:
 	@$(PYTHON) scripts/generate.py
+
+# How old the adequacy table is (src/dpa_review/table_age.py); --max-age-days N exits 1 when stale.
+table-age:
+	@PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m dpa_review.table_age
 
 clean:
 	@find . -type d -name __pycache__ -prune -exec rm -rf {} + 2>/dev/null || true
