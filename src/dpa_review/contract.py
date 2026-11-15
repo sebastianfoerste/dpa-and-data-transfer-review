@@ -151,7 +151,9 @@ CONTRACT: dict[str, Field] = {
         "not cover the transfer, and before an amendment that changed its scope or validity the transfer goes "
         "to review, because the tool models only the decision as last amended. Null or omitted reads the "
         "decisions as the adequacy table states them (checks.TABLE_AS_OF). A date after that table date gets "
-        "a note that later Commission acts are not reflected.",
+        "a note that later Commission acts are not reflected. A date before 25 May 2018, when the GDPR began to "
+        "apply (Art. 99(2) GDPR), gets a note on every transfer finding that Directive 95/46/EC governed the "
+        "transfer and is not modelled; the state does not change.",
     ),
     "processing": Field(
         "section",

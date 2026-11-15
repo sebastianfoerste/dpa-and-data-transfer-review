@@ -265,6 +265,12 @@ ADEQUACY_VERIFIED_ON = "2026-11-10"
 # reflected, and `dpa-review-table-age` reports how old it is.
 TABLE_AS_OF = "2026-11-14"
 
+# GDPR Art. 99(2): "It shall apply from 25 May 2018." Before that day Directive 95/46/EC governed
+# transfers (repealed by Art. 94(1) GDPR). The tool models only the GDPR, so a review date before it
+# gets a note on every transfer finding and no change of state (owner question 5, answer A, of
+# 15 November 2026).
+GDPR_APPLIES_FROM = "2018-05-25"
+
 # The reading of Article 1 of the Canadian decision through its recital 5 (owner's answer of
 # 10 November 2026: private-sector scope; a non-profit goes to review).
 _CANADA_RECIPIENTS = (
@@ -1575,11 +1581,53 @@ def assess_transfer(
     `impact_assessment_recorded` is read where an Art. 46 safeguard is recorded for a destination whose
     adequacy decision may not cover the importer, the United States (the DPF decision) included.
     `recipient` holds the facts recorded about the importer (RECIPIENT_FACTS), which a decision's scope
-    conditions read; `review_date` (YYYY-MM-DD) is the date the decisions are read on.
+    conditions read; `review_date` (YYYY-MM-DD) is the date the decisions are read on. A review date
+    before GDPR_APPLIES_FROM adds a note that the GDPR did not yet apply; the state does not change.
     """
+    on = review_date if isinstance(review_date, date) or review_date is None else parse_review_date(review_date)
+    status, severity, detail = _assess_transfer(
+        country,
+        mechanism,
+        dpf_certified=dpf_certified,
+        dpf_covers_hr_data=dpf_covers_hr_data,
+        dpf_covers_non_hr_data=dpf_covers_non_hr_data,
+        includes_hr_data=includes_hr_data,
+        includes_non_hr_data=includes_non_hr_data,
+        occasional_and_not_repetitive=occasional_and_not_repetitive,
+        impact_assessment_recorded=impact_assessment_recorded,
+        recipient=recipient,
+        on=on,
+    )
+    return (status, severity, _sentences(detail, *_before_gdpr_note(on)))
+
+
+def _before_gdpr_note(on: date | None) -> list[str]:
+    if on is None or on >= date.fromisoformat(GDPR_APPLIES_FROM):
+        return []
+    return [
+        f"On the review date, {on.isoformat()}, the GDPR did not yet apply: it applies from 25 May 2018 "
+        "(Art. 99(2) GDPR). Transfers were then governed by Directive 95/46/EC, repealed by Art. 94(1) GDPR, "
+        "which this tool does not model; the Chapter V citations describe the later law."
+    ]
+
+
+def _assess_transfer(
+    country: str,
+    mechanism: str | None,
+    *,
+    dpf_certified: bool,
+    dpf_covers_hr_data: bool,
+    dpf_covers_non_hr_data: bool,
+    includes_hr_data: bool | None,
+    includes_non_hr_data: bool | None,
+    occasional_and_not_repetitive: bool,
+    impact_assessment_recorded: bool,
+    recipient: Mapping[str, Any] | None,
+    on: date | None,
+) -> tuple[str, str, str]:
+    """assess_transfer for a parsed review date, before the note on dates before the GDPR."""
     country = (country or "").upper()
     mech = _mechanism(mechanism)
-    on = review_date if isinstance(review_date, date) or review_date is None else parse_review_date(review_date)
     route = _route(country, mechanism, recipient or {}, on)
     if route.kind == "eea":
         return ("PRESENT", "INFO", f"{country} is within the EEA; no Chapter V transfer mechanism required.")

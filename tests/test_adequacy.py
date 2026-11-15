@@ -390,5 +390,35 @@ class InputFactsGraphAndSchema(unittest.TestCase):
         self.assertTrue(violations(_dpa({"transfers": {"destinations": ["epo"]}})))
 
 
+
+class ReviewDateBeforeTheGdprApplied(unittest.TestCase):
+    """Owner question 5, answer A (15 November 2026): a review date before 25 May 2018 gets a note
+    that the GDPR did not yet apply (Art. 99(2) GDPR) and Directive 95/46/EC governed the transfer
+    (repealed by Art. 94(1) GDPR); the state does not change."""
+
+    NOTE = "the GDPR did not yet apply"
+
+    def test_the_note_marks_only_dates_before_25_may_2018(self) -> None:
+        for day, noted in (("2018-05-24", True), ("2018-05-25", False), ("2018-05-26", False)):
+            with self.subTest(day=day):
+                status, severity, detail = assess_transfer("CH", "adequacy", review_date=day)
+                self.assertEqual((status, severity), ("PRESENT", "LOW"))
+                (self.assertIn if noted else self.assertNotIn)(self.NOTE, detail)
+                if noted:
+                    self.assertIn("Art. 99(2) GDPR", detail)
+                    self.assertIn("Directive 95/46/EC", detail)
+
+    def test_every_route_carries_the_note_and_keeps_its_state(self) -> None:
+        for country, mechanism in (("IN", "sccs"), ("DE", None), ("IN", None), ("FO", "adequacy")):
+            with self.subTest(country=country, mechanism=mechanism):
+                before = assess_transfer(country, mechanism, review_date="2018-05-24")
+                after = assess_transfer(country, mechanism, review_date="2018-05-25")
+                self.assertIn(self.NOTE, before[2])
+                self.assertEqual(before[:2], after[:2])
+
+    def test_no_review_date_gives_no_note(self) -> None:
+        self.assertNotIn(self.NOTE, assess_transfer("CH", "adequacy")[2])
+
+
 if __name__ == "__main__":
     unittest.main()
