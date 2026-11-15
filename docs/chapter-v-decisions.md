@@ -124,8 +124,10 @@ validity, and the scope conditions below, all transcribed from the Official Jour
 - **Canada** (Decision 2002/2/EC, Art. 1 and recital 5): `recipient_type`. A private commercial
   organisation is covered and a public body is not; a non-profit goes to review, because recital 5 brings
   non-profit organisations in only for activities of a commercial nature. Interpretation: mapping the
-  input's categories onto "recipients subject to" PIPEDA through recital 5. Provincial exemptions
-  (recital 6) are not modelled.
+  input's categories onto "recipients subject to" PIPEDA through recital 5. Not modelled, and stated in
+  the finding: recital 5's statement that the Act does not cover employment data used for non-commercial
+  purposes other than that relating to employees in the federally regulated private sector, and the
+  provincial exemptions (recital 6).
 - **Japan** (Implementing Decision (EU) 2019/419, Art. 1(1) and (2), recitals 32 and 33):
   `recipient_type` (a public body is not a personal information handling business operator; a
   non-profit is, under recital 33) and `scope_carve_out`, one three-state input for the exclusions of
@@ -133,7 +135,9 @@ validity, and the scope conditions below, all transcribed from the Official Jour
 - **Korea** (Implementing Decision (EU) 2022/254, Art. 1(2)): `scope_carve_out`, one three-state input
   for the exclusions of Art. 1(2)(a) to (c). PIPA covers public and private entities (recital 19).
 - **Israel** (Decision 2011/61/EU, Art. 1(1)): `automated_processing`, true when the transfer is
-  automated or the data are subject to further automated processing in Israel.
+  automated or the data are subject to further automated processing in Israel. Article 2 limits the
+  decision to the State of Israel as defined in accordance with international law; the input records no
+  fact for it, and the tool reads every importer as within it (interpretation, stated in the finding).
 - **Uruguay** (Implementing Decision 2012/484/EU): no condition. The title refers to automated processing;
   Article 1(1) sets no such limit, and the tool follows Article 1(1) (interpretation).
 - **Brazil and the Faroe Islands**: no input. The tool reads every importer as within the scope limit
@@ -163,8 +167,10 @@ validity, and the scope conditions below, all transcribed from the Official Jour
 
 The cases behind each answer are in [`tests/adequacy_cases.json`](../tests/adequacy_cases.json), written
 from the snapshots before the rule code; each quotes the provision it rests on, and a test checks every
-quote against its snapshot. On the pending appeal against the DPF decision see section 3; that the
-appeal is still pending rests on secondary sources.
+quote against its snapshot. On the pending appeal against the DPF decision see section 3. On
+2026-11-14 a search of the Publications Office's Cellar found only the notice of appeal in C-703/25 P
+(CELEX 62025CN0703) and no judgment, order or Opinion in the case; the Court's own register was not
+read.
 
 ## Sources
 
