@@ -42,6 +42,10 @@ class TableAgeCommand(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(out, "Adequacy table as at 2026-11-14: 0 days old on 2026-11-14 (17 decisions).\n")
 
+    def test_one_day_is_singular(self) -> None:
+        out = _run("--today", "2026-11-15")[1]
+        self.assertEqual(out, "Adequacy table as at 2026-11-14: 1 day old on 2026-11-15 (17 decisions).\n")
+
     def test_invalid_today_is_rejected(self) -> None:
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as raised:
             main(["--today", "2026-13-01"])

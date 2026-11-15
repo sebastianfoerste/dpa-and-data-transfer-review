@@ -50,8 +50,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.json:
         print(json.dumps(report, indent=2, sort_keys=True))
     else:
+        days = "day" if report["age_days"] == 1 else "days"
         print(
-            f"Adequacy table as at {report['table_as_of']}: {report['age_days']} days old "
+            f"Adequacy table as at {report['table_as_of']}: {report['age_days']} {days} old "
             f"on {report['today']} ({report['decisions']} decisions)."
         )
         if stale:
