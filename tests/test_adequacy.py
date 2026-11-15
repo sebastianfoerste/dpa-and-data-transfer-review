@@ -162,6 +162,16 @@ class UnknownNeverYieldsAdequacy(unittest.TestCase):
         status, severity, _ = assess_transfer("IL", "adequacy", recipient={"automated_processing": "yes"})
         self.assertEqual((status, severity), ("NEEDS_REVIEW", "HIGH"))
 
+    def test_a_recipient_fact_of_another_type_is_refused_without_the_contract(self) -> None:
+        # build_packet without validate: a number is neither a recorded word nor a boolean, so it is refused.
+        for fragment in (
+            {"transfers": {"destinations": ["CA"], "recipient_type": {"CA": 1}}},
+            {"subprocessors": [{"name": "Example Support Ltd", "country": "IL", "automated_processing": [True]}]},
+        ):
+            with self.subTest(fragment=fragment):
+                with self.assertRaises(InvalidInputError):
+                    check_transfers(_dpa(fragment))
+
     def test_a_fact_the_decision_does_not_read_changes_nothing(self) -> None:
         for code in ("CH", "GB", "BR", "UY", "EPO"):
             for facts in ({"recipient_type": "public_body"}, {"scope_carve_out": "applies"}, {"automated_processing": False}):
