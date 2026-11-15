@@ -157,7 +157,8 @@ A public-safe prototype, not legal advice.
    Scope conditions are checked only as far as the input records the importer's
    facts; Brazil's and the Faroe Islands' limits, Article 2 of the Israeli decision
    and the Canadian recital 5 on employment data are stated, not checked, and the
-   decisions' earlier versions are not modelled.
+   decisions' earlier versions are not modelled. Adequacy decisions under the Law
+   Enforcement Directive (EU) 2016/680, such as the United Kingdom's, are out of scope.
 3. One jurisdiction lens (GDPR + a CCPA secondary check).
 4. No integration with a real CLM or ticketing system.
 Next production step: free-text ingestion, current adequacy data as a maintained
