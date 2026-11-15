@@ -303,6 +303,13 @@
       "expected": {"status": "PRESENT", "severity": "LOW", "cites": "Commission Implementing Decision (EU) 2021/1772, Art. 1(1)"}
     },
     {
+      "id": "united-kingdom-day-after-the-adoption-of-the-2025-2574-amendment",
+      "interpretation": "The amending decision takes effect on notification, which the Official Journal text does not date; the table uses its adoption date.",
+      "source": {"celex": "32025D2574", "pinpoint": "Implementing Decision (EU) 2025/2574, date of adoption", "quote": "Done at Brussels, 19 December 2025"},
+      "input": {"review_date": "2025-12-20", "transfers": {"destinations": ["GB"], "mechanisms": {"GB": "adequacy"}}},
+      "expected": {"status": "PRESENT", "severity": "LOW", "cites": "Commission Implementing Decision (EU) 2021/1772, Art. 1(1)"}
+    },
+    {
       "id": "united-kingdom-review-date-before-the-2025-1226-amendment",
       "source": {"celex": "32025D1226", "pinpoint": "Implementing Decision (EU) 2025/1226, Art. 1 (new Art. 4 of Implementing Decision (EU) 2021/1772)", "quote": "This Decision shall expire on 27 December 2025"},
       "input": {"review_date": "2025-06-23", "transfers": {"destinations": ["GB"], "mechanisms": {"GB": "adequacy"}}},
@@ -341,9 +348,23 @@
     {
       "id": "european-patent-organisation-day-before-adoption",
       "interpretation": "As brazil-day-before-adoption.",
-      "source": {"celex": "32025D1382", "pinpoint": "Implementing Decision (EU) 2025/1382, recital 7", "quote": "The Organisation has its seat in Munich"},
+      "source": {"celex": "32025D1382", "pinpoint": "Implementing Decision (EU) 2025/1382, date of adoption", "quote": "Done at Brussels, 15 July 2025."},
       "input": {"review_date": "2025-07-14", "transfers": {"destinations": ["EPO"], "mechanisms": {"EPO": "adequacy"}}},
       "expected": {"status": "MISSING", "severity": "HIGH", "cites": "Commission Implementing Decision (EU) 2025/1382, Art. 1"}
+    },
+    {
+      "id": "european-patent-organisation-on-adoption-day",
+      "interpretation": "As brazil-day-before-adoption.",
+      "source": {"celex": "32025D1382", "pinpoint": "Implementing Decision (EU) 2025/1382, date of adoption", "quote": "Done at Brussels, 15 July 2025."},
+      "input": {"review_date": "2025-07-15", "transfers": {"destinations": ["EPO"], "mechanisms": {"EPO": "adequacy"}}},
+      "expected": {"status": "PRESENT", "severity": "LOW", "cites": "Commission Implementing Decision (EU) 2025/1382, Art. 1", "detail_contains": "so the tool reads it as applying from its date of adoption"}
+    },
+    {
+      "id": "european-patent-organisation-day-after-adoption",
+      "interpretation": "As brazil-day-before-adoption.",
+      "source": {"celex": "32025D1382", "pinpoint": "Implementing Decision (EU) 2025/1382, date of adoption", "quote": "Done at Brussels, 15 July 2025."},
+      "input": {"review_date": "2025-07-16", "transfers": {"destinations": ["EPO"], "mechanisms": {"EPO": "adequacy"}}},
+      "expected": {"status": "PRESENT", "severity": "LOW", "cites": "Commission Implementing Decision (EU) 2025/1382, Art. 1"}
     },
     {
       "id": "european-patent-organisation-sccs",
