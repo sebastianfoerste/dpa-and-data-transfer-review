@@ -1,0 +1,469 @@
+{
+  "schema": "dpa-review.source-manifest.v1",
+  "publisher": "Publications Office of the European Union (Cellar), English language expression",
+  "retrieval_date": "2026-10-14",
+  "index_consulted": {
+    "url": "https://commission.europa.eu/law/law-topic/data-protection/international-dimension-data-protection/adequacy-decisions_en",
+    "read_on": "2026-10-14",
+    "use": "index only; not snapshotted and not relied on for any rule"
+  },
+  "recheck": {
+    "date": "2026-11-14",
+    "method": "Every file under sources/oj re-fetched from its requested_url with its request_headers; each response was byte-identical to the snapshot (rechecked_at per entry). The Cellar SPARQL endpoint was then searched for later acts.",
+    "new_acts_query": {
+      "endpoint": "https://publications.europa.eu/webapi/rdf/sparql",
+      "query": "English expression titles of works with a CELEX number starting 32025D or 32026D that contain \"adequate protection of personal data\" or \"adequate level of protection\"",
+      "run_on": "2026-11-14",
+      "response_sha256": "7295d0dc526d3933e501535c46f7c55c4e1e0a992ca98605892537d6f44e1b7e",
+      "result": "Six acts: 32025D1226, 32025D1382, 32025D2574 and 32026D0179, all snapshotted here, and 32025D1225 and 32025D2571, which amend the United Kingdom decision under Directive (EU) 2016/680 and are outside the tool's GDPR scope. No adequacy act later than 32026D0179."
+    }
+  },
+  "sources": [
+    {
+      "celex": "32000D0518",
+      "title": "Commission Decision 2000/518/EC of 26 July 2000 (Switzerland)",
+      "oj_reference": "OJ L 215, 25.8.2000, p. 1",
+      "file": "sources/oj/32000D0518.html",
+      "requested_url": "https://publications.europa.eu/resource/celex/32000D0518",
+      "request_headers": {
+        "Accept": "text/html",
+        "Accept-Language": "eng"
+      },
+      "resolved_url": "http://publications.europa.eu/resource/cellar/ee76f93d-4545-4878-87cb-7750d7f59987.0005.01/DOC_1",
+      "content_type": "text/html;charset=UTF-8",
+      "retrieved_at": "2026-10-14T10:08:04Z",
+      "bytes": 14066,
+      "sha256": "fe559735062befdb43aef2ff7d919679a58dc9e0fe9faa9367ef2eecc21cf6ba",
+      "rechecked_at": "2026-11-14T13:22:20Z"
+    },
+    {
+      "celex": "32002D0002",
+      "title": "Commission Decision 2002/2/EC of 20 December 2001 (Canada, PIPEDA)",
+      "oj_reference": "OJ L 2, 4.1.2002, p. 13",
+      "file": "sources/oj/32002D0002.html",
+      "requested_url": "https://publications.europa.eu/resource/celex/32002D0002",
+      "request_headers": {
+        "Accept": "text/html",
+        "Accept-Language": "eng"
+      },
+      "resolved_url": "http://publications.europa.eu/resource/cellar/1d88fc86-a6b6-4562-a28f-cae5f8dcaabe.0004.01/DOC_1",
+      "content_type": "text/html;charset=UTF-8",
+      "retrieved_at": "2026-10-14T10:08:04Z",
+      "bytes": 14786,
+      "sha256": "2ca1f6464e00d9d1650be6482f412ab63975d537b2acb48101a7c82e03afa269",
+      "rechecked_at": "2026-11-14T13:22:20Z"
+    },
+    {
+      "celex": "32003D0490",
+      "title": "Commission Decision 2003/490/EC of 30 June 2003 (Argentina)",
+      "oj_reference": "OJ L 168, 5.7.2003, p. 19",
+      "file": "sources/oj/32003D0490.html",
+      "requested_url": "https://publications.europa.eu/resource/celex/32003D0490",
+      "request_headers": {
+        "Accept": "text/html",
+        "Accept-Language": "eng"
+      },
+      "resolved_url": "http://publications.europa.eu/resource/cellar/9c3b2bdb-685c-4c5c-9e06-71dd3daf2918.0004.01/DOC_1",
+      "content_type": "text/html;charset=UTF-8",
+      "retrieved_at": "2026-10-14T10:08:04Z",
+      "bytes": 15359,
+      "sha256": "a8cffe61236414cfd4cf3ccb467bfd53b21fc31e95fa035af991c49e0d5d8012",
+      "rechecked_at": "2026-11-14T13:22:21Z"
+    },
+    {
+      "celex": "32003D0821",
+      "title": "Commission Decision 2003/821/EC of 21 November 2003 (Guernsey)",
+      "oj_reference": "OJ L 308, 25.11.2003, p. 27",
+      "file": "sources/oj/32003D0821.html",
+      "requested_url": "https://publications.europa.eu/resource/celex/32003D0821",
+      "request_headers": {
+        "Accept": "text/html",
+        "Accept-Language": "eng"
+      },
+      "resolved_url": "http://publications.europa.eu/resource/cellar/e54757b1-35d4-4a25-b48e-f9358bf6078d.0004.01/DOC_1",
+      "content_type": "text/html;charset=UTF-8",
+      "retrieved_at": "2026-10-14T10:08:04Z",
+      "bytes": 10178,
+      "sha256": "8e47893d0d5da66ffc50eac63f064f261794e22fcb7c34c8dd2cd4438f7901bd",
+      "rechecked_at": "2026-11-14T13:22:21Z"
+    },
+    {
+      "celex": "32004D0411",
+      "title": "Commission Decision 2004/411/EC of 28 April 2004 (Isle of Man)",
+      "oj_reference": "OJ L 151, 30.4.2004, p. 48",
+      "file": "sources/oj/32004D0411.xhtml",
+      "requested_url": "https://publications.europa.eu/resource/celex/32004D0411",
+      "request_headers": {
+        "Accept": "application/xhtml+xml",
+        "Accept-Language": "eng"
+      },
+      "resolved_url": "http://publications.europa.eu/resource/cellar/bc9c3516-0280-4b78-a8d6-a447d4548c92.0004.04/DOC_1",
+      "content_type": "application/xhtml+xml;charset=UTF-8",
+      "retrieved_at": "2026-10-14T10:08:04Z",
+      "bytes": 21606,
+      "sha256": "c3753bf333ba1fe7c268de5dfedc9c73d3b6e003139967f8b42d7d716f5fb632",
+      "rechecked_at": "2026-11-14T13:22:22Z"
+    },
+    {
+      "celex": "32008D0393",
+      "title": "Commission Decision 2008/393/EC of 8 May 2008 (Jersey)",
+      "oj_reference": "OJ L 138, 28.5.2008, p. 21",
+      "file": "sources/oj/32008D0393.xhtml",
+      "requested_url": "https://publications.europa.eu/resource/celex/32008D0393",
+      "request_headers": {
+        "Accept": "application/xhtml+xml",
+        "Accept-Language": "eng"
+      },
+      "resolved_url": "http://publications.europa.eu/resource/cellar/281f1021-80e7-4122-8fea-1de919465e49.0006.02/DOC_1",
+      "content_type": "application/xhtml+xml;charset=UTF-8",
+      "retrieved_at": "2026-10-14T10:08:04Z",
+      "bytes": 23122,
+      "sha256": "30e22169bc24e9a949c2c72ef96cb1b0b21dd409958a38a927d5a2ed24a0262f",
+      "rechecked_at": "2026-11-14T13:22:22Z"
+    },
+    {
+      "celex": "32010D0146",
+      "title": "Commission Decision 2010/146/EU of 5 March 2010 (Faroe Islands)",
+      "oj_reference": "OJ L 58, 9.3.2010, p. 17",
+      "file": "sources/oj/32010D0146.xhtml",
+      "requested_url": "https://publications.europa.eu/resource/celex/32010D0146",
+      "request_headers": {
+        "Accept": "application/xhtml+xml",
+        "Accept-Language": "eng"
+      },
+      "resolved_url": "http://publications.europa.eu/resource/cellar/58cafda2-50c5-478d-87e3-04ff548f3ed8.0006.02/DOC_1",
+      "content_type": "application/xhtml+xml;charset=UTF-8",
+      "retrieved_at": "2026-10-14T10:08:04Z",
+      "bytes": 20744,
+      "sha256": "ca8ddd0a590b7c7766a9f6bd6440a39ad4f19cfc4d30ffc0ae6fc7e2f0993fa5",
+      "rechecked_at": "2026-11-14T13:22:23Z"
+    },
+    {
+      "celex": "32010D0625",
+      "title": "Commission Decision 2010/625/EU of 19 October 2010 (Andorra)",
+      "oj_reference": "OJ L 277, 21.10.2010, p. 27",
+      "file": "sources/oj/32010D0625.xhtml",
+      "requested_url": "https://publications.europa.eu/resource/celex/32010D0625",
+      "request_headers": {
+        "Accept": "application/xhtml+xml",
+        "Accept-Language": "eng"
+      },
+      "resolved_url": "http://publications.europa.eu/resource/cellar/f266552e-c23a-4d4c-ad58-1762a0b45553.0007.02/DOC_1",
+      "content_type": "application/xhtml+xml;charset=UTF-8",
+      "retrieved_at": "2026-10-14T10:08:04Z",
+      "bytes": 25666,
+      "sha256": "215835624f0fd32295573abf030be12bbd8e4dd5dd964846bbae13ba88a099c9",
+      "rechecked_at": "2026-11-14T13:22:23Z"
+    },
+    {
+      "celex": "32011D0061",
+      "title": "Commission Decision 2011/61/EU of 31 January 2011 (Israel)",
+      "oj_reference": "OJ L 27, 1.2.2011, p. 39",
+      "file": "sources/oj/32011D0061.xhtml",
+      "requested_url": "https://publications.europa.eu/resource/celex/32011D0061",
+      "request_headers": {
+        "Accept": "application/xhtml+xml",
+        "Accept-Language": "eng"
+      },
+      "resolved_url": "http://publications.europa.eu/resource/cellar/c6ac642a-76f2-42be-ba52-7beadca4fdff.0014.03/DOC_1",
+      "content_type": "application/xhtml+xml;charset=UTF-8",
+      "retrieved_at": "2026-10-14T10:08:04Z",
+      "bytes": 31336,
+      "sha256": "534016ffa6a14d0f820b54396d983a42177ada0e16be737e774df8b0e057a755",
+      "rechecked_at": "2026-11-14T13:22:24Z"
+    },
+    {
+      "celex": "32012D0484",
+      "title": "Commission Implementing Decision 2012/484/EU of 21 August 2012 (Uruguay)",
+      "oj_reference": "OJ L 227, 23.8.2012, p. 11",
+      "file": "sources/oj/32012D0484.xhtml",
+      "requested_url": "https://publications.europa.eu/resource/celex/32012D0484",
+      "request_headers": {
+        "Accept": "application/xhtml+xml",
+        "Accept-Language": "eng"
+      },
+      "resolved_url": "http://publications.europa.eu/resource/cellar/d3dd96fc-ee04-11e1-8e28-01aa75ed71a1.0006.04/DOC_1",
+      "content_type": "application/xhtml+xml;charset=UTF-8",
+      "retrieved_at": "2026-10-14T10:08:04Z",
+      "bytes": 35012,
+      "sha256": "6b74b29aaf173fa2a7d2e9b6c413f36919e75ae8314c06ad1bd74a44299ba2d3",
+      "rechecked_at": "2026-11-14T13:22:24Z"
+    },
+    {
+      "celex": "32013D0065",
+      "title": "Commission Implementing Decision 2013/65/EU of 19 December 2012 (New Zealand)",
+      "oj_reference": "OJ L 28, 30.1.2013, p. 12",
+      "file": "sources/oj/32013D0065.xhtml",
+      "requested_url": "https://publications.europa.eu/resource/celex/32013D0065",
+      "request_headers": {
+        "Accept": "application/xhtml+xml",
+        "Accept-Language": "eng"
+      },
+      "resolved_url": "http://publications.europa.eu/resource/cellar/54ba03bc-6ace-11e2-9294-01aa75ed71a1.0006.04/DOC_1",
+      "content_type": "application/xhtml+xml;charset=UTF-8",
+      "retrieved_at": "2026-10-14T10:08:04Z",
+      "bytes": 28779,
+      "sha256": "c5cf8f13888790fdb7405c45f746f74cf3f1eececc9666a1049853284f0b0556",
+      "rechecked_at": "2026-11-14T13:22:25Z"
+    },
+    {
+      "celex": "32016D2295",
+      "title": "Commission Implementing Decision (EU) 2016/2295 of 16 December 2016 amending eleven Directive 95/46/EC adequacy decisions",
+      "oj_reference": "OJ L 344, 17.12.2016, p. 83",
+      "file": "sources/oj/32016D2295.xhtml",
+      "requested_url": "https://publications.europa.eu/resource/celex/32016D2295",
+      "request_headers": {
+        "Accept": "application/xhtml+xml",
+        "Accept-Language": "eng"
+      },
+      "resolved_url": "http://publications.europa.eu/resource/cellar/f83e7478-c427-11e6-a6db-01aa75ed71a1.0006.03/DOC_1",
+      "content_type": "application/xhtml+xml;charset=UTF-8",
+      "retrieved_at": "2026-10-14T10:08:04Z",
+      "bytes": 64490,
+      "sha256": "ba73a24b1a2556dc06145c947782457f7e7ef7fd4c1650556ef2d077c61d6794",
+      "rechecked_at": "2026-11-14T13:22:26Z"
+    },
+    {
+      "celex": "32016R0679",
+      "title": "Regulation (EU) 2016/679 (General Data Protection Regulation)",
+      "oj_reference": "OJ L 119, 4.5.2016, p. 1",
+      "file": "sources/oj/32016R0679.xhtml",
+      "requested_url": "https://publications.europa.eu/resource/celex/32016R0679",
+      "request_headers": {
+        "Accept": "application/xhtml+xml",
+        "Accept-Language": "eng"
+      },
+      "resolved_url": "http://publications.europa.eu/resource/cellar/3e485e15-11bd-11e6-ba9a-01aa75ed71a1.0006.03/DOC_1",
+      "content_type": "application/xhtml+xml;charset=UTF-8",
+      "retrieved_at": "2026-10-14T10:08:04Z",
+      "bytes": 806864,
+      "sha256": "962539af03738bf552319ff4ce42d69e5f95a576307c4dfed7bf87e81b646b9d",
+      "rechecked_at": "2026-11-14T13:22:26Z"
+    },
+    {
+      "celex": "32016R0679R(02)",
+      "title": "Corrigendum to Regulation (EU) 2016/679 (does not touch Articles 44 to 49)",
+      "oj_reference": "OJ L 127, 23.5.2018, p. 2",
+      "file": "sources/oj/32016R0679R_02.xhtml",
+      "requested_url": "https://publications.europa.eu/resource/celex/32016R0679R%2802%29",
+      "request_headers": {
+        "Accept": "application/xhtml+xml",
+        "Accept-Language": "eng"
+      },
+      "resolved_url": "http://publications.europa.eu/resource/cellar/683d5816-5e52-11e8-ab9c-01aa75ed71a1.0006.03/DOC_1",
+      "content_type": "application/xhtml+xml;charset=UTF-8",
+      "retrieved_at": "2026-10-14T10:11:56Z",
+      "bytes": 23861,
+      "sha256": "292bd10918681ec090f23eafbc53afd4dd3bbb7cb976f6748df4a6254f2be54a",
+      "rechecked_at": "2026-11-14T13:22:27Z"
+    },
+    {
+      "celex": "32019D0419",
+      "title": "Commission Implementing Decision (EU) 2019/419 of 23 January 2019 (Japan)",
+      "oj_reference": "OJ L 76, 19.3.2019, p. 1",
+      "file": "sources/oj/32019D0419.xhtml",
+      "requested_url": "https://publications.europa.eu/resource/celex/32019D0419",
+      "request_headers": {
+        "Accept": "application/xhtml+xml",
+        "Accept-Language": "eng"
+      },
+      "resolved_url": "http://publications.europa.eu/resource/cellar/23870fe5-4a25-11e9-a8ed-01aa75ed71a1.0006.03/DOC_1",
+      "content_type": "application/xhtml+xml;charset=UTF-8",
+      "retrieved_at": "2026-10-14T10:08:04Z",
+      "bytes": 517803,
+      "sha256": "b340e26efb45cabb830458e88a1f22e48e84106175a7751e7da416eabe1a8098",
+      "rechecked_at": "2026-11-14T13:22:27Z"
+    },
+    {
+      "celex": "32021D0914",
+      "title": "Commission Implementing Decision (EU) 2021/914 of 4 June 2021 (standard contractual clauses)",
+      "oj_reference": "OJ L 199, 7.6.2021, p. 31",
+      "file": "sources/oj/32021D0914.xhtml",
+      "requested_url": "https://publications.europa.eu/resource/celex/32021D0914",
+      "request_headers": {
+        "Accept": "application/xhtml+xml",
+        "Accept-Language": "eng"
+      },
+      "resolved_url": "http://publications.europa.eu/resource/cellar/55862dbf-c72b-11eb-a925-01aa75ed71a1.0006.03/DOC_1",
+      "content_type": "application/xhtml+xml;charset=UTF-8",
+      "retrieved_at": "2026-10-14T11:14:47Z",
+      "bytes": 253740,
+      "sha256": "85d76f03ea30e1cc739311df8f362b03c35cf9c3350f6d7f6e012c65c042872d",
+      "rechecked_at": "2026-11-14T13:22:28Z"
+    },
+    {
+      "celex": "32021D1772",
+      "title": "Commission Implementing Decision (EU) 2021/1772 of 28 June 2021 (United Kingdom, GDPR)",
+      "oj_reference": "OJ L 360, 11.10.2021, p. 1",
+      "file": "sources/oj/32021D1772.xhtml",
+      "requested_url": "https://publications.europa.eu/resource/celex/32021D1772",
+      "request_headers": {
+        "Accept": "application/xhtml+xml",
+        "Accept-Language": "eng"
+      },
+      "resolved_url": "http://publications.europa.eu/resource/cellar/9ba8f9ab-2a2d-11ec-bd8e-01aa75ed71a1.0006.03/DOC_1",
+      "content_type": "application/xhtml+xml;charset=UTF-8",
+      "retrieved_at": "2026-10-14T10:08:04Z",
+      "bytes": 717491,
+      "sha256": "db39957dd5eed5928292c153bdc7ccced5a9c51427333f64382b68b49c7b772b",
+      "rechecked_at": "2026-11-14T13:22:29Z"
+    },
+    {
+      "celex": "32021D1772R(01)",
+      "title": "Corrigendum to Implementing Decision (EU) 2021/1772 (title: Decision, not Regulation)",
+      "oj_reference": "OJ L 382, 28.10.2021, p. 55",
+      "file": "sources/oj/32021D1772R_01.xhtml",
+      "requested_url": "https://publications.europa.eu/resource/celex/32021D1772R%2801%29",
+      "request_headers": {
+        "Accept": "application/xhtml+xml",
+        "Accept-Language": "eng"
+      },
+      "resolved_url": "http://publications.europa.eu/resource/cellar/149c4019-37c2-11ec-8daf-01aa75ed71a1.0006.03/DOC_1",
+      "content_type": "application/xhtml+xml;charset=UTF-8",
+      "retrieved_at": "2026-10-14T10:11:56Z",
+      "bytes": 2541,
+      "sha256": "6e209dfc4943a514f5037f466ce91f70fb44680a34d45964cb371027d3b99a81",
+      "rechecked_at": "2026-11-14T13:22:29Z"
+    },
+    {
+      "celex": "32022D0254",
+      "title": "Commission Implementing Decision (EU) 2022/254 of 17 December 2021 (Republic of Korea)",
+      "oj_reference": "OJ L 44, 24.2.2022, p. 1",
+      "file": "sources/oj/32022D0254.xhtml",
+      "requested_url": "https://publications.europa.eu/resource/celex/32022D0254",
+      "request_headers": {
+        "Accept": "application/xhtml+xml",
+        "Accept-Language": "eng"
+      },
+      "resolved_url": "http://publications.europa.eu/resource/cellar/02b74f07-9551-11ec-b4e4-01aa75ed71a1.0006.03/DOC_1",
+      "content_type": "application/xhtml+xml;charset=UTF-8",
+      "retrieved_at": "2026-10-14T10:08:04Z",
+      "bytes": 1146209,
+      "sha256": "c217ab99fe10ec99b693aff5d2742b112ae6f37f3cb32b101216ea23d2c1735e",
+      "rechecked_at": "2026-11-14T13:22:30Z"
+    },
+    {
+      "celex": "32023D1795",
+      "title": "Commission Implementing Decision (EU) 2023/1795 of 10 July 2023 (EU-US Data Privacy Framework)",
+      "oj_reference": "OJ L 231, 20.9.2023, p. 118",
+      "file": "sources/oj/32023D1795.xhtml",
+      "requested_url": "https://publications.europa.eu/resource/celex/32023D1795",
+      "request_headers": {
+        "Accept": "application/xhtml+xml",
+        "Accept-Language": "eng"
+      },
+      "resolved_url": "http://publications.europa.eu/resource/cellar/abb0ba05-5750-11ee-9220-01aa75ed71a1.0006.03/DOC_1",
+      "content_type": "application/xhtml+xml;charset=UTF-8",
+      "retrieved_at": "2026-10-14T10:08:04Z",
+      "bytes": 1230196,
+      "sha256": "3a10c7e679fe1370b06d0812218984ed4b928dde6c7bc6247ee30aeba9963396",
+      "rechecked_at": "2026-11-14T13:22:31Z"
+    },
+    {
+      "celex": "32025D1226",
+      "title": "Commission Implementing Decision (EU) 2025/1226 of 24 June 2025 amending Implementing Decision (EU) 2021/1772",
+      "oj_reference": "OJ L, 2025/1226, 26.6.2025",
+      "file": "sources/oj/32025D1226.xhtml",
+      "requested_url": "https://publications.europa.eu/resource/celex/32025D1226",
+      "request_headers": {
+        "Accept": "application/xhtml+xml",
+        "Accept-Language": "eng"
+      },
+      "resolved_url": "http://publications.europa.eu/resource/cellar/9a8dff4a-5225-11f0-a9d0-01aa75ed71a1.0006.03/DOC_1",
+      "content_type": "application/xhtml+xml;charset=UTF-8",
+      "retrieved_at": "2026-10-14T10:08:04Z",
+      "bytes": 17665,
+      "sha256": "0bd0d714a4e212902ae34745fd1083eeb49f040e44a4ec93af8a9238307b14c0",
+      "rechecked_at": "2026-11-14T13:22:31Z"
+    },
+    {
+      "celex": "32025D1382",
+      "title": "Commission Implementing Decision (EU) 2025/1382 of 15 July 2025 (European Patent Organisation)",
+      "oj_reference": "OJ L, 2025/1382, 18.7.2025",
+      "file": "sources/oj/32025D1382.xhtml",
+      "requested_url": "https://publications.europa.eu/resource/celex/32025D1382",
+      "request_headers": {
+        "Accept": "application/xhtml+xml",
+        "Accept-Language": "eng"
+      },
+      "resolved_url": "http://publications.europa.eu/resource/cellar/e9e23150-636f-11f0-bf4e-01aa75ed71a1.0006.03/DOC_1",
+      "content_type": "application/xhtml+xml;charset=UTF-8",
+      "retrieved_at": "2026-10-14T10:08:04Z",
+      "bytes": 318002,
+      "sha256": "0308499231373ed1d3954754f365b4d1f7d35a0088bc785fedb90fcf7bfc835e",
+      "rechecked_at": "2026-11-14T13:22:32Z"
+    },
+    {
+      "celex": "32025D2574",
+      "title": "Commission Implementing Decision (EU) 2025/2574 of 19 December 2025 amending Implementing Decision (EU) 2021/1772",
+      "oj_reference": "OJ L, 2025/2574, 23.12.2025",
+      "file": "sources/oj/32025D2574.xhtml",
+      "requested_url": "https://publications.europa.eu/resource/celex/32025D2574",
+      "request_headers": {
+        "Accept": "application/xhtml+xml",
+        "Accept-Language": "eng"
+      },
+      "resolved_url": "http://publications.europa.eu/resource/cellar/c33195e2-dfa5-11f0-8439-01aa75ed71a1.0006.03/DOC_1",
+      "content_type": "application/xhtml+xml;charset=UTF-8",
+      "retrieved_at": "2026-10-14T10:08:04Z",
+      "bytes": 290175,
+      "sha256": "755e6dc12015d1648037d18a4adb8e135188021489e649cfa5c01c5d3bac1000",
+      "rechecked_at": "2026-11-14T13:22:33Z"
+    },
+    {
+      "celex": "32026D0179",
+      "title": "Commission Implementing Decision (EU) 2026/179 of 26 January 2026 (Brazil)",
+      "oj_reference": "OJ L, 2026/179, 28.1.2026",
+      "file": "sources/oj/32026D0179.xhtml",
+      "requested_url": "https://publications.europa.eu/resource/celex/32026D0179",
+      "request_headers": {
+        "Accept": "application/xhtml+xml",
+        "Accept-Language": "eng"
+      },
+      "resolved_url": "http://publications.europa.eu/resource/cellar/c5ae831f-fbeb-11f0-8da5-01aa75ed71a1.0006.03/DOC_1",
+      "content_type": "application/xhtml+xml;charset=UTF-8",
+      "retrieved_at": "2026-10-14T10:08:04Z",
+      "bytes": 492464,
+      "sha256": "0c8eaeeda165f5ebe2fc747520961f3a2d600d81398d83fb293ddab6d6f97a40",
+      "rechecked_at": "2026-11-14T13:22:33Z"
+    }
+  ],
+  "texts_consulted": [
+    {
+      "title": "Judgment of the Court (Grand Chamber) of 16 July 2020, Case C-311/18",
+      "url": "https://publications.europa.eu/resource/celex/62018CJ0311",
+      "retrieved_at": "2026-10-14T11:19:04Z",
+      "sha256": "8520d8e819b50edcca816acd3a8b80ce88bd9796badef3f5921d4f2438863b25",
+      "pinpoints_checked": "paras 132 to 135 (supplementary measures; case-by-case verification by the exporter)",
+      "kind": "case law",
+      "use": "cited for the transfer impact assessment; not snapshotted"
+    },
+    {
+      "title": "EDPB Guidelines 2/2018 on derogations of Article 49 under Regulation 2016/679, adopted on 25 May 2018",
+      "url": "https://www.edpb.europa.eu/system/files/documents/files/file1/edpb_guidelines_2_2018_derogations_en.pdf",
+      "retrieved_at": "2026-10-14T11:18:11Z",
+      "sha256": "74882062cdcdb1e003399604524e76d88ad857b6aa1b7a6b4afd459cb55773b6",
+      "pinpoints_checked": "section 1 (restrictive interpretation; 'can basically be deemed as systematic and repeated')",
+      "kind": "guidance, not law",
+      "use": "cited in the Art. 49 derogation findings; not snapshotted"
+    },
+    {
+      "title": "EDPB Recommendations 01/2020 on measures that supplement transfer tools to ensure compliance with the EU level of protection of personal data, version 2.0, adopted on 18 June 2021",
+      "url": "https://www.edpb.europa.eu/system/files/documents/2021-06/edpb_recommendations_202001vo.2.0_supplementarymeasurestransferstools_en.pdf",
+      "retrieved_at": "2026-10-14T11:17:55Z",
+      "sha256": "36d34fe340cc140fc38919cdaea2710042c0e6cb48f8d7cecd6819d75de937b4",
+      "pinpoints_checked": "title page (version 2.0, adopted on 18 June 2021)",
+      "kind": "guidance, not law",
+      "use": "cited in the SCC, Art. 46 safeguard and transfer impact assessment findings; not snapshotted"
+    },
+    {
+      "title": "California Consumer Privacy Act of 2018, Cal. Civ. Code §§ 1798.100(d) and 1798.140(ag), text effective 1 January 2025 as posted by the California Privacy Protection Agency",
+      "url": "https://cppa.ca.gov/regulations/pdf/ccpa_statute.pdf",
+      "retrieved_at": "2026-10-14T11:18:38Z",
+      "sha256": "0beb83ccf73d82ede066f7e4154952435484410f748da09ac4329ed9afe6a43f",
+      "pinpoints_checked": "§ 1798.100(d) (agreement with a service provider); § 1798.140(ag)(1) (definition of service provider)",
+      "kind": "statute (agency-posted text; leginfo.legislature.ca.gov refused the request with HTTP 403)",
+      "use": "citation of the CCPA check; not snapshotted"
+    }
+  ]
+}

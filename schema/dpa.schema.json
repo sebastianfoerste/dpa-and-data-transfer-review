@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/sebastianfoerste/dpa-and-data-transfer-review/main/schema/dpa.schema.json",
   "title": "dpa-review input: a structured description of one Data Processing Agreement",
-  "description": "Generated from src/dpa_review/contract.py by `make docs`; docs/input-format.md explains every key. The CLI enforces this schema and, beyond it, a few cross-field rules: every key of transfers.mechanisms and of the other per-country objects under transfers is a listed destination, sub-processor names are unique ignoring case, spaces and punctuation, and every evidence key names a fact the input records. Input that breaks any of them exits 3.",
+  "description": "Generated from src/dpa_review/contract.py by `make docs`; docs/input-format.md explains every key. The CLI enforces this schema and, beyond it, a few cross-field rules: every key of transfers.mechanisms and of the other per-country objects under transfers is a listed destination, sub-processor names are unique ignoring case, spaces and punctuation, review_date is a calendar date, and every evidence key names a fact the input records. Input that breaks any of them exits 3.",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -28,6 +28,15 @@
         "boolean",
         "null"
       ]
+    },
+    "review_date": {
+      "description": "The date the transfers are assessed on, as YYYY-MM-DD. The transfer rules read each adequacy decision as it applied on that date: before the date it applies from or after its last day of validity it does not cover the transfer, and before an amendment that changed its scope or validity the transfer goes to review, because the tool models only the decision as last amended. Null or omitted reads the decisions as the adequacy table states them (checks.TABLE_AS_OF). A date after that table date gets a note that later Commission acts are not reflected. A date before 25 May 2018, when the GDPR began to apply (Art. 99(2) GDPR), gets a note on every transfer finding that Directive 95/46/EC governed the transfer and is not modelled; the state does not change.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+      "format": "date"
     },
     "processing": {
       "description": "The processing details GDPR Art. 28(3) requires the DPA to set out. Read by the processing.* rules.",
@@ -289,6 +298,38 @@
               "boolean",
               "null"
             ]
+          },
+          "recipient_type": {
+            "description": "The sub-processor as an importer. What kind of organisation the importer is: \"private_commercial\" (a private organisation acting in the course of commercial activities), \"public_body\" (a public authority or body) or \"non_profit\". Read for Canada (Decision 2002/2/EC, Art. 1 and recital 5: a private commercial organisation is covered, a public body is not, a non-profit goes to review) and Japan (Implementing Decision (EU) 2019/419, Art. 1(1) and recitals 32 and 33: a public body is not covered). Null or omitted leaves the condition unresolved.",
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "private_commercial",
+              "public_body",
+              "non_profit",
+              null
+            ]
+          },
+          "scope_carve_out": {
+            "description": "The sub-processor as an importer. \"none\" when the importer falls within none of the exclusions of Art. 1(2) of the Japanese (Implementing Decision (EU) 2019/419) or Korean (Implementing Decision (EU) 2022/254) decision for the data transferred, \"applies\" when it falls within one. Null or omitted leaves the condition unresolved.",
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "none",
+              "applies",
+              null
+            ]
+          },
+          "automated_processing": {
+            "description": "The transfer to the sub-processor. Israel (Decision 2011/61/EU, Art. 1(1)): true when the transfer is automated or the data are subject to further automated processing in Israel, false when neither. Null or omitted leaves the condition unresolved.",
+            "type": [
+              "boolean",
+              "null"
+            ]
           }
         },
         "required": [
@@ -303,11 +344,11 @@
       "additionalProperties": false,
       "properties": {
         "destinations": {
-          "description": "Upper-case ISO 3166-1 alpha-2 codes of every country the processor transfers personal data to directly; each is checked (rule transfer.<country>). Record [] when there are none.",
+          "description": "Upper-case ISO 3166-1 alpha-2 codes of every country the processor transfers personal data to directly, and \"EPO\" for the European Patent Organisation, an international organisation; each is checked (rule transfer.<country>). Record [] when there are none.",
           "type": "array",
           "items": {
             "type": "string",
-            "pattern": "^[A-Z]{2}$",
+            "pattern": "^([A-Z]{2}|EPO)$",
             "not": {
               "enum": [
                 "EL",
@@ -325,7 +366,7 @@
             "null"
           ],
           "propertyNames": {
-            "pattern": "^[A-Z]{2}$",
+            "pattern": "^([A-Z]{2}|EPO)$",
             "not": {
               "enum": [
                 "EL",
@@ -364,7 +405,7 @@
             "null"
           ],
           "propertyNames": {
-            "pattern": "^[A-Z]{2}$",
+            "pattern": "^([A-Z]{2}|EPO)$",
             "not": {
               "enum": [
                 "EL",
@@ -388,7 +429,7 @@
             "null"
           ],
           "propertyNames": {
-            "pattern": "^[A-Z]{2}$",
+            "pattern": "^([A-Z]{2}|EPO)$",
             "not": {
               "enum": [
                 "EL",
@@ -412,7 +453,7 @@
             "null"
           ],
           "propertyNames": {
-            "pattern": "^[A-Z]{2}$",
+            "pattern": "^([A-Z]{2}|EPO)$",
             "not": {
               "enum": [
                 "EL",
@@ -436,7 +477,7 @@
             "null"
           ],
           "propertyNames": {
-            "pattern": "^[A-Z]{2}$",
+            "pattern": "^([A-Z]{2}|EPO)$",
             "not": {
               "enum": [
                 "EL",
@@ -453,8 +494,91 @@
             ]
           }
         },
+        "recipient_type": {
+          "description": "Per destination, the importer. What kind of organisation the importer is: \"private_commercial\" (a private organisation acting in the course of commercial activities), \"public_body\" (a public authority or body) or \"non_profit\". Read for Canada (Decision 2002/2/EC, Art. 1 and recital 5: a private commercial organisation is covered, a public body is not, a non-profit goes to review) and Japan (Implementing Decision (EU) 2019/419, Art. 1(1) and recitals 32 and 33: a public body is not covered). Null or omitted leaves the condition unresolved.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "propertyNames": {
+            "pattern": "^([A-Z]{2}|EPO)$",
+            "not": {
+              "enum": [
+                "EL",
+                "EU",
+                "UK"
+              ]
+            }
+          },
+          "additionalProperties": {
+            "description": "What kind of organisation the importer is.",
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "private_commercial",
+              "public_body",
+              "non_profit",
+              null
+            ]
+          }
+        },
+        "scope_carve_out": {
+          "description": "Per destination, the importer. \"none\" when the importer falls within none of the exclusions of Art. 1(2) of the Japanese (Implementing Decision (EU) 2019/419) or Korean (Implementing Decision (EU) 2022/254) decision for the data transferred, \"applies\" when it falls within one. Null or omitted leaves the condition unresolved.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "propertyNames": {
+            "pattern": "^([A-Z]{2}|EPO)$",
+            "not": {
+              "enum": [
+                "EL",
+                "EU",
+                "UK"
+              ]
+            }
+          },
+          "additionalProperties": {
+            "description": "Whether the importer falls within an exclusion of Art. 1(2).",
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "none",
+              "applies",
+              null
+            ]
+          }
+        },
+        "automated_processing": {
+          "description": "Per destination. Israel (Decision 2011/61/EU, Art. 1(1)): true when the transfer is automated or the data are subject to further automated processing in Israel, false when neither. Null or omitted leaves the condition unresolved.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "propertyNames": {
+            "pattern": "^([A-Z]{2}|EPO)$",
+            "not": {
+              "enum": [
+                "EL",
+                "EU",
+                "UK"
+              ]
+            }
+          },
+          "additionalProperties": {
+            "description": "The transfer is automated or the data are subject to further automated processing.",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        },
         "transfer_impact_assessment": {
-          "description": "A transfer impact assessment is recorded. Read when an Art. 46 safeguard is recorded for a destination or sub-processor in a third country: with no adequacy decision, by rule transfer.impact_assessment; with a scope-limited adequacy decision (the United States and its DPF decision included), by the transfer rule, which asks whether the importer is within the decision's scope.",
+          "description": "A transfer impact assessment is recorded. Read when an Art. 46 safeguard is recorded for a destination or sub-processor in a third country: with no adequacy decision, by rule transfer.impact_assessment; with an adequacy decision that may not cover the importer (the United States and its DPF decision included), by the transfer rule, which asks whether the importer is within the decision's scope.",
           "type": [
             "boolean",
             "null"

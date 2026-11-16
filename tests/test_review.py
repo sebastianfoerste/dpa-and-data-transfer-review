@@ -27,9 +27,14 @@ class TransferAssessment(unittest.TestCase):
         self.assertEqual(sev, "INFO")
 
     def test_adequacy_country_is_low_risk(self):
-        status, sev, _ = assess_transfer("JP", "adequacy")
+        status, sev, _ = assess_transfer("JP", "adequacy", recipient={"recipient_type": "private_commercial", "scope_carve_out": "none"})
         self.assertEqual(status, "PRESENT")
         self.assertEqual(sev, "LOW")
+
+    def test_adequacy_country_without_the_importer_facts_needs_review(self):
+        # An unknown scope condition never counts as adequacy (owner's answer of 10 November 2026).
+        status, sev, _ = assess_transfer("JP", "adequacy")
+        self.assertEqual((status, sev), ("NEEDS_REVIEW", "HIGH"))
 
     def test_third_country_without_mechanism_is_high_severity(self):
         status, sev, _ = assess_transfer("US", "none")
@@ -114,9 +119,10 @@ class DataPrivacyFrameworkAssessment(unittest.TestCase):
         self.assertEqual(sev, "LOW")
 
     def test_dpf_with_unknown_hr_scope_needs_review(self):
+        # An unknown adequacy condition is HIGH (owner's answer of 10 November 2026); it was MEDIUM.
         status, sev, detail = assess_transfer("US", "dpf", **DPF_LISTED)
         self.assertEqual(status, "NEEDS_REVIEW")
-        self.assertEqual(sev, "MEDIUM")
+        self.assertEqual(sev, "HIGH")
         self.assertIn("HR data", detail)
 
     def test_hr_only_certification_does_not_cover_non_hr_data(self):
@@ -135,7 +141,7 @@ class DataPrivacyFrameworkAssessment(unittest.TestCase):
         status, sev, detail = assess_transfer(
             "US", "dpf", dpf_certified=True, dpf_covers_hr_data=True, includes_hr_data=True
         )
-        self.assertEqual((status, sev), ("NEEDS_REVIEW", "MEDIUM"))
+        self.assertEqual((status, sev), ("NEEDS_REVIEW", "HIGH"))
         self.assertIn("non-HR data", detail)
 
     def test_hr_only_certification_covers_an_hr_only_transfer(self):
@@ -161,7 +167,7 @@ class DataPrivacyFrameworkAssessment(unittest.TestCase):
                     includes_hr_data=False,
                     includes_non_hr_data=False,
                 )
-                self.assertEqual((status, sev), ("NEEDS_REVIEW", "MEDIUM"))
+                self.assertEqual((status, sev), ("NEEDS_REVIEW", "HIGH"))
                 self.assertIn("neither non-HR data nor HR data is transferred", detail)
 
     def test_uncertified_importer_blocks_whatever_data_is_recorded(self):
@@ -176,8 +182,8 @@ class DataPrivacyFrameworkAssessment(unittest.TestCase):
         packet = build_packet(dpa)
         for rule_id in self.US_TRANSFERS:
             finding = _by_id(packet, rule_id)
-            self.assertEqual((finding.status, finding.severity), ("NEEDS_REVIEW", "MEDIUM"))
-        self.assertEqual(packet.review_state, "NEEDS_REVIEW")
+            self.assertEqual((finding.status, finding.severity), ("NEEDS_REVIEW", "HIGH"))
+        self.assertEqual(packet.review_state, "BLOCKED")
 
     def _dpf_dpa(self, certified, includes_hr_data=False, covers_hr_data=None):
         dpa = json.loads(json.dumps(SAMPLE))
@@ -231,12 +237,12 @@ class DataPrivacyFrameworkAssessment(unittest.TestCase):
             self.assertIn("HR data", finding.detail)
         self.assertEqual(packet.review_state, "BLOCKED")
 
-    def test_omitted_hr_scope_sends_the_packet_to_review(self):
+    def test_omitted_hr_scope_blocks_the_packet_for_review(self):
         packet = build_packet(self._dpf_dpa(certified=True, includes_hr_data=None))
         for rule_id in self.US_TRANSFERS:
             finding = _by_id(packet, rule_id)
-            self.assertEqual((finding.status, finding.severity), ("NEEDS_REVIEW", "MEDIUM"))
-        self.assertEqual(packet.review_state, "NEEDS_REVIEW")
+            self.assertEqual((finding.status, finding.severity), ("NEEDS_REVIEW", "HIGH"))
+        self.assertEqual(packet.review_state, "BLOCKED")
 
 
 class AdequateDestinationWithOtherMechanism(unittest.TestCase):
@@ -263,7 +269,7 @@ class AdequateDestinationWithOtherMechanism(unittest.TestCase):
         self.assertEqual((finding.status, finding.severity), ("NEEDS_REVIEW", "LOW"))
         self.assertEqual(
             finding.citation,
-            "GDPR Art. 44, 45(1); Commission Implementing Decision (EU) 2021/1772; "
+            "GDPR Art. 44, 45(1); Commission Implementing Decision (EU) 2021/1772, Art. 1(1); "
             "Commission Implementing Decision (EU) 2025/2574",
         )
         self.assertIn("Art. 45 adequacy decision for GB", finding.remediation)
@@ -591,11 +597,12 @@ class TransferCitations(unittest.TestCase):
         for mechanism in ("adequacy", "none"):
             with self.subTest(mechanism=mechanism):
                 self.assertEqual(
-                    self._citation("CH", mechanism), "GDPR Art. 44, 45(1), 45(9); Commission Decision 2000/518/EC"
+                    self._citation("CH", mechanism),
+                    "GDPR Art. 44, 45(1), 45(9); Commission Decision 2000/518/EC, Art. 1",
                 )
         self.assertEqual(
             _by_id(build_packet(SAMPLE), "transfer.jp").citation,
-            "GDPR Art. 44, 45(1); Commission Implementing Decision (EU) 2019/419",
+            "GDPR Art. 44, 45(1); Commission Implementing Decision (EU) 2019/419, Art. 1",
         )
 
     def test_bcr_transfer_cites_article_46_2_b_and_47(self):
@@ -655,7 +662,7 @@ class CuredPacket(unittest.TestCase):
         us = _by_id(packet, "transfer.us")
         self.assertEqual(
             us.citation,
-            "GDPR Art. 44, 45(1), 46(2)(c); Commission Implementing Decision (EU) 2023/1795; "
+            "GDPR Art. 44, 45(1), 46(2)(c); Commission Implementing Decision (EU) 2023/1795, Art. 1; "
             "Commission Implementing Decision (EU) 2021/914; EDPB Recommendations 01/2020",
         )
         self.assertIn("SCCs of Commission Implementing Decision (EU) 2021/914", us.remediation)

@@ -11,7 +11,8 @@ from __future__ import annotations
 import re
 import unicodedata
 from dataclasses import dataclass, asdict
-from typing import Any, Callable
+from datetime import date
+from typing import Any, Callable, Mapping
 
 # --- Reference data (kept small, explicit, and citeable) ---------------------
 
@@ -23,22 +24,100 @@ EEA = {
 }
 
 
+_MONTHS = (
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+)
+
+
+def _day(text: str) -> date:
+    """A date as the Official Journal writes it, such as "26 January 2026"."""
+    day, month, year = text.split()
+    return date(int(year), _MONTHS.index(month) + 1, int(day))
+
+
+# Whether a decision covers the importer, judged from the facts the input records about it.
+COVERED = "COVERED"
+NOT_COVERED = "NOT_COVERED"
+UNRESOLVED = "UNRESOLVED"
+
+# How a decision stood on the review date.
+IN_FORCE = "IN_FORCE"
+NOT_YET_APPLICABLE = "NOT_YET_APPLICABLE"
+EXPIRED = "EXPIRED"
+EARLIER_VERSION = "EARLIER_VERSION"
+
+# The kinds of importer `recipient_type` records, and the values of `scope_carve_out`.
+RECIPIENT_TYPES = ("private_commercial", "public_body", "non_profit")
+SCOPE_CARVE_OUT_VALUES = ("none", "applies")
+# The facts about an importer that the scope conditions of a decision read: per destination under
+# `transfers`, or on a sub-processor entry. Each is optional, and an omitted or null fact leaves the
+# condition it decides unresolved.
+RECIPIENT_FACTS = ("recipient_type", "scope_carve_out", "automated_processing")
+
+# Interpretation, adopted as the owner's answer of 10 November 2026 ("adoption dates, with a note").
+ADOPTION_DATE_NOTE = (
+    "the decision sets no date from which it applies; it is addressed to the Member States and takes effect "
+    "on notification, which its Official Journal text does not date, so the tool reads it as applying from "
+    "its date of adoption"
+)
+AMENDMENT_DATE_NOTE = (
+    "an amending act that sets no date from which it applies takes effect on notification, which its "
+    "Official Journal text does not date, so the tool dates the amendment by its adoption"
+)
+
+
+@dataclass(frozen=True)
+class Condition:
+    """One scope condition a decision's operative part sets, read from a recorded fact about the importer.
+
+    `fact` is one of RECIPIENT_FACTS. A recorded value in `covered` meets the condition, one in
+    `not_covered` fails it, and anything else, an omitted or null fact included, leaves it unresolved:
+    an unresolved condition never counts as adequacy. `interpretation` states a reading of the decision
+    that maps the input's categories onto its text; a finding the condition decides repeats it.
+    """
+
+    fact: str
+    covered: frozenset
+    not_covered: frozenset
+    pinpoint: str
+    requirement: str
+    interpretation: str = ""
+
+
+@dataclass(frozen=True)
+class Amendment:
+    """An act that changed a decision's scope or validity, dated by its adoption (ADOPTION_DATE_NOTE)."""
+
+    act: str
+    adopted: str
+    celex: str
+    effect: str  # what it changed, completing "which ..."
+
+
 @dataclass(frozen=True)
 class AdequacyDecision:
-    """A Commission adequacy decision for one third country, as its text on EUR-Lex states it.
+    """A Commission adequacy decision for one third country or international organisation, as its
+    Official Journal text (snapshotted under sources/oj) states it.
 
     `scope_limit` restates the limit the decision's operative part sets on what it covers: the
     recipients, the processing or the purposes. It is empty when Article 1 covers personal data
-    transferred from the Union to the country without such a limit. The tool cannot check a limit
-    from its input, so a finding that relies on the decision states it for the reviewer.
-    `directive_era` marks a decision adopted under Article 25(6) of Directive 95/46/EC, which stays
-    in force under Art. 45(9) GDPR until amended, replaced or repealed. `amending_acts` are the acts
-    that changed the decision's scope or validity, which its citation names; `amended` says what
-    they changed, for the reference table in docs/rules.md; `expires` is the date the decision
-    itself sets for its expiry.
+    transferred from the Union without such a limit. `conditions` model that limit as facts the input
+    records about the importer; a decision with a scope limit and no conditions (Brazil, the Faroe
+    Islands) is read as covering every importer, a reading `scope_reading` states, and a finding that
+    relies on it asks the reviewer to confirm the limit. A decision whose conditions model only part of
+    its limit (Israel: Article 2) states the reading of the rest in `scope_reading` too. `directive_era` marks a decision adopted under
+    Article 25(6) of Directive 95/46/EC, which stays in force under Art. 45(9) GDPR until amended,
+    replaced or repealed. `amending_acts` are the acts its citation names; `amended` says what they
+    changed, for the reference table in docs/rules.md; `amendments` are the acts that changed its scope
+    or validity, which a review date before them turns into a review state. `expires` is the date the
+    decision itself sets for its expiry, read as its last day of validity, and `applies_from` the date it
+    sets for its application (`applies_from_source` names the article). Dates are written as the
+    Official Journal writes them. `international_organisation` describes a destination that is an
+    international organisation rather than a country; its code is not an ISO country code.
     """
 
-    country: str  # ISO 3166-1 alpha-2 code
+    country: str  # ISO 3166-1 alpha-2 code, or "EPO" for the European Patent Organisation
     name: str
     act: str
     adopted: str
@@ -49,6 +128,13 @@ class AdequacyDecision:
     amending_acts: tuple[str, ...] = ()
     amended: str = ""
     expires: str = ""
+    provision: str = "Art. 1"  # the operative provision a citation names
+    conditions: tuple[Condition, ...] = ()
+    scope_reading: str = ""
+    amendments: tuple[Amendment, ...] = ()
+    applies_from: str = ""
+    applies_from_source: str = ""
+    international_organisation: str = ""
 
     @property
     def limited(self) -> bool:
@@ -61,13 +147,13 @@ class AdequacyDecision:
 
     @property
     def documents(self) -> tuple[str, ...]:
-        """The acts a finding that relies on this decision cites."""
-        return (self.act, *self.amending_acts)
+        """The acts a finding that relies on this decision cites, the decision with its operative provision."""
+        return (f"{self.act}, {self.provision}", *self.amending_acts)
 
     @property
     def basis(self) -> str:
         """The decision as a finding names it."""
-        text = f"Art. 45(1); {self.act} of {self.adopted}"
+        text = f"Art. 45(1); {self.act} of {self.adopted}, {self.provision}"
         if self.amending_acts:
             text += ", as last amended by " + " and ".join(self.amending_acts)
         if self.directive_era:
@@ -76,8 +162,93 @@ class AdequacyDecision:
             text += f", which expires on {self.expires}"
         return text
 
+    @property
+    def start(self) -> str:
+        """The first day the tool reads the decision as applying."""
+        return self.applies_from or self.adopted
 
-# The date every entry below was last read against the decision's text on EUR-Lex: the operative
+    @property
+    def start_note(self) -> str:
+        if self.applies_from:
+            return f"{self.applies_from_source} of the decision says that it applies from {self.applies_from}."
+        return f"Interpretation: {ADOPTION_DATE_NOTE}."
+
+    @property
+    def expiry_note(self) -> str:
+        return (
+            f"Interpretation: the decision says that it shall expire on {self.expires}; the tool reads that "
+            "day as its last day of validity."
+        )
+
+    def standing(self, review_date: date | None) -> tuple[str, str]:
+        """How the decision stood on the review date, and why when it did not stand as modelled.
+
+        Without a review date the decision is read as it stands in this table. Before its start date
+        or after its expiry it does not apply. Before an amending act that changed its scope or validity
+        it stood in an earlier version, which the table does not model; the reason names every such act
+        adopted after the review date, because an earlier one may change only the expiry while a later one
+        changes the scope.
+        """
+        if review_date is None:
+            return IN_FORCE, ""
+        on = f"on the review date, {review_date.isoformat()}"
+        if review_date < _day(self.start):
+            start = (
+                f"{self.applies_from_source} says that it applies from {self.start}"
+                if self.applies_from
+                else f"the tool reads it as applying from {self.start}"
+            )
+            return NOT_YET_APPLICABLE, f"{on}, it did not yet apply: {start}"
+        if self.expires and review_date > _day(self.expires):
+            return EXPIRED, f"{on}, it had expired: the tool reads {self.expires} as its last day of validity"
+        later = [amendment for amendment in self.amendments if review_date < _day(amendment.adopted)]
+        if later:
+            acts = ", and before ".join(f"{a.act} of {a.adopted}, which {a.effect}" for a in later)
+            return EARLIER_VERSION, (
+                f"{on}, it stood before {acts}; the tool models only the decision as last amended"
+            )
+        return IN_FORCE, ""
+
+    def evaluate(self, facts: Mapping[str, Any]) -> tuple[str, tuple[str, ...], tuple[str, ...]]:
+        """(outcome, reasons, interpretations) for an importer with these recorded facts.
+
+        A failed condition makes the outcome NOT_COVERED, whatever the others record; otherwise an
+        unresolved one makes it UNRESOLVED. The reasons and interpretations are those of the conditions
+        that decided the outcome. A decision without conditions covers every importer.
+        """
+        met: list[Condition] = []
+        failed: list[Condition] = []
+        unresolved: list[Condition] = []
+        for condition in self.conditions:
+            value = facts.get(condition.fact)
+            if isinstance(value, (str, bool)) and value in condition.covered:
+                met.append(condition)
+            elif isinstance(value, (str, bool)) and value in condition.not_covered:
+                failed.append(condition)
+            else:
+                unresolved.append(condition)
+        if failed:
+            outcome, decisive = NOT_COVERED, failed
+        elif unresolved:
+            outcome, decisive = UNRESOLVED, unresolved
+        else:
+            outcome, decisive = COVERED, met
+        reasons = tuple(
+            f"under {c.pinpoint}, {c.requirement} ({_recorded_as(c.fact, facts.get(c.fact))})" for c in decisive
+        )
+        return outcome, reasons, tuple(c.interpretation for c in decisive if c.interpretation)
+
+
+def _recorded_as(fact: str, value: Any) -> str:
+    """What the input records for a fact, in the words of the input."""
+    if value is None:
+        return f"{fact} not recorded"
+    if isinstance(value, bool):
+        return f"recorded: {fact} {'true' if value else 'false'}"
+    return f'recorded: {fact} "{value}"'
+
+
+# The date every entry below was last read against the decision's record on EUR-Lex: the operative
 # part (Article 1 and, for Israel, Article 2), the date of adoption, the OJ reference, and the
 # EUR-Lex record of the act's status (in force; an end of validity only for the United Kingdom). The
 # amending acts were read too: Implementing Decision (EU) 2016/2295 replaced the articles on suspending
@@ -88,10 +259,41 @@ class AdequacyDecision:
 # limit, so the entry has none.
 ADEQUACY_VERIFIED_ON = "2026-11-10"
 
-# Third countries with a Commission adequacy decision (Art. 45), keyed by ISO code. The EU-US Data
-# Privacy Framework decision is DPF_ADEQUACY below: it covers only listed organisations, so a US
-# transfer relies on it through the dpf mechanism and the US is not on this list. The tool models
-# countries only, not international organisations.
+# The date the table was last checked as a whole: every Official Journal text it rests on (sources/oj)
+# re-fetched and found byte-identical, and the Publications Office's Cellar searched for later adequacy
+# acts (sources/manifest.json, "recheck"). A review date after it gets a note that later acts are not
+# reflected, and `dpa-review-table-age` reports how old it is.
+TABLE_AS_OF = "2026-11-14"
+
+# GDPR Art. 99(2): "It shall apply from 25 May 2018." Before that day Directive 95/46/EC governed
+# transfers (repealed by Art. 94(1) GDPR). The tool models only the GDPR, so a review date before it
+# gets a note on every transfer finding and no change of state (owner question 5, answer A, of
+# 15 November 2026).
+GDPR_APPLIES_FROM = "2018-05-25"
+
+# The reading of Article 1 of the Canadian decision through its recital 5 (owner's answer of
+# 10 November 2026: private-sector scope; a non-profit goes to review).
+_CANADA_RECIPIENTS = (
+    "recital 5 says that the Act applies to private sector organisations acting in the course of "
+    "commercial activities, not to organisations under the Federal Privacy Act or regulated by the public "
+    "sector at a provincial level, nor to non-profit organisations and charitable activities unless they "
+    "are of a commercial nature; the tool reads a private commercial organisation as covered, a public body "
+    "as not covered and a non-profit as unresolved. It does not model recital 5's statement that the Act does "
+    "not cover employment data used for non-commercial purposes other than that relating to employees in the "
+    "federally regulated private sector, or the exemptions for organisations under substantially similar "
+    "provincial laws (recital 6)."
+)
+_JAPAN_RECIPIENTS = (
+    "recital 32 excludes the government and administrative agencies at central and local level from the "
+    "definition of a personal information handling business operator, and recital 33 reads 'business' to "
+    "include not-for-profit activities; the tool reads a private commercial organisation and a non-profit "
+    "as business operators and a public body as not covered."
+)
+
+# Third countries and international organisations with a Commission adequacy decision (Art. 45),
+# keyed by ISO code ("EPO" for the European Patent Organisation). The EU-US Data Privacy Framework
+# decision is DPF_ADEQUACY below: it covers only listed organisations, so a US transfer relies on it
+# through the dpf mechanism and the US is not on this list.
 ADEQUACY: dict[str, AdequacyDecision] = {
     decision.country: decision
     for decision in (
@@ -110,6 +312,11 @@ ADEQUACY: dict[str, AdequacyDecision] = {
                 "Its Article 1 covers only personal data transferred to controllers and processors in "
                 "Brazil subject to the General Data Protection Law (LGPD)."
             ),
+            scope_reading=(
+                "the input records no fact for this limit, and the tool reads every importer in Brazil as "
+                "a controller or processor subject to the LGPD, public or private (recitals 25 and 26); the "
+                "exemptions from the LGPD the decision describes from recital 30 are not modelled"
+            ),
         ),
         AdequacyDecision(
             "CA", "Canada", "Commission Decision 2002/2/EC", "20 December 2001",
@@ -118,10 +325,31 @@ ADEQUACY: dict[str, AdequacyDecision] = {
                 "Its Article 1 covers only personal data transferred to recipients subject to the "
                 "Personal Information Protection and Electronic Documents Act."
             ),
+            conditions=(
+                Condition(
+                    "recipient_type",
+                    covered=frozenset({"private_commercial"}),
+                    not_covered=frozenset({"public_body"}),
+                    pinpoint="Art. 1 and recital 5",
+                    requirement=(
+                        "the importer must be subject to the Personal Information Protection and Electronic "
+                        "Documents Act"
+                    ),
+                    interpretation=_CANADA_RECIPIENTS,
+                ),
+            ),
         ),
         AdequacyDecision(
             "CH", "Switzerland", "Commission Decision 2000/518/EC", "26 July 2000",
             "OJ L 215, 25.8.2000, p. 1", "32000D0518", directive_era=True,
+        ),
+        AdequacyDecision(
+            "EPO", "European Patent Organisation", "Commission Implementing Decision (EU) 2025/1382",
+            "15 July 2025", "OJ L, 2025/1382, 18.7.2025", "32025D1382",
+            international_organisation=(
+                "The European Patent Organisation is an international organisation with its seat in Munich "
+                "(recital 7 of the decision)"
+            ),
         ),
         AdequacyDecision(
             "FO", "Faroe Islands", "Commission Decision 2010/146/EU", "5 March 2010",
@@ -130,6 +358,12 @@ ADEQUACY: dict[str, AdequacyDecision] = {
                 "Its Article 1 covers only personal data transferred to recipients subject to the Act on "
                 "Processing of Personal Data (the Faeroese Act)."
             ),
+            scope_reading=(
+                "the input records no fact for this limit, and the tool reads every recipient in the Faroe "
+                "Islands as subject to the Faeroese Act"
+            ),
+            applies_from="15 June 2010",
+            applies_from_source="Article 7",
         ),
         AdequacyDecision(
             "GB", "United Kingdom", "Commission Implementing Decision (EU) 2021/1772", "28 June 2021",
@@ -142,6 +376,18 @@ ADEQUACY: dict[str, AdequacyDecision] = {
                 "immigration control, and replaced its Article 4, so that it expires on 27 December 2031"
             ),
             expires="27 December 2031",
+            provision="Art. 1(1)",
+            amendments=(
+                Amendment(
+                    "Commission Implementing Decision (EU) 2025/1226", "24 June 2025", "32025D1226",
+                    "moved its expiry from 27 June 2025 to 27 December 2025",
+                ),
+                Amendment(
+                    "Commission Implementing Decision (EU) 2025/2574", "19 December 2025", "32025D2574",
+                    "repealed its Article 1(2), the exclusion of data transferred for purposes of United "
+                    "Kingdom immigration control, and moved its expiry to 27 December 2031",
+                ),
+            ),
         ),
         AdequacyDecision(
             "GG", "Guernsey", "Commission Decision 2003/821/EC", "21 November 2003",
@@ -155,6 +401,23 @@ ADEQUACY: dict[str, AdequacyDecision] = {
                 "where a transfer is not automated, data subject to further automated processing in "
                 "Israel, and its Article 2 limits it to the State of Israel as defined in accordance "
                 "with international law."
+            ),
+            provision="Art. 1(1)",
+            scope_reading=(
+                "the input records no fact for the limit of Article 2, and the tool reads every importer as "
+                "located in the State of Israel as defined in accordance with international law"
+            ),
+            conditions=(
+                Condition(
+                    "automated_processing",
+                    covered=frozenset({True}),
+                    not_covered=frozenset({False}),
+                    pinpoint="Art. 1(1)",
+                    requirement=(
+                        "the transfer must be automated or, where it is not, the data must be subject to "
+                        "further automated processing in the State of Israel"
+                    ),
+                ),
             ),
         ),
         AdequacyDecision(
@@ -176,6 +439,31 @@ ADEQUACY: dict[str, AdequacyDecision] = {
                 "persons engaged in professional writing, universities and other organisations or "
                 "groups aimed at academic studies, religious bodies and political bodies."
             ),
+            conditions=(
+                Condition(
+                    "recipient_type",
+                    covered=frozenset({"private_commercial", "non_profit"}),
+                    not_covered=frozenset({"public_body"}),
+                    pinpoint="Art. 1(1) and recitals 32 and 33",
+                    requirement=(
+                        "the importer must be a personal information handling business operator subject to "
+                        "the Act on the Protection of Personal Information"
+                    ),
+                    interpretation=_JAPAN_RECIPIENTS,
+                ),
+                Condition(
+                    "scope_carve_out",
+                    covered=frozenset({"none"}),
+                    not_covered=frozenset({"applies"}),
+                    pinpoint="Art. 1(2)",
+                    requirement=(
+                        "the importer must fall within none of the categories of Art. 1(2)(a) to (e) (press "
+                        "organisations, persons engaged in professional writing, academic organisations, "
+                        "religious bodies and political bodies, each to the extent of the purposes listed "
+                        "there)"
+                    ),
+                ),
+            ),
         ),
         AdequacyDecision(
             "KR", "Republic of Korea", "Commission Implementing Decision (EU) 2022/254", "17 December 2021",
@@ -189,17 +477,41 @@ ADEQUACY: dict[str, AdequacyDecision] = {
                 "Services Commission for the processing of personal credit information under the "
                 "Credit Information Act."
             ),
+            conditions=(
+                Condition(
+                    "scope_carve_out",
+                    covered=frozenset({"none"}),
+                    not_covered=frozenset({"applies"}),
+                    pinpoint="Art. 1(2)",
+                    requirement=(
+                        "the importer must fall within none of the categories of Art. 1(2)(a) to (c) (religious "
+                        "organisations for their missionary activities, political parties for the "
+                        "nomination of candidates, and entities overseen by the Financial Services "
+                        "Commission for personal credit information under the Credit Information Act)"
+                    ),
+                ),
+            ),
         ),
         AdequacyDecision(
             "NZ", "New Zealand", "Commission Implementing Decision 2013/65/EU", "19 December 2012",
-            "OJ L 28, 30.1.2013, p. 12", "32013D0065", directive_era=True,
+            "OJ L 28, 30.1.2013, p. 12", "32013D0065", directive_era=True, provision="Art. 1(1)",
         ),
         AdequacyDecision(
             "UY", "Uruguay", "Commission Implementing Decision 2012/484/EU", "21 August 2012",
-            "OJ L 227, 23.8.2012, p. 11", "32012D0484", directive_era=True,
+            "OJ L 227, 23.8.2012, p. 11", "32012D0484", directive_era=True, provision="Art. 1(1)",
+            scope_reading=(
+                "the decision's title refers to automated processing of personal data, but its Article 1(1) "
+                "sets no such limit, and the tool follows Article 1(1)"
+            ),
         ),
     )
 }
+
+# Destinations that are international organisations rather than countries. A transfer to one is a
+# Chapter V transfer (Art. 44) even where its seat is in the EEA, so the EEA exemption never applies.
+INTERNATIONAL_ORGANISATIONS = frozenset(
+    code for code, decision in ADEQUACY.items() if decision.international_organisation
+)
 
 # EU-US Data Privacy Framework (DPF): Commission Implementing Decision (EU) 2023/1795 of
 # 10 July 2023, adopted under Art. 45(3). It is an adequacy decision, not an Art. 46
@@ -774,6 +1086,60 @@ def check_breach_notification(dpa: dict) -> list[Finding]:
 
 # --- Chapter V international transfers (Art. 44-49) ---------------------------
 
+def table_age(today: date) -> dict[str, Any]:
+    """How old the adequacy table is on `today`. The caller reads the clock, never the rules."""
+    as_of = date.fromisoformat(TABLE_AS_OF)
+    return {
+        "table_as_of": TABLE_AS_OF,
+        "today": today.isoformat(),
+        "age_days": (today - as_of).days,
+        "decisions": len(ADEQUACY) + 1,  # the DPF decision is DPF_ADEQUACY, off the list
+    }
+
+
+_ISO_DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
+
+
+def parse_review_date(value: Any, field: str = "review_date") -> date | None:
+    """The review date as a date, or None when it is omitted or null; anything but YYYY-MM-DD is refused."""
+    if value is None:
+        return None
+    if isinstance(value, str) and _ISO_DATE.fullmatch(value):
+        try:
+            return date.fromisoformat(value)
+        except ValueError:
+            pass
+    raise InvalidInputError(f"{field} must be a calendar date written as YYYY-MM-DD, got {value!r}.")
+
+
+def recorded_review_date(dpa: dict) -> date | None:
+    """The date the input asks the transfers to be assessed on (`review_date`), or None."""
+    return parse_review_date(_get(dpa, "review_date"))
+
+
+def _recipient_fact(value: Any, field: str) -> str | bool | None:
+    """A recorded fact about an importer: a word in lower case, a JSON boolean, or None when not recorded."""
+    if value is None or isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower()
+    raise InvalidInputError(f"{field} must be a string or true/false, got {value!r}.")
+
+
+def destination_facts(dpa: dict, country: str) -> dict[str, Any]:
+    """The facts recorded about the importer at a direct destination (`transfers.<fact>.<COUNTRY>`)."""
+    country = country.upper()
+    return {
+        fact: _by_country(dpa, f"transfers.{fact}", _recipient_fact, '{"CA": "private_commercial"}').get(country)
+        for fact in RECIPIENT_FACTS
+    }
+
+
+def subprocessor_facts(sp: dict, index: int) -> dict[str, Any]:
+    """The facts recorded about a sub-processor as an importer."""
+    return {fact: _recipient_fact(sp.get(fact), f"subprocessors[{index}].{fact}") for fact in RECIPIENT_FACTS}
+
+
 def _join(labels: list[str]) -> tuple[str, str]:
     """Join data-type labels for a sentence, with the matching verb."""
     return " and ".join(labels), ("are" if len(labels) > 1 else "is")
@@ -792,10 +1158,12 @@ def _assess_dpf(
 
     The listed certification must also cover each type of data transferred: non-HR data,
     and HR data where HR data is in scope. An `includes_*` value of None means the DPA does
-    not say whether that type of data is transferred. A finding that the DPF may carry (PRESENT,
-    or NEEDS_REVIEW on the data covered) ends with DPF_STATUS_NOTE.
+    not say whether that type of data is transferred. A coverage the input leaves open is an
+    unknown adequacy condition, NEEDS_REVIEW with HIGH severity like any other (owner's answer of
+    10 November 2026). A finding that the DPF may carry (PRESENT, or NEEDS_REVIEW on the data
+    covered) ends with DPF_STATUS_NOTE.
     """
-    basis = f"the EU-US Data Privacy Framework adequacy decision (Art. 45(1); {DPF_DECISION})"
+    basis = f"the EU-US Data Privacy Framework adequacy decision (Art. 45(1); {DPF_DECISION}, Art. 1)"
     if country != DPF_COUNTRY:
         return (
             "MISSING",
@@ -819,7 +1187,7 @@ def _assess_dpf(
         # Every personal datum is HR or non-HR data, so the input contradicts itself.
         return (
             "NEEDS_REVIEW",
-            "MEDIUM",
+            "HIGH",
             (
                 f"Transfer to {country} relies on {basis}; the importer is recorded as certified on the "
                 "Data Privacy Framework List, but the DPA records that neither non-HR data nor HR data "
@@ -850,7 +1218,7 @@ def _assess_dpf(
         data, verb = _join(unknown)
         return (
             "NEEDS_REVIEW",
-            "MEDIUM",
+            "HIGH",
             (
                 f"Transfer to {country} relies on {basis}; the importer is recorded as certified on the "
                 f"Data Privacy Framework List, but its certification is not recorded as covering "
@@ -916,54 +1284,216 @@ def _impact_assessment_status(recorded: bool) -> str:
     return "A transfer impact assessment is recorded" if recorded else "The input records no transfer impact assessment"
 
 
+@dataclass(frozen=True)
+class _Route:
+    """Which Chapter V path a transfer takes, and what decided it.
+
+    kind is one of: eea; adequacy (the destination's decision, judged by its conditions); lapsed (its
+    decision did not apply on the review date); earlier_version (the review date falls before an
+    amendment); version_question (the same, with an Art. 46 safeguard recorded); redundant (dpf or a
+    derogation recorded for an importer the decision covers); covered_safeguard (a safeguard recorded
+    for an importer the decision covers); scope_question (a safeguard recorded where the tool cannot
+    tell whether the decision covers the importer); outside_scope (a safeguard recorded for an importer
+    the decision does not cover); unlisted_adequacy; unrecognised; dpf; derogation; safeguard; none.
+    """
+
+    kind: str
+    decision: AdequacyDecision | None = None
+    reason: str = ""
+    outcome: str = ""
+    reasons: tuple[str, ...] = ()
+    interpretations: tuple[str, ...] = ()
+
+
+def _route(country: str, mechanism: str | None, facts: Mapping[str, Any], on: date | None) -> _Route:
+    """The Chapter V path for a transfer to `country` on `mechanism`, assessed on the review date `on`.
+
+    A decision that did not apply on the review date counts as no decision, except where the transfer is
+    recorded as relying on adequacy: then the finding says why the decision does not carry it.
+    """
+    country = country.upper()
+    mech = _mechanism(mechanism)
+    if country in EEA:
+        return _Route("eea")
+    decision = ADEQUACY.get(country)
+    if decision is not None:
+        standing, reason = decision.standing(on)
+        if standing in {NOT_YET_APPLICABLE, EXPIRED}:
+            if mech in {"none", "adequacy"}:
+                return _Route("lapsed", decision, reason)
+        elif standing == EARLIER_VERSION:
+            kind = "version_question" if mech in SAFEGUARDS else "earlier_version"
+            return _Route(kind, decision, reason)
+        else:
+            outcome, reasons, interpretations = decision.evaluate(facts)
+            found = dict(decision=decision, outcome=outcome, reasons=reasons, interpretations=interpretations)
+            if mech in {"none", "adequacy"}:
+                return _Route("adequacy", **found)
+            if mech in _ADEQUACY_REDUNDANT and outcome == COVERED:
+                return _Route("redundant", **found)
+            if mech in SAFEGUARDS:
+                if decision.limited and not decision.conditions:
+                    return _Route("scope_question", **found)
+                kind = {COVERED: "covered_safeguard", NOT_COVERED: "outside_scope"}.get(outcome, "scope_question")
+                return _Route(kind, **found)
+            # dpf or a derogation recorded for an importer the decision may not cover: those paths decide.
+    if country == DPF_COUNTRY:
+        standing, reason = DPF_ADEQUACY.standing(on)
+        dpf_applies = standing == IN_FORCE
+        if mech in SAFEGUARDS and dpf_applies:
+            return _Route("scope_question", DPF_ADEQUACY)
+        if mech == "dpf" and not dpf_applies:
+            return _Route("lapsed", DPF_ADEQUACY, reason)
+    if mech == "adequacy":
+        return _Route("unlisted_adequacy")
+    if mech != "none" and mech not in VALID_TRANSFER_MECHANISMS:
+        return _Route("unrecognised")
+    if mech == "dpf":
+        return _Route("dpf", DPF_ADEQUACY if country == DPF_COUNTRY else None)
+    if mech == "derogation_art49":
+        return _Route("derogation")
+    if mech in SAFEGUARDS:
+        return _Route("safeguard")
+    return _Route("none")
+
+
+def _destination(decision: AdequacyDecision) -> str:
+    """How a finding introduces the destination of a decision."""
+    if decision.international_organisation:
+        return (
+            f"{decision.international_organisation}. A transfer to it is a transfer to an international "
+            "organisation under Chapter V (Art. 44), so the EEA exemption does not apply. "
+            f"{decision.country}"
+        )
+    return decision.country
+
+
+def _interpretations(route: _Route) -> list[str]:
+    """The readings behind the conditions that decided the route, and the entry's own reading of its scope."""
+    notes = [f"Interpretation: {text}" for text in route.interpretations]
+    decision = route.decision
+    if decision is not None and decision.scope_reading and route.outcome == COVERED and (
+        route.kind != "scope_question"
+    ):
+        notes.append(f"Interpretation: {decision.scope_reading}.")
+    return notes
+
+
+def _date_notes(decision: AdequacyDecision, on: date | None) -> list[str]:
+    """What a finding says about the review date: the date readings it turned on, and the table's age."""
+    if on is None:
+        return []
+    notes: list[str] = []
+    if on == _day(decision.start):
+        notes.append(decision.start_note)
+    if decision.expires and on == _day(decision.expires):
+        notes.append(decision.expiry_note)
+    if on > date.fromisoformat(TABLE_AS_OF):
+        notes.append(
+            f"The adequacy table was last checked on {TABLE_AS_OF}, so later Commission acts are not reflected."
+        )
+    return notes
+
+
+def _sentences(*parts: str) -> str:
+    return " ".join(part for part in parts if part)
+
+
 def _assess_adequate_destination(
-    decision: AdequacyDecision, mech: str, impact_assessment_recorded: bool
-) -> tuple[str, str, str] | None:
-    """A destination with its own adequacy decision, or None for a mechanism handled elsewhere.
+    route: _Route, mech: str, impact_assessment_recorded: bool, on: date | None
+) -> tuple[str, str, str]:
+    """A destination whose own adequacy decision applied on the review date (or with no review date).
 
     Art. 45(1): a transfer on an adequacy decision needs no specific authorisation, and Art. 46(1)
-    makes Art. 46 safeguards the basis only in the absence of such a decision. A safeguard recorded
-    for a destination whose decision has no scope limit is therefore not needed for Chapter V. Where
-    the decision covers only some recipients, processing or purposes, the tool cannot tell from the
-    input whether the importer is covered, so the finding asks exactly that, and the severity is the
-    one the safeguard path would give if the importer is not covered: MEDIUM while no transfer impact
-    assessment is recorded, LOW once one is.
+    makes Art. 46 safeguards the basis only in the absence of such a decision. Where the decision covers
+    only some importers, the facts the input records about the importer decide: a failed condition means
+    the decision does not cover it, and an unresolved condition never counts as adequacy (NEEDS_REVIEW,
+    HIGH, on the owner's answer of 10 November 2026). With a safeguard recorded, the safeguard carries a
+    transfer the decision does not cover, so the finding takes the severity the safeguard path would
+    give: MEDIUM while no transfer impact assessment is recorded, LOW once one is.
     """
-    country = decision.country
-    has_decision = f"{country} benefits from an adequacy decision ({decision.basis})."
-    scope = f" {decision.scope_limit}" if decision.limited else ""
-    if mech in {"none", "adequacy"}:
-        confirm = " Confirm that the importer is within it." if decision.limited else ""
-        return ("PRESENT", "LOW", has_decision + scope + confirm)
-    if mech in _ADEQUACY_REDUNDANT:
+    decision = route.decision
+    assert decision is not None
+    has_decision = f"{_destination(decision)} benefits from an adequacy decision ({decision.basis})."
+    scope = decision.scope_limit
+    reasons = "; ".join(route.reasons)
+    notes = _sentences(*_interpretations(route), *_date_notes(decision, on))
+    if route.kind == "adequacy":
+        if route.outcome == NOT_COVERED:
+            return (
+                "MISSING",
+                "HIGH",
+                _sentences(
+                    has_decision, scope, f"It does not cover this importer: {reasons}.",
+                    "No Art. 46 safeguard or Art. 49 derogation is recorded for this transfer.", notes,
+                ),
+            )
+        if route.outcome == UNRESOLVED:
+            return (
+                "NEEDS_REVIEW",
+                "HIGH",
+                _sentences(
+                    has_decision, scope, f"Whether it covers this importer is unresolved: {reasons}.",
+                    "An unresolved condition never counts as adequacy.", notes,
+                ),
+            )
+        met = f"Conditions met: {reasons}." if decision.conditions else ""
+        confirm = "Confirm that the importer is within it." if decision.limited and not decision.conditions else ""
+        return ("PRESENT", "LOW", _sentences(has_decision, scope, met, confirm, notes))
+    if route.kind == "redundant":
+        met = f"Conditions met: {reasons}." if decision.conditions else ""
         return (
             "NEEDS_REVIEW",
             "LOW",
-            (
-                f"{has_decision}{scope} The transfer is recorded as relying on {_ADEQUACY_REDUNDANT[mech]}. "
-                "Confirm the basis relied on and record the adequacy decision."
+            _sentences(
+                has_decision, scope, met,
+                f"The transfer is recorded as relying on {_ADEQUACY_REDUNDANT[mech]}. Confirm the basis "
+                "relied on and record the adequacy decision.",
+                notes,
             ),
         )
-    safeguard = SAFEGUARDS.get(mech)
-    if safeguard is None:
-        return None
-    if decision.limited:
-        return _scope_question(decision, safeguard, impact_assessment_recorded)
-    return (
-        "PRESENT",
-        "LOW",
-        (
-            f"{country} benefits from an adequacy decision ({decision.basis}), and its Article 1 sets "
-            f"no limit on the recipients or the purposes it covers. The transfer is recorded as relying "
-            f"on {safeguard.label}. The adequacy decision covers the transfer, so Chapter V needs no "
-            f"Art. 46 safeguard and no transfer impact assessment for it; {safeguard.short} may still "
-            "serve other purposes."
-        ),
+    safeguard = SAFEGUARDS[mech]
+    recorded = f"The transfer is recorded as relying on {safeguard.label}."
+    not_needed = (
+        "The adequacy decision covers the transfer, so Chapter V needs no Art. 46 safeguard and no transfer "
+        f"impact assessment for it; {safeguard.short} may still serve other purposes."
     )
+    if route.kind == "covered_safeguard" and not decision.limited:
+        return (
+            "PRESENT",
+            "LOW",
+            _sentences(
+                f"{_destination(decision)} benefits from an adequacy decision ({decision.basis}), and its "
+                "Article 1 sets no limit on the recipients or the purposes it covers.",
+                recorded, not_needed, notes,
+            ),
+        )
+    if route.kind == "covered_safeguard":
+        return (
+            "PRESENT",
+            "LOW",
+            _sentences(has_decision, scope, f"Conditions met: {reasons}.", recorded, not_needed, notes),
+        )
+    if route.kind == "outside_scope":
+        return (
+            "NEEDS_REVIEW",
+            "LOW" if impact_assessment_recorded else "MEDIUM",
+            _sentences(
+                has_decision, scope, f"It does not cover this importer: {reasons}.", recorded,
+                f"The transfer therefore relies on {safeguard.short}: confirm {safeguard.confirm}, and record a "
+                f"transfer impact assessment and any supplementary measures ({SUPPLEMENTARY_MEASURES}).",
+                f"{_impact_assessment_status(impact_assessment_recorded)}.", notes,
+            ),
+        )
+    status, severity, detail = _scope_question(decision, safeguard, impact_assessment_recorded, route.reasons)
+    return (status, severity, _sentences(detail, notes))
 
 
 def _scope_question(
-    decision: AdequacyDecision, safeguard: Safeguard, impact_assessment_recorded: bool
+    decision: AdequacyDecision,
+    safeguard: Safeguard,
+    impact_assessment_recorded: bool,
+    unresolved: tuple[str, ...] = (),
 ) -> tuple[str, str, str]:
     """An Art. 46 safeguard recorded for a destination whose adequacy decision covers only some importers.
 
@@ -974,6 +1504,7 @@ def _scope_question(
     importer is not covered: MEDIUM while no transfer impact assessment is recorded, LOW once one is.
     For the United States the decision is the DPF decision, which covers only organisations on the Data
     Privacy Framework List; the input records such a certification only for the dpf mechanism.
+    `unresolved` names the conditions the input leaves open, for a decision the tool models them for.
     """
     country = decision.country
     recorded = f"The transfer is recorded as relying on {safeguard.label}."
@@ -990,8 +1521,10 @@ def _scope_question(
         )
         note = f" {DPF_STATUS_NOTE}"
     else:
-        opening = f"{country} benefits from an adequacy decision ({decision.basis})."
+        opening = f"{_destination(decision)} benefits from an adequacy decision ({decision.basis})."
         unknown = "The input does not record whether the importer is within the decision's scope."
+        if unresolved:
+            unknown = unknown[:-1] + ": " + "; ".join(unresolved) + "."
         covered = (
             "If it is, the decision covers the transfer and Chapter V needs no Art. 46 safeguard and no "
             "transfer impact assessment for it."
@@ -1036,6 +1569,8 @@ def assess_transfer(
     includes_non_hr_data: bool | None = None,
     occasional_and_not_repetitive: bool = False,
     impact_assessment_recorded: bool = False,
+    recipient: Mapping[str, Any] | None = None,
+    review_date: str | date | None = None,
 ) -> tuple[str, str, str]:
     """Return (status, severity, detail) for a single destination country.
 
@@ -1043,20 +1578,69 @@ def assess_transfer(
     an active certification, and whether it covers HR and non-HR data. The `includes_*`
     keywords say whether the DPA transfers HR and non-HR data (None means it does not say).
     `occasional_and_not_repetitive` is the recorded nature of a derogation-based transfer.
-    `impact_assessment_recorded` is read only for an Art. 46 safeguard recorded for a destination
-    whose adequacy decision has a scope limit, the United States (the DPF decision) included.
+    `impact_assessment_recorded` is read where an Art. 46 safeguard is recorded for a destination whose
+    adequacy decision may not cover the importer, the United States (the DPF decision) included.
+    `recipient` holds the facts recorded about the importer (RECIPIENT_FACTS), which a decision's scope
+    conditions read; `review_date` (YYYY-MM-DD) is the date the decisions are read on. A review date
+    before GDPR_APPLIES_FROM adds a note that the GDPR did not yet apply; the state does not change.
     """
+    on = review_date if isinstance(review_date, date) or review_date is None else parse_review_date(review_date)
+    status, severity, detail = _assess_transfer(
+        country,
+        mechanism,
+        dpf_certified=dpf_certified,
+        dpf_covers_hr_data=dpf_covers_hr_data,
+        dpf_covers_non_hr_data=dpf_covers_non_hr_data,
+        includes_hr_data=includes_hr_data,
+        includes_non_hr_data=includes_non_hr_data,
+        occasional_and_not_repetitive=occasional_and_not_repetitive,
+        impact_assessment_recorded=impact_assessment_recorded,
+        recipient=recipient,
+        on=on,
+    )
+    return (status, severity, _sentences(detail, *_before_gdpr_note(on)))
+
+
+def _before_gdpr_note(on: date | None) -> list[str]:
+    if on is None or on >= date.fromisoformat(GDPR_APPLIES_FROM):
+        return []
+    return [
+        f"On the review date, {on.isoformat()}, the GDPR did not yet apply: it applies from 25 May 2018 "
+        "(Art. 99(2) GDPR). Transfers were then governed by Directive 95/46/EC, repealed by Art. 94(1) GDPR, "
+        "which this tool does not model; the Chapter V citations describe the later law."
+    ]
+
+
+def _assess_transfer(
+    country: str,
+    mechanism: str | None,
+    *,
+    dpf_certified: bool,
+    dpf_covers_hr_data: bool,
+    dpf_covers_non_hr_data: bool,
+    includes_hr_data: bool | None,
+    includes_non_hr_data: bool | None,
+    occasional_and_not_repetitive: bool,
+    impact_assessment_recorded: bool,
+    recipient: Mapping[str, Any] | None,
+    on: date | None,
+) -> tuple[str, str, str]:
+    """assess_transfer for a parsed review date, before the note on dates before the GDPR."""
     country = (country or "").upper()
     mech = _mechanism(mechanism)
-    if country in EEA:
+    route = _route(country, mechanism, recipient or {}, on)
+    if route.kind == "eea":
         return ("PRESENT", "INFO", f"{country} is within the EEA; no Chapter V transfer mechanism required.")
-    if country in ADEQUACY:
-        assessed = _assess_adequate_destination(ADEQUACY[country], mech, impact_assessment_recorded)
-        if assessed is not None:
-            return assessed
-    if country == DPF_COUNTRY and mech in SAFEGUARDS:
-        return _scope_question(DPF_ADEQUACY, SAFEGUARDS[mech], impact_assessment_recorded)
-    if mech == "adequacy":
+    if route.kind in {"adequacy", "redundant", "covered_safeguard", "outside_scope"} or (
+        route.kind == "scope_question" and route.decision is not DPF_ADEQUACY
+    ):
+        return _assess_adequate_destination(route, mech, impact_assessment_recorded, on)
+    if route.kind == "scope_question":
+        status, severity, detail = _scope_question(DPF_ADEQUACY, SAFEGUARDS[mech], impact_assessment_recorded)
+        return (status, severity, _sentences(detail, *_date_notes(DPF_ADEQUACY, on)))
+    if route.kind in {"lapsed", "earlier_version", "version_question"}:
+        return _assess_out_of_date(route, mech, impact_assessment_recorded, on)
+    if route.kind == "unlisted_adequacy":
         # Recorded as adequacy, but the destination has no decision on the tool's list.
         detail = (
             f"Transfer to {country} is recorded as relying on an Art. 45 adequacy decision, but no "
@@ -1070,11 +1654,11 @@ def assess_transfer(
             )
         else:
             detail += (
-                f" The list was checked against the decisions on EUR-Lex on {ADEQUACY_VERIFIED_ON}; "
-                "confirm whether a later adequacy decision covers it."
+                f" The list was last checked for later decisions on {TABLE_AS_OF}; confirm whether a later "
+                "adequacy decision covers it."
             )
         return ("MISSING", "HIGH", detail)
-    if mech != "none" and mech not in VALID_TRANSFER_MECHANISMS:
+    if route.kind == "unrecognised":
         return (
             "MISSING",
             "HIGH",
@@ -1085,8 +1669,8 @@ def assess_transfer(
                 "derogation is recorded."
             ),
         )
-    if mech == "dpf":
-        return _assess_dpf(
+    if route.kind == "dpf":
+        status, severity, detail = _assess_dpf(
             country,
             certified=dpf_certified,
             covers_hr_data=dpf_covers_hr_data,
@@ -1094,9 +1678,12 @@ def assess_transfer(
             includes_hr_data=includes_hr_data,
             includes_non_hr_data=includes_non_hr_data,
         )
-    if mech == "derogation_art49":
+        # The DPF decision is dated like any other: its start-date reading and the table's age.
+        notes = _date_notes(route.decision, on) if route.decision is not None else []
+        return (status, severity, _sentences(detail, *notes))
+    if route.kind == "derogation":
         return _assess_derogation(country, occasional_and_not_repetitive)
-    if mech in SAFEGUARDS:
+    if route.kind == "safeguard":
         return _assess_safeguard(country, SAFEGUARDS[mech])
     return (
         "MISSING",
@@ -1109,75 +1696,149 @@ def assess_transfer(
     )
 
 
-def scope_limited_decision(country: str) -> AdequacyDecision | None:
-    """The adequacy decision for this country when it covers only some importers, or None.
+def _assess_out_of_date(
+    route: _Route, mech: str, impact_assessment_recorded: bool, on: date | None
+) -> tuple[str, str, str]:
+    """A destination whose decision did not stand on the review date as the table models it.
 
-    For the United States that is the DPF decision, which covers only organisations on the Data
-    Privacy Framework List and which a transfer relies on through the dpf mechanism.
+    Before its start date or after its expiry the decision does not apply, so a transfer recorded as
+    relying on it has no basis (MISSING, HIGH). Before an amendment that changed its scope or validity
+    the decision stood in a version the table does not model, so the transfer goes to review (owner's
+    answer of 10 November 2026): HIGH, because whether it was adequate then is unknown, unless an Art. 46
+    safeguard is recorded, which would carry the transfer if the decision did not.
     """
-    country = country.upper()
-    if country == DPF_COUNTRY:
-        return DPF_ADEQUACY
-    decision = ADEQUACY.get(country)
-    return decision if decision is not None and decision.limited else None
+    decision = route.decision
+    assert decision is not None
+    name = _destination(decision)
+    if route.kind == "lapsed":
+        if "did not yet apply" in route.reason:
+            date_note = "" if decision.applies_from else decision.start_note
+        else:
+            date_note = decision.expiry_note
+        if decision is DPF_ADEQUACY:
+            opening = (
+                f"Transfer to {decision.country} is recorded as relying on the EU-US Data Privacy Framework "
+                f"adequacy decision ({decision.basis})"
+            )
+        else:
+            opening = f"{name} has an adequacy decision ({decision.basis})"
+        return (
+            "MISSING",
+            "HIGH",
+            _sentences(
+                f"{opening}, but {route.reason}.", date_note,
+                "No other Chapter V basis is recorded for this transfer.",
+            ),
+        )
+    opening = f"{name} has an adequacy decision ({decision.basis}), but {route.reason}."
+    if route.kind == "earlier_version":
+        return (
+            "NEEDS_REVIEW",
+            "HIGH",
+            _sentences(
+                opening,
+                "Confirm that the decision as it stood on that date covered the transfer; until then the "
+                "transfer has no confirmed basis.",
+                f"Interpretation: {AMENDMENT_DATE_NOTE}.",
+            ),
+        )
+    safeguard = SAFEGUARDS[mech]
+    return (
+        "NEEDS_REVIEW",
+        "LOW" if impact_assessment_recorded else "MEDIUM",
+        _sentences(
+            opening,
+            f"The transfer is recorded as relying on {safeguard.label}. If the decision as it stood on that "
+            "date covered the transfer, Chapter V needed no Art. 46 safeguard and no transfer impact "
+            f"assessment for it. If it did not, the transfer relies on {safeguard.short}: confirm "
+            f"{safeguard.confirm}, and record a transfer impact assessment and any supplementary measures "
+            f"({SUPPLEMENTARY_MEASURES}).",
+            f"{_impact_assessment_status(impact_assessment_recorded)}.",
+            f"Interpretation: {AMENDMENT_DATE_NOTE}.",
+        ),
+    )
 
 
-def relies_on_art46_safeguard(country: str, mechanism: str | None) -> bool:
-    """Whether a transfer relies on an Art. 46 safeguard, so that a transfer impact assessment is due.
+def relies_on_art46_safeguard(
+    country: str,
+    mechanism: str | None,
+    recipient: Mapping[str, Any] | None = None,
+    review_date: date | None = None,
+) -> bool:
+    """Whether a transfer relies on an Art. 46 safeguard, so that rule transfer.impact_assessment is due.
 
     A destination inside the EEA is not a Chapter V transfer (Art. 44 covers transfers to a third
     country or an international organisation), and Art. 46(1) makes the safeguards the basis only
     in the absence of an adequacy decision, so a safeguard recorded for either is not relied on here.
-    For a destination whose decision has a scope limit, the United States included, the transfer
-    finding itself asks whether the importer is covered and, if not, for the assessment
-    (scope_question_reads_impact_assessment).
+    Where the destination's decision may not cover the importer, the United States included, the
+    transfer finding itself asks for the assessment (scope_question_reads_impact_assessment). A decision
+    that did not apply on the review date counts as no decision.
     """
-    country = country.upper()
-    return (
-        country not in EEA
-        and country not in ADEQUACY
-        and country != DPF_COUNTRY
-        and _mechanism(mechanism) in SAFEGUARDS
-    )
+    return _route(country, mechanism, recipient or {}, review_date).kind == "safeguard"
 
 
-def scope_question_reads_impact_assessment(country: str, mechanism: str | None) -> bool:
+# Routes whose finding reads `transfers.transfer_impact_assessment` itself.
+_READS_IMPACT_ASSESSMENT = {"scope_question", "outside_scope", "version_question"}
+
+
+def scope_question_reads_impact_assessment(
+    country: str,
+    mechanism: str | None,
+    recipient: Mapping[str, Any] | None = None,
+    review_date: date | None = None,
+) -> bool:
     """Whether the transfer finding reads `transfers.transfer_impact_assessment`.
 
-    It does for an Art. 46 safeguard recorded for a destination whose adequacy decision has a
-    scope limit, the United States included: the finding states whether an assessment is recorded
-    and takes its severity from that.
+    It does for an Art. 46 safeguard recorded for a destination whose adequacy decision may not cover the
+    importer, the United States and its DPF decision included, or stood in an earlier version on the
+    review date: the finding states whether an assessment is recorded and takes its severity from that.
     """
-    return scope_limited_decision(country) is not None and _mechanism(mechanism) in SAFEGUARDS
+    return _route(country, mechanism, recipient or {}, review_date).kind in _READS_IMPACT_ASSESSMENT
 
 
 def _cite(articles: tuple[str, ...], documents: tuple[str, ...] = ()) -> str:
     return "Art. " + ", ".join(articles) + "".join(f"; {document}" for document in documents)
 
 
-def _transfer_articles(country: str, mechanism: str | None) -> str:
+# Routes whose finding cites the destination's decision alone.
+_CITES_THE_DECISION = {"adequacy", "lapsed", "earlier_version", "redundant", "covered_safeguard"}
+
+
+def _transfer_articles(
+    country: str,
+    mechanism: str | None,
+    recipient: Mapping[str, Any] | None = None,
+    review_date: date | None = None,
+) -> str:
     """Chapter V provisions behind a transfer finding, for its citation."""
-    mech = _mechanism(mechanism)
-    country = country.upper()
-    if country in EEA:
+    route = _route(country, mechanism, recipient or {}, review_date)
+    decision = route.decision
+    safeguard = SAFEGUARDS.get(_mechanism(mechanism))
+    if route.kind == "eea":
         return "Art. 44-46"  # no Chapter V transfer; the recorded mechanism is not relied on
-    decision = ADEQUACY.get(country)
-    limited = scope_limited_decision(country)
-    safeguard = SAFEGUARDS.get(mech)
-    if limited and safeguard:
+    if route.kind in _READS_IMPACT_ASSESSMENT:
+        assert decision is not None and safeguard is not None
         return _cite(
-            ("44", *limited.articles, *safeguard.articles),
-            (*limited.documents, *safeguard.documents, SUPPLEMENTARY_MEASURES),
+            ("44", *decision.articles, *safeguard.articles),
+            (*decision.documents, *safeguard.documents, SUPPLEMENTARY_MEASURES),
         )
-    if decision and (mech in {"none", "adequacy"} or mech in _ADEQUACY_REDUNDANT or safeguard):
+    if decision is not None and route.kind in _CITES_THE_DECISION:
         return _cite(("44", *decision.articles), decision.documents)
-    if mech == "dpf":
-        return _cite(("44", "45(1)"), (DPF_DECISION,))
-    if mech == "derogation_art49":
+    if route.kind == "dpf":
+        return _cite(("44", "45(1)"), DPF_ADEQUACY.documents)
+    if route.kind == "derogation":
         return f"Art. 44, 49; {ART49_GUIDELINES}"
-    if safeguard:
+    if route.kind == "safeguard":
+        assert safeguard is not None
         return _cite(("44", *safeguard.articles), safeguard.documents)
     return "Art. 44-46"
+
+
+def _fact_names(route: _Route) -> str:
+    """The facts a decision's unresolved conditions read, for a remediation."""
+    assert route.decision is not None
+    names = [c.fact for c in route.decision.conditions if c.fact in " ".join(route.reasons)]
+    return " and ".join(dict.fromkeys(names))
 
 
 def _transfer_remediation(
@@ -1185,6 +1846,8 @@ def _transfer_remediation(
     mechanism: str | None,
     occasional_and_not_repetitive: bool,
     importer: str | None = None,
+    recipient: Mapping[str, Any] | None = None,
+    review_date: date | None = None,
 ) -> str:
     """What to record or confirm for an open transfer finding.
 
@@ -1193,32 +1856,62 @@ def _transfer_remediation(
     """
     mech = _mechanism(mechanism)
     country = country.upper()
+    route = _route(country, mechanism, recipient or {}, review_date)
+    decision = route.decision
     where = f"{importer} in {country}" if importer else country
     transfer = f"the transfer to {importer}" if importer else "the transfer"
+    who = importer or f"the importer in {country}"
     certification = f"the active certification of {importer}" if importer else "the importer's active certification"
-    decision = ADEQUACY.get(country)
-    limited = scope_limited_decision(country)
     safeguard = SAFEGUARDS.get(mech)
-    if decision and mech in _ADEQUACY_REDUNDANT:
+    tia = f"with a transfer impact assessment and any supplementary measures ({SUPPLEMENTARY_MEASURES})"
+    if route.kind == "redundant":
         return f"Record reliance on the Art. 45 adequacy decision for {country} as the basis for {transfer}."
-    if limited and safeguard:
-        who = importer or f"the importer in {country}"
-        if limited is DPF_ADEQUACY:
+    if route.kind == "adequacy" and decision is not None:
+        if route.outcome == NOT_COVERED:
+            return (
+                f"{decision.act} does not cover {who} as recorded: record an Art. 46 safeguard for {where}, "
+                "or correct the recorded facts."
+            )
+        return (
+            f"Confirm whether {who} is within the scope of Article 1 of {decision.act} ({_fact_names(route)} "
+            f"decides it), or record an Art. 46 safeguard for {where}."
+        )
+    if route.kind == "lapsed" and decision is not None:
+        return (
+            f"{decision.act} did not apply on the review date: record another Chapter V basis for {where}, or "
+            "check the review date."
+        )
+    if route.kind == "earlier_version" and decision is not None:
+        return (
+            f"Confirm that {decision.act}, as it stood on the review date, covered {transfer}, or record an "
+            f"Art. 46 safeguard for {where}."
+        )
+    if route.kind == "version_question" and decision is not None and safeguard is not None:
+        return (
+            f"Confirm whether {decision.act}, as it stood on the review date, covered {transfer}; if not, "
+            f"confirm that {safeguard.covers} the transfer to {where}, {tia}."
+        )
+    if route.kind == "outside_scope" and safeguard is not None:
+        return f"Confirm that {safeguard.covers} the transfer to {where}, {tia}."
+    if route.kind == "scope_question" and decision is not None and safeguard is not None:
+        if decision is DPF_ADEQUACY:
             covered = (
-                f"Confirm whether {who} is within the scope of Article 1 of {limited.act}: on the Data "
+                f"Confirm whether {who} is within the scope of Article 1 of {decision.act}: on the Data "
                 "Privacy Framework List, with a certification that covers the data transferred. If it is, "
                 "record the mechanism as dpf with that certification"
             )
+        elif decision.conditions:
+            covered = (
+                f"Confirm whether {who} is within the scope of Article 1 of {decision.act}, and record "
+                f"{_fact_names(route)}. If it is, record the mechanism as adequacy"
+            )
         else:
             covered = (
-                f"Confirm whether {who} is within the scope of Article 1 of {limited.act}. If it is, record "
+                f"Confirm whether {who} is within the scope of Article 1 of {decision.act}. If it is, record "
                 "the mechanism as adequacy"
             )
-        return (
-            f"{covered}; if not, confirm that {safeguard.covers} the transfer to {where}, with a transfer "
-            f"impact assessment and any supplementary measures ({SUPPLEMENTARY_MEASURES})."
-        )
-    if mech == "adequacy" and not decision:
+        return f"{covered}; if not, confirm that {safeguard.covers} the transfer to {where}, {tia}."
+    if route.kind == "unlisted_adequacy":
         if country == DPF_COUNTRY:
             return (
                 f"Record the mechanism for {where} as dpf, with {certification} on the Data Privacy "
@@ -1226,10 +1919,10 @@ def _transfer_remediation(
             )
         return (
             f"Confirm that a current Commission adequacy decision covers {country} (the tool's adequacy "
-            f"list was checked against EUR-Lex on {ADEQUACY_VERIFIED_ON}), or record an Art. 46 safeguard "
+            f"list was last checked for later decisions on {TABLE_AS_OF}), or record an Art. 46 safeguard "
             f"for {where}."
         )
-    if mech == "dpf":
+    if route.kind == "dpf" or (route.kind == "lapsed" and mech == "dpf"):
         return (
             f"Record {certification} on the Data Privacy Framework List and the data it covers "
             "(non-HR data, and HR data if HR data is transferred), or another Chapter V basis for "
@@ -1243,10 +1936,7 @@ def _transfer_remediation(
             "the transfer is occasional and not repetitive and which Art. 49(1) derogation applies."
         )
     if safeguard:
-        return (
-            f"Confirm that {safeguard.covers} the transfer to {where}, with a transfer impact assessment "
-            f"and any supplementary measures ({SUPPLEMENTARY_MEASURES})."
-        )
+        return f"Confirm that {safeguard.covers} the transfer to {where}, {tia}."
     return f"Record an Art. 45 adequacy basis or an Art. 46 safeguard for {where}."
 
 
@@ -1255,6 +1945,7 @@ def check_transfers(dpa: dict) -> list[Finding]:
     destinations = transfer_destinations(dpa)
     mechanisms = transfer_mechanisms(dpa)
     entries = subprocessors(dpa)
+    on = recorded_review_date(dpa)
     dpf_certified = _country_flags(dpa, "transfers.dpf_certified")
     dpf_covers_hr_data = _country_flags(dpa, "transfers.dpf_covers_hr_data")
     dpf_covers_non_hr_data = _country_flags(dpa, "transfers.dpf_covers_non_hr_data")
@@ -1266,8 +1957,10 @@ def check_transfers(dpa: dict) -> list[Finding]:
         _get(dpa, "processing.includes_non_hr_data"), "processing.includes_non_hr_data"
     )
 
+    relies_on_safeguards = False
     for country in destinations:
         is_occasional = bool(occasional.get(country))
+        facts = destination_facts(dpa, country)
         status, severity, detail = assess_transfer(
             country,
             mechanisms.get(country),
@@ -1278,18 +1971,23 @@ def check_transfers(dpa: dict) -> list[Finding]:
             includes_non_hr_data=includes_non_hr_data,
             occasional_and_not_repetitive=is_occasional,
             impact_assessment_recorded=tia,
+            recipient=facts,
+            review_date=on,
         )
+        relies_on_safeguards |= relies_on_art46_safeguard(country, mechanisms.get(country), facts, on)
         findings.append(
             Finding(
                 rule_id=f"transfer.{str(country).lower()}",
                 title=f"International transfer to {country}",
-                citation="GDPR " + _transfer_articles(str(country), mechanisms.get(country)),
+                citation="GDPR " + _transfer_articles(str(country), mechanisms.get(country), facts, on),
                 severity=severity,
                 status=status,
                 detail=detail,
                 remediation=(
                     "" if status == "PRESENT"
-                    else _transfer_remediation(country, mechanisms.get(country), is_occasional)
+                    else _transfer_remediation(
+                        country, mechanisms.get(country), is_occasional, recipient=facts, review_date=on
+                    )
                 ),
             )
         )
@@ -1307,22 +2005,27 @@ def check_transfers(dpa: dict) -> list[Finding]:
                 "occasional_and_not_repetitive",
             )
         }
+        facts = subprocessor_facts(sp, index)
         country = subprocessor_country(sp, index)
         name = subprocessor_name(sp, index)
         if country and country not in EEA:
+            mechanism = sp.get("transfer_mechanism")
             status, severity, detail = assess_transfer(
                 country,
-                sp.get("transfer_mechanism"),
+                mechanism,
                 **flags,
                 includes_hr_data=includes_hr_data,
                 includes_non_hr_data=includes_non_hr_data,
                 impact_assessment_recorded=tia,
+                recipient=facts,
+                review_date=on,
             )
+            relies_on_safeguards |= relies_on_art46_safeguard(country, mechanism, facts, on)
             findings.append(
                 Finding(
                     rule_id=subprocessor_rule_id(name),
                     title=f"Sub-processor transfer: {name} ({country})",
-                    citation="GDPR Art. 28(4) / " + _transfer_articles(country, sp.get("transfer_mechanism")),
+                    citation="GDPR Art. 28(4) / " + _transfer_articles(country, mechanism, facts, on),
                     severity=severity,
                     status=status,
                     detail=f"{name} processes data in {country}. {detail}",
@@ -1330,25 +2033,22 @@ def check_transfers(dpa: dict) -> list[Finding]:
                         "" if status == "PRESENT"
                         else _transfer_remediation(
                             country,
-                            sp.get("transfer_mechanism"),
+                            mechanism,
                             flags["occasional_and_not_repetitive"],
                             importer=name,
+                            recipient=facts,
+                            review_date=on,
                         )
                     ),
                 )
             )
 
     # Transfer impact assessment (Schrems II): required where an Art. 46 safeguard is relied on for a
-    # transfer to a third country with no adequacy decision. DPF transfers rely on an Art. 45 adequacy
-    # decision and therefore do not trigger it; a safeguard recorded for a destination with a
-    # scope-limited adequacy decision (the United States and its DPF decision included) is asked about
-    # in its own transfer finding, which reads the recorded assessment.
-    relies_on_safeguards = any(
-        relies_on_art46_safeguard(c, mechanisms.get(c)) for c in destinations
-    ) or any(
-        relies_on_art46_safeguard(subprocessor_country(sp, i), sp.get("transfer_mechanism"))
-        for i, sp in enumerate(entries)
-    )
+    # transfer to a third country with no adequacy decision (or none that applied on the review date).
+    # DPF transfers rely on an Art. 45 adequacy decision and therefore do not trigger it; a safeguard
+    # recorded for a destination whose decision may not cover the importer (the United States and its
+    # DPF decision included) is asked about in its own transfer finding, which reads the recorded
+    # assessment.
     if relies_on_safeguards:
         findings.append(
             Finding(

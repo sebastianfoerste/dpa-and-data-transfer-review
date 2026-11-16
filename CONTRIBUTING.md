@@ -17,7 +17,19 @@ make test      # must pass before any PR
 make demo      # regenerate examples/ if rule output changed
 ```
 
-If a change alters rule output, run `make demo` and commit the regenerated `examples/` files (review packet and transfer evidence graph, md and json) in the same PR, and update the packet excerpt in the README, so the committed sample stays truthful. `make test` fails until they match. If the printed packet changes, also capture the real output with `make demo > docs/demo.txt 2>&1`, re-render `docs/demo.png` from that file (never edit or mock up the image), and record both files with `sha256sum demo.txt demo.png > demo.sha256` in `docs/`. `make test` fails until the text matches the demo and the recorded hashes match both files.
+If a change alters rule output, run `make demo` and commit the regenerated `examples/` files (review packet and transfer evidence graph, md and json) in the same PR, and update the packet excerpt in the README, so the committed sample stays truthful. `make test` fails until they match. If the printed packet changes, also capture the real output with `make demo > docs/demo.txt 2>&1`, re-render `docs/demo.png` from that file with `python3 scripts/render_demo.py` (it needs Pillow, which the review itself never imports; never edit or mock up the image), and record both files with `sha256sum demo.txt demo.png > demo.sha256` in `docs/`. `make test` fails until the text matches the demo and the recorded hashes match both files.
+
+## Changing the adequacy reference data
+
+The adequacy table in `src/dpa_review/checks.py` rests only on Official Journal texts snapshotted under `sources/oj`. When a decision is adopted, amended, renewed or repealed:
+
+1. Snapshot the act from its CELEX resource URL and add its manifest entry ([`sources/README.md`](sources/README.md)). Never edit a snapshot by hand.
+2. Write the cases in `tests/adequacy_cases.json` from the text first, each quoting the provision it rests on.
+3. Update the entry, `TABLE_AS_OF` and the manifest's `recheck` block, mark every reading that is not the text itself as an interpretation, then run `make docs`, `make demo` and `make test`.
+
+`make table-age` reports how many days have passed since the table was last checked as a whole.
+
+Organisation names in structured synthetic data (`data/`, `examples/`, `tests/fixtures/`, `tests/adequacy_cases.json`) must be invented and listed in `tests/fictional_organisations.json`; `make test` fails on any other name.
 
 ## Adding a rule
 

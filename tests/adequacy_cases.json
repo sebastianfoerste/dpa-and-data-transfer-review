@@ -1,0 +1,446 @@
+{
+  "schema": "dpa-review.adequacy-cases.v1",
+  "note": "Written from the Official Journal snapshots in sources/oj before the rule code changed, and ported from fix/chapter-v-adequacy-model into the input shape of main. Each case quotes the provision it rests on; tests/test_adequacy.py checks that every quote occurs verbatim in the cited snapshot, that every input passes the input contract, and that check_transfers gives the expected status, severity and cited decision. An input is a fragment of a DPA description that the test adds to the smallest valid input. Status and severity follow the packet convention: PRESENT/LOW where the decision covers the transfer, MISSING/HIGH where no Chapter V basis is recorded, NEEDS_REVIEW/HIGH where an adequacy condition is unknown (owner answer of 10 November 2026). A case with an interpretation key rests on a reading of the decision that awaits lawyer review. Recipients are described by their facts only; no organisation is named.",
+  "cases": [
+    {
+      "id": "canada-private-commercial-organisation",
+      "interpretation": "Maps a private commercial organisation onto 'recipients subject to PIPEDA' via recital 5.",
+      "source": {"celex": "32002D0002", "pinpoint": "Decision 2002/2/EC, Art. 1 and recital 5", "quote": "applies to private sector organisations that collect, use or disclose personal information in the course of commercial activities"},
+      "input": {"transfers": {"destinations": ["CA"], "mechanisms": {"CA": "adequacy"}, "recipient_type": {"CA": "private_commercial"}}},
+      "expected": {"status": "PRESENT", "severity": "LOW", "cites": "Commission Decision 2002/2/EC, Art. 1"}
+    },
+    {
+      "id": "canada-no-mechanism-private-commercial-organisation",
+      "source": {"celex": "32002D0002", "pinpoint": "Decision 2002/2/EC, Art. 1", "quote": "Canada is considered as providing an adequate level of protection for personal data transferred from the Community to recipients subject to the Personal Information Protection and Electronic Documents Act"},
+      "input": {"transfers": {"destinations": ["CA"], "recipient_type": {"CA": "private_commercial"}}},
+      "expected": {"status": "PRESENT", "severity": "LOW", "cites": "Commission Decision 2002/2/EC, Art. 1"}
+    },
+    {
+      "id": "canada-public-body",
+      "interpretation": "Reads a public body as outside 'recipients subject to PIPEDA' via recital 5.",
+      "source": {"celex": "32002D0002", "pinpoint": "Decision 2002/2/EC, recital 5", "quote": "The Canadian Act does not apply to organisations to which the Federal Privacy Act applies or that are regulated by the public sector at a provincial level"},
+      "input": {"transfers": {"destinations": ["CA"], "mechanisms": {"CA": "adequacy"}, "recipient_type": {"CA": "public_body"}}},
+      "expected": {"status": "MISSING", "severity": "HIGH", "cites": "Commission Decision 2002/2/EC, Art. 1"}
+    },
+    {
+      "id": "canada-non-profit-goes-to-review",
+      "source": {"celex": "32002D0002", "pinpoint": "Decision 2002/2/EC, recital 5", "quote": "nor to non-profit organisations and charitable activities unless they are of a commercial nature"},
+      "input": {"transfers": {"destinations": ["CA"], "mechanisms": {"CA": "adequacy"}, "recipient_type": {"CA": "non_profit"}}},
+      "expected": {"status": "NEEDS_REVIEW", "severity": "HIGH", "cites": "Commission Decision 2002/2/EC, Art. 1"}
+    },
+    {
+      "id": "canada-recipient-type-not-recorded",
+      "source": {"celex": "32002D0002", "pinpoint": "Decision 2002/2/EC, Art. 1", "quote": "to recipients subject to the Personal Information Protection and Electronic Documents Act"},
+      "input": {"transfers": {"destinations": ["CA"], "mechanisms": {"CA": "adequacy"}}},
+      "expected": {"status": "NEEDS_REVIEW", "severity": "HIGH", "cites": "Commission Decision 2002/2/EC, Art. 1"}
+    },
+    {
+      "id": "canada-sub-processor-public-body",
+      "interpretation": "As canada-public-body.",
+      "source": {"celex": "32002D0002", "pinpoint": "Decision 2002/2/EC, recital 5", "quote": "The Canadian Act does not apply to organisations to which the Federal Privacy Act applies"},
+      "input": {"subprocessors": [{"name": "Example Records Office", "country": "CA", "transfer_mechanism": "adequacy", "recipient_type": "public_body"}]},
+      "expected": {"rule": "transfer.subprocessor.example_records_office", "status": "MISSING", "severity": "HIGH", "cites": "Commission Decision 2002/2/EC, Art. 1"}
+    },
+    {
+      "id": "canada-sccs-for-a-covered-organisation",
+      "interpretation": "As canada-private-commercial-organisation.",
+      "source": {"celex": "32016R0679", "pinpoint": "GDPR Art. 45(1)", "quote": "Such a transfer shall not require any specific authorisation."},
+      "input": {"transfers": {"destinations": ["CA"], "mechanisms": {"CA": "sccs"}, "recipient_type": {"CA": "private_commercial"}}},
+      "expected": {"status": "PRESENT", "severity": "LOW", "cites": "Commission Decision 2002/2/EC, Art. 1"}
+    },
+    {
+      "id": "canada-sccs-for-a-public-body",
+      "interpretation": "As canada-public-body.",
+      "source": {"celex": "32016R0679", "pinpoint": "GDPR Art. 46(1)", "quote": "In the absence of a decision pursuant to Article 45(3), a controller or processor may transfer personal data to a third country or an international organisation only if the controller or processor has provided appropriate safeguards"},
+      "input": {"transfers": {"destinations": ["CA"], "mechanisms": {"CA": "sccs"}, "recipient_type": {"CA": "public_body"}}},
+      "expected": {"status": "NEEDS_REVIEW", "severity": "MEDIUM", "cites": "Commission Implementing Decision (EU) 2021/914"}
+    },
+    {
+      "id": "canada-sccs-for-a-public-body-with-a-transfer-impact-assessment",
+      "interpretation": "As canada-public-body.",
+      "source": {"celex": "32016R0679", "pinpoint": "GDPR Art. 46(1)", "quote": "In the absence of a decision pursuant to Article 45(3)"},
+      "input": {"transfers": {"destinations": ["CA"], "mechanisms": {"CA": "sccs"}, "recipient_type": {"CA": "public_body"}, "transfer_impact_assessment": true}},
+      "expected": {"status": "NEEDS_REVIEW", "severity": "LOW", "cites": "Commission Implementing Decision (EU) 2021/914"}
+    },
+    {
+      "id": "canada-sccs-recipient-type-not-recorded",
+      "source": {"celex": "32002D0002", "pinpoint": "Decision 2002/2/EC, Art. 1", "quote": "to recipients subject to the Personal Information Protection and Electronic Documents Act"},
+      "input": {"transfers": {"destinations": ["CA"], "mechanisms": {"CA": "sccs"}}},
+      "expected": {"status": "NEEDS_REVIEW", "severity": "MEDIUM", "cites": "Commission Decision 2002/2/EC, Art. 1"}
+    },
+    {
+      "id": "canada-derogation-for-a-public-body",
+      "source": {"celex": "32016R0679", "pinpoint": "GDPR Art. 49(1), first subparagraph", "quote": "In the absence of an adequacy decision pursuant to Article 45(3), or of appropriate safeguards pursuant to Article 46, including binding corporate rules, a transfer or a set of transfers of personal data to a third country or an international organisation shall take place only on one of the following conditions"},
+      "input": {"transfers": {"destinations": ["CA"], "mechanisms": {"CA": "derogation_art49"}, "recipient_type": {"CA": "public_body"}}},
+      "expected": {"status": "MISSING", "severity": "HIGH", "cites": null}
+    },
+    {
+      "id": "japan-business-operator-outside-the-carve-outs",
+      "interpretation": "Maps a private commercial organisation onto a personal information handling business operator via recital 32.",
+      "source": {"celex": "32019D0419", "pinpoint": "Implementing Decision (EU) 2019/419, Art. 1(1)", "quote": "Japan ensures an adequate level of protection for personal data transferred from the European Union to personal information handling business operators in Japan subject to the Act on the Protection of Personal Information"},
+      "input": {"transfers": {"destinations": ["JP"], "mechanisms": {"JP": "adequacy"}, "recipient_type": {"JP": "private_commercial"}, "scope_carve_out": {"JP": "none"}}},
+      "expected": {"status": "PRESENT", "severity": "LOW", "cites": "Commission Implementing Decision (EU) 2019/419, Art. 1"}
+    },
+    {
+      "id": "japan-non-profit-outside-the-carve-outs",
+      "interpretation": "Recital 33 brings not-for-profit activities within the notion of business.",
+      "source": {"celex": "32019D0419", "pinpoint": "Implementing Decision (EU) 2019/419, recital 33", "quote": "it includes not only for-profit but also not-for-profit activities by all kinds of organisations and individuals"},
+      "input": {"transfers": {"destinations": ["JP"], "mechanisms": {"JP": "adequacy"}, "recipient_type": {"JP": "non_profit"}, "scope_carve_out": {"JP": "none"}}},
+      "expected": {"status": "PRESENT", "severity": "LOW", "cites": "Commission Implementing Decision (EU) 2019/419, Art. 1"}
+    },
+    {
+      "id": "japan-public-body",
+      "interpretation": "Reads a public body as outside the definition of a business operator via recital 32.",
+      "source": {"celex": "32019D0419", "pinpoint": "Implementing Decision (EU) 2019/419, recital 32", "quote": "with the exclusion of the government and administrative agencies at both central and local level"},
+      "input": {"transfers": {"destinations": ["JP"], "mechanisms": {"JP": "adequacy"}, "recipient_type": {"JP": "public_body"}, "scope_carve_out": {"JP": "none"}}},
+      "expected": {"status": "MISSING", "severity": "HIGH", "cites": "Commission Implementing Decision (EU) 2019/419, Art. 1"}
+    },
+    {
+      "id": "japan-carve-out-applies",
+      "source": {"celex": "32019D0419", "pinpoint": "Implementing Decision (EU) 2019/419, Art. 1(2)", "quote": "This decision does not cover personal data transferred to recipients falling within one of the following categories"},
+      "input": {"transfers": {"destinations": ["JP"], "mechanisms": {"JP": "adequacy"}, "recipient_type": {"JP": "private_commercial"}, "scope_carve_out": {"JP": "applies"}}},
+      "expected": {"status": "MISSING", "severity": "HIGH", "cites": "Commission Implementing Decision (EU) 2019/419, Art. 1"}
+    },
+    {
+      "id": "japan-carve-out-not-recorded",
+      "source": {"celex": "32019D0419", "pinpoint": "Implementing Decision (EU) 2019/419, Art. 1(2)", "quote": "to the extent all or part of the purposes of processing of the personal data corresponds to one of the listed purposes"},
+      "input": {"transfers": {"destinations": ["JP"], "mechanisms": {"JP": "adequacy"}, "recipient_type": {"JP": "private_commercial"}}},
+      "expected": {"status": "NEEDS_REVIEW", "severity": "HIGH", "cites": "Commission Implementing Decision (EU) 2019/419, Art. 1"}
+    },
+    {
+      "id": "japan-nothing-recorded",
+      "source": {"celex": "32019D0419", "pinpoint": "Implementing Decision (EU) 2019/419, Art. 1(1)", "quote": "to personal information handling business operators in Japan"},
+      "input": {"transfers": {"destinations": ["JP"], "mechanisms": {"JP": "adequacy"}}},
+      "expected": {"status": "NEEDS_REVIEW", "severity": "HIGH", "cites": "Commission Implementing Decision (EU) 2019/419, Art. 1"}
+    },
+    {
+      "id": "japan-carve-out-applies-recipient-type-not-recorded",
+      "source": {"celex": "32019D0419", "pinpoint": "Implementing Decision (EU) 2019/419, Art. 1(2)", "quote": "This decision does not cover personal data transferred to recipients falling within one of the following categories"},
+      "input": {"transfers": {"destinations": ["JP"], "mechanisms": {"JP": "adequacy"}, "scope_carve_out": {"JP": "applies"}}},
+      "expected": {"status": "MISSING", "severity": "HIGH", "cites": "Commission Implementing Decision (EU) 2019/419, Art. 1"}
+    },
+    {
+      "id": "japan-sub-processor-business-operator",
+      "interpretation": "As japan-business-operator-outside-the-carve-outs.",
+      "source": {"celex": "32019D0419", "pinpoint": "Implementing Decision (EU) 2019/419, Art. 1(1)", "quote": "to personal information handling business operators in Japan"},
+      "input": {"subprocessors": [{"name": "Example Analytics KK", "country": "JP", "recipient_type": "private_commercial", "scope_carve_out": "none"}]},
+      "expected": {"rule": "transfer.subprocessor.example_analytics_kk", "status": "PRESENT", "severity": "LOW", "cites": "Commission Implementing Decision (EU) 2019/419, Art. 1"}
+    },
+    {
+      "id": "japan-dpf-recorded-for-a-covered-recipient",
+      "interpretation": "As japan-business-operator-outside-the-carve-outs.",
+      "source": {"celex": "32023D1795", "pinpoint": "Implementing Decision (EU) 2023/1795, Art. 1", "quote": "personal data transferred from the Union to organisations in the United States"},
+      "input": {"transfers": {"destinations": ["JP"], "mechanisms": {"JP": "dpf"}, "recipient_type": {"JP": "private_commercial"}, "scope_carve_out": {"JP": "none"}}},
+      "expected": {"status": "NEEDS_REVIEW", "severity": "LOW", "cites": "Commission Implementing Decision (EU) 2019/419, Art. 1"}
+    },
+    {
+      "id": "japan-sccs-carve-out-applies-with-a-transfer-impact-assessment",
+      "source": {"celex": "32019D0419", "pinpoint": "Implementing Decision (EU) 2019/419, Art. 1(2)", "quote": "This decision does not cover personal data transferred to recipients falling within one of the following categories"},
+      "input": {"transfers": {"destinations": ["JP"], "mechanisms": {"JP": "sccs"}, "scope_carve_out": {"JP": "applies"}, "transfer_impact_assessment": true}},
+      "expected": {"status": "NEEDS_REVIEW", "severity": "LOW", "cites": "Commission Implementing Decision (EU) 2021/914"}
+    },
+    {
+      "id": "korea-public-institution-outside-the-carve-outs",
+      "source": {"celex": "32022D0254", "pinpoint": "Implementing Decision (EU) 2022/254, recital 19", "quote": "this includes any public institution, legal person, organisation or individual that processes personal data"},
+      "input": {"transfers": {"destinations": ["KR"], "mechanisms": {"KR": "adequacy"}, "recipient_type": {"KR": "public_body"}, "scope_carve_out": {"KR": "none"}}},
+      "expected": {"status": "PRESENT", "severity": "LOW", "cites": "Commission Implementing Decision (EU) 2022/254, Art. 1"}
+    },
+    {
+      "id": "korea-carve-out-applies",
+      "source": {"celex": "32022D0254", "pinpoint": "Implementing Decision (EU) 2022/254, Art. 1(2)", "quote": "This Decision does not cover personal data transferred to recipients falling within one of the following categories"},
+      "input": {"transfers": {"destinations": ["KR"], "mechanisms": {"KR": "adequacy"}, "scope_carve_out": {"KR": "applies"}}},
+      "expected": {"status": "MISSING", "severity": "HIGH", "cites": "Commission Implementing Decision (EU) 2022/254, Art. 1"}
+    },
+    {
+      "id": "korea-carve-out-not-recorded",
+      "source": {"celex": "32022D0254", "pinpoint": "Implementing Decision (EU) 2022/254, Art. 1(2)", "quote": "entities that are subject to oversight by the Financial Services Commission for the processing of personal credit information pursuant to the Credit Information Act"},
+      "input": {"transfers": {"destinations": ["KR"], "mechanisms": {"KR": "adequacy"}}},
+      "expected": {"status": "NEEDS_REVIEW", "severity": "HIGH", "cites": "Commission Implementing Decision (EU) 2022/254, Art. 1"}
+    },
+    {
+      "id": "korea-sub-processor-outside-the-carve-outs",
+      "source": {"celex": "32022D0254", "pinpoint": "Implementing Decision (EU) 2022/254, Art. 1(1)", "quote": "to entities in the Republic of Korea subject to the Personal Information Protection Act"},
+      "input": {"subprocessors": [{"name": "Example Analytics Co Ltd", "country": "KR", "transfer_mechanism": "adequacy", "scope_carve_out": "none"}]},
+      "expected": {"rule": "transfer.subprocessor.example_analytics_co_ltd", "status": "PRESENT", "severity": "LOW", "cites": "Commission Implementing Decision (EU) 2022/254, Art. 1"}
+    },
+    {
+      "id": "israel-automated-transfer",
+      "interpretation": "The input records no fact for the territorial limit of Article 2; the tool reads every importer as located in the State of Israel as defined in accordance with international law.",
+      "source": {"celex": "32011D0061", "pinpoint": "Decision 2011/61/EU, Art. 1(1)", "quote": "in relation to automated international transfers of personal data from the European Union or, where they are not automated, they are subject to further automated processing in the State of Israel"},
+      "input": {"transfers": {"destinations": ["IL"], "mechanisms": {"IL": "adequacy"}, "automated_processing": {"IL": true}}},
+      "expected": {"status": "PRESENT", "severity": "LOW", "cites": "Commission Decision 2011/61/EU, Art. 1(1)"}
+    },
+    {
+      "id": "israel-neither-automated-transfer-nor-automated-processing",
+      "source": {"celex": "32011D0061", "pinpoint": "Decision 2011/61/EU, Art. 1(1)", "quote": "in relation to automated international transfers of personal data from the European Union"},
+      "input": {"transfers": {"destinations": ["IL"], "mechanisms": {"IL": "adequacy"}, "automated_processing": {"IL": false}}},
+      "expected": {"status": "MISSING", "severity": "HIGH", "cites": "Commission Decision 2011/61/EU, Art. 1(1)"}
+    },
+    {
+      "id": "israel-automation-not-recorded",
+      "source": {"celex": "32011D0061", "pinpoint": "Decision 2011/61/EU, Art. 1(1)", "quote": "where they are not automated, they are subject to further automated processing in the State of Israel"},
+      "input": {"transfers": {"destinations": ["IL"], "mechanisms": {"IL": "adequacy"}}},
+      "expected": {"status": "NEEDS_REVIEW", "severity": "HIGH", "cites": "Commission Decision 2011/61/EU, Art. 1(1)"}
+    },
+    {
+      "id": "uruguay-no-automation-condition",
+      "interpretation": "The title refers to automated processing; Art. 1(1) sets no such limit, and the table follows Art. 1(1).",
+      "source": {"celex": "32012D0484", "pinpoint": "Implementing Decision 2012/484/EU, Art. 1(1)", "quote": "the Eastern Republic of Uruguay is considered as ensuring an adequate level of protection for personal data transferred from the European Union."},
+      "input": {"transfers": {"destinations": ["UY"], "mechanisms": {"UY": "adequacy"}}},
+      "expected": {"status": "PRESENT", "severity": "LOW", "cites": "Commission Implementing Decision 2012/484/EU, Art. 1(1)"}
+    },
+    {
+      "id": "uruguay-automation-fact-changes-nothing",
+      "interpretation": "As uruguay-no-automation-condition.",
+      "source": {"celex": "32012D0484", "pinpoint": "Implementing Decision 2012/484/EU, title", "quote": "with regard to automated processing of personal data"},
+      "input": {"transfers": {"destinations": ["UY"], "mechanisms": {"UY": "adequacy"}, "automated_processing": {"UY": false}}},
+      "expected": {"status": "PRESENT", "severity": "LOW", "cites": "Commission Implementing Decision 2012/484/EU, Art. 1(1)"}
+    },
+    {
+      "id": "faroe-islands-day-before-application",
+      "source": {"celex": "32010D0146", "pinpoint": "Decision 2010/146/EU, Art. 7", "quote": "This Decision shall apply from 15 June 2010."},
+      "input": {"review_date": "2010-06-14", "transfers": {"destinations": ["FO"], "mechanisms": {"FO": "adequacy"}}},
+      "expected": {"status": "MISSING", "severity": "HIGH", "cites": "Commission Decision 2010/146/EU, Art. 1"}
+    },
+    {
+      "id": "faroe-islands-on-application-day",
+      "interpretation": "The table reads every recipient in the Faroe Islands as subject to the Faeroese Act.",
+      "source": {"celex": "32010D0146", "pinpoint": "Decision 2010/146/EU, Art. 7", "quote": "This Decision shall apply from 15 June 2010."},
+      "input": {"review_date": "2010-06-15", "transfers": {"destinations": ["FO"], "mechanisms": {"FO": "adequacy"}}},
+      "expected": {"status": "PRESENT", "severity": "LOW", "cites": "Commission Decision 2010/146/EU, Art. 1"}
+    },
+    {
+      "id": "faroe-islands-day-after-application",
+      "interpretation": "As faroe-islands-on-application-day.",
+      "source": {"celex": "32010D0146", "pinpoint": "Decision 2010/146/EU, Art. 7", "quote": "This Decision shall apply from 15 June 2010."},
+      "input": {"review_date": "2010-06-16", "transfers": {"destinations": ["FO"], "mechanisms": {"FO": "adequacy"}}},
+      "expected": {"status": "PRESENT", "severity": "LOW", "cites": "Commission Decision 2010/146/EU, Art. 1"}
+    },
+    {
+      "id": "faroe-islands-no-recipient-input",
+      "interpretation": "As faroe-islands-on-application-day.",
+      "source": {"celex": "32010D0146", "pinpoint": "Decision 2010/146/EU, Art. 1", "quote": "to recipients subject to the Act on Processing of Personal Data (‘the Faeroese Act’)"},
+      "input": {"transfers": {"destinations": ["FO"], "mechanisms": {"FO": "adequacy"}}},
+      "expected": {"status": "PRESENT", "severity": "LOW", "cites": "Commission Decision 2010/146/EU, Art. 1", "detail_contains": "Interpretation:"}
+    },
+    {
+      "id": "brazil-day-before-adoption",
+      "interpretation": "The decision takes effect on notification, which the Official Journal text does not date; the table uses the adoption date.",
+      "source": {"celex": "32026D0179", "pinpoint": "Implementing Decision (EU) 2026/179, date of adoption", "quote": "Done at Brussels, 26 January 2026."},
+      "input": {"review_date": "2026-01-25", "transfers": {"destinations": ["BR"], "mechanisms": {"BR": "adequacy"}}},
+      "expected": {"status": "MISSING", "severity": "HIGH", "cites": "Commission Implementing Decision (EU) 2026/179, Art. 1"}
+    },
+    {
+      "id": "brazil-on-adoption-day",
+      "interpretation": "As brazil-day-before-adoption.",
+      "source": {"celex": "32026D0179", "pinpoint": "Implementing Decision (EU) 2026/179, date of adoption", "quote": "Done at Brussels, 26 January 2026."},
+      "input": {"review_date": "2026-01-26", "transfers": {"destinations": ["BR"], "mechanisms": {"BR": "adequacy"}}},
+      "expected": {"status": "PRESENT", "severity": "LOW", "cites": "Commission Implementing Decision (EU) 2026/179, Art. 1"}
+    },
+    {
+      "id": "brazil-day-after-adoption",
+      "source": {"celex": "32026D0179", "pinpoint": "Implementing Decision (EU) 2026/179, Art. 1", "quote": "Brazil ensures an adequate level of protection for personal data transferred from the European Union to controllers and processors in Brazil subject to the General Data Protection Law (LGPD)."},
+      "input": {"review_date": "2026-01-27", "transfers": {"destinations": ["BR"], "mechanisms": {"BR": "adequacy"}}},
+      "expected": {"status": "PRESENT", "severity": "LOW", "cites": "Commission Implementing Decision (EU) 2026/179, Art. 1"}
+    },
+    {
+      "id": "brazil-public-controller",
+      "interpretation": "The LGPD exemptions in recitals 30 to 35 are not modelled.",
+      "source": {"celex": "32026D0179", "pinpoint": "Implementing Decision (EU) 2026/179, recital 25", "quote": "the natural or legal person, whether public or private, which is responsible for decisions concerning the processing of personal data"},
+      "input": {"transfers": {"destinations": ["BR"], "mechanisms": {"BR": "adequacy"}, "recipient_type": {"BR": "public_body"}}},
+      "expected": {"status": "PRESENT", "severity": "LOW", "cites": "Commission Implementing Decision (EU) 2026/179, Art. 1"}
+    },
+    {
+      "id": "brazil-sccs-keep-the-scope-question",
+      "source": {"celex": "32026D0179", "pinpoint": "Implementing Decision (EU) 2026/179, Art. 1", "quote": "to controllers and processors in Brazil subject to the General Data Protection Law (LGPD)"},
+      "input": {"transfers": {"destinations": ["BR"], "mechanisms": {"BR": "sccs"}}},
+      "expected": {"status": "NEEDS_REVIEW", "severity": "MEDIUM", "cites": "Commission Implementing Decision (EU) 2026/179, Art. 1"}
+    },
+    {
+      "id": "united-kingdom-current-decision",
+      "source": {"celex": "32021D1772", "pinpoint": "Implementing Decision (EU) 2021/1772, Art. 1(1)", "quote": "the United Kingdom ensures an adequate level of protection for personal data transferred within the scope of Regulation (EU) 2016/679 from the European Union to the United Kingdom"},
+      "input": {"transfers": {"destinations": ["GB"], "mechanisms": {"GB": "adequacy"}}},
+      "expected": {"status": "PRESENT", "severity": "LOW", "cites": "Commission Implementing Decision (EU) 2021/1772, Art. 1(1)"}
+    },
+    {
+      "id": "united-kingdom-day-before-expiry",
+      "source": {"celex": "32025D2574", "pinpoint": "Implementing Decision (EU) 2025/2574, Art. 2 (new Art. 4 of Implementing Decision (EU) 2021/1772)", "quote": "This Decision shall expire on 27 December 2031, unless extended in accordance with the procedure referred to in Article 93(2) of Regulation (EU) 2016/679."},
+      "input": {"review_date": "2031-12-26", "transfers": {"destinations": ["GB"], "mechanisms": {"GB": "adequacy"}}},
+      "expected": {"status": "PRESENT", "severity": "LOW", "cites": "Commission Implementing Decision (EU) 2021/1772, Art. 1(1)"}
+    },
+    {
+      "id": "united-kingdom-on-expiry-day",
+      "interpretation": "The table reads 27 December 2031 as the last day of validity.",
+      "source": {"celex": "32025D2574", "pinpoint": "Implementing Decision (EU) 2025/2574, Art. 2 (new Art. 4 of Implementing Decision (EU) 2021/1772)", "quote": "This Decision shall expire on 27 December 2031"},
+      "input": {"review_date": "2031-12-27", "transfers": {"destinations": ["GB"], "mechanisms": {"GB": "adequacy"}}},
+      "expected": {"status": "PRESENT", "severity": "LOW", "cites": "Commission Implementing Decision (EU) 2021/1772, Art. 1(1)", "detail_contains": "Interpretation:"}
+    },
+    {
+      "id": "united-kingdom-day-after-expiry",
+      "interpretation": "As united-kingdom-on-expiry-day.",
+      "source": {"celex": "32025D2574", "pinpoint": "Implementing Decision (EU) 2025/2574, Art. 2 (new Art. 4 of Implementing Decision (EU) 2021/1772)", "quote": "This Decision shall expire on 27 December 2031"},
+      "input": {"review_date": "2031-12-28", "transfers": {"destinations": ["GB"], "mechanisms": {"GB": "adequacy"}}},
+      "expected": {"status": "MISSING", "severity": "HIGH", "cites": "Commission Implementing Decision (EU) 2021/1772, Art. 1(1)"}
+    },
+    {
+      "id": "united-kingdom-day-before-adoption",
+      "interpretation": "As brazil-day-before-adoption.",
+      "source": {"celex": "32021D1772", "pinpoint": "Implementing Decision (EU) 2021/1772, date of adoption", "quote": "Done at Brussels, 28 June 2021."},
+      "input": {"review_date": "2021-06-27", "transfers": {"destinations": ["GB"], "mechanisms": {"GB": "adequacy"}}},
+      "expected": {"status": "MISSING", "severity": "HIGH", "cites": "Commission Implementing Decision (EU) 2021/1772, Art. 1(1)"}
+    },
+    {
+      "id": "united-kingdom-review-date-before-the-2025-2574-amendment",
+      "source": {"celex": "32025D2574", "pinpoint": "Implementing Decision (EU) 2025/2574, Art. 1", "quote": "Article 1(2) of Implementing Decision (EU) 2021/1772 is repealed."},
+      "input": {"review_date": "2025-12-18", "transfers": {"destinations": ["GB"], "mechanisms": {"GB": "adequacy"}}},
+      "expected": {"status": "NEEDS_REVIEW", "severity": "HIGH", "cites": "Commission Implementing Decision (EU) 2021/1772, Art. 1(1)"}
+    },
+    {
+      "id": "united-kingdom-on-the-adoption-day-of-the-2025-2574-amendment",
+      "interpretation": "As brazil-day-before-adoption, for the amending act.",
+      "source": {"celex": "32025D2574", "pinpoint": "Implementing Decision (EU) 2025/2574, date of adoption", "quote": "Done at Brussels, 19 December 2025"},
+      "input": {"review_date": "2025-12-19", "transfers": {"destinations": ["GB"], "mechanisms": {"GB": "adequacy"}}},
+      "expected": {"status": "PRESENT", "severity": "LOW", "cites": "Commission Implementing Decision (EU) 2021/1772, Art. 1(1)"}
+    },
+    {
+      "id": "united-kingdom-day-after-the-adoption-of-the-2025-2574-amendment",
+      "interpretation": "The amending decision takes effect on notification, which the Official Journal text does not date; the table uses its adoption date.",
+      "source": {"celex": "32025D2574", "pinpoint": "Implementing Decision (EU) 2025/2574, date of adoption", "quote": "Done at Brussels, 19 December 2025"},
+      "input": {"review_date": "2025-12-20", "transfers": {"destinations": ["GB"], "mechanisms": {"GB": "adequacy"}}},
+      "expected": {"status": "PRESENT", "severity": "LOW", "cites": "Commission Implementing Decision (EU) 2021/1772, Art. 1(1)"}
+    },
+    {
+      "id": "united-kingdom-review-date-before-the-2025-1226-amendment",
+      "source": {"celex": "32025D1226", "pinpoint": "Implementing Decision (EU) 2025/1226, Art. 1 (new Art. 4 of Implementing Decision (EU) 2021/1772)", "quote": "This Decision shall expire on 27 December 2025"},
+      "input": {"review_date": "2025-06-23", "transfers": {"destinations": ["GB"], "mechanisms": {"GB": "adequacy"}}},
+      "expected": {"status": "NEEDS_REVIEW", "severity": "HIGH", "cites": "Commission Implementing Decision (EU) 2021/1772, Art. 1(1)"}
+    },
+    {
+      "id": "united-kingdom-review-date-while-the-immigration-exclusion-applied",
+      "source": {"celex": "32021D1772", "pinpoint": "Implementing Decision (EU) 2021/1772, Art. 1(2), repealed by Art. 1 of Implementing Decision (EU) 2025/2574", "quote": "This decision does not cover personal data that is transferred for purposes of United Kingdom immigration control"},
+      "input": {"review_date": "2023-01-01", "transfers": {"destinations": ["GB"], "mechanisms": {"GB": "adequacy"}}},
+      "expected": {"status": "NEEDS_REVIEW", "severity": "HIGH", "cites": "Commission Implementing Decision (EU) 2021/1772, Art. 1(1)", "detail_contains": "repealed its Article 1(2), the exclusion of data transferred for purposes of United Kingdom immigration control"}
+    },
+    {
+      "id": "united-kingdom-sccs-review-date-before-an-amendment",
+      "source": {"celex": "32021D1772", "pinpoint": "Implementing Decision (EU) 2021/1772, Art. 1(2) (repealed by Implementing Decision (EU) 2025/2574)", "quote": "This decision does not cover personal data that is transferred for purposes of United Kingdom immigration control"},
+      "input": {"review_date": "2025-12-01", "transfers": {"destinations": ["GB"], "mechanisms": {"GB": "sccs"}}},
+      "expected": {"status": "NEEDS_REVIEW", "severity": "MEDIUM", "cites": "Commission Implementing Decision (EU) 2021/1772, Art. 1(1)"}
+    },
+    {
+      "id": "united-kingdom-sccs-after-expiry",
+      "source": {"celex": "32016R0679", "pinpoint": "GDPR Art. 46(1)", "quote": "In the absence of a decision pursuant to Article 45(3), a controller or processor may transfer personal data to a third country or an international organisation only if the controller or processor has provided appropriate safeguards"},
+      "input": {"review_date": "2031-12-28", "transfers": {"destinations": ["GB"], "mechanisms": {"GB": "sccs"}}},
+      "expected": {"status": "NEEDS_REVIEW", "severity": "LOW", "cites": "Commission Implementing Decision (EU) 2021/914", "impact_assessment_finding": true}
+    },
+    {
+      "id": "european-patent-organisation",
+      "source": {"celex": "32025D1382", "pinpoint": "Implementing Decision (EU) 2025/1382, Art. 1", "quote": "the European Patent Organisation ensures an adequate level of protection for personal data transferred from the Union to the European Patent Organisation."},
+      "input": {"transfers": {"destinations": ["EPO"], "mechanisms": {"EPO": "adequacy"}}},
+      "expected": {"status": "PRESENT", "severity": "LOW", "cites": "Commission Implementing Decision (EU) 2025/1382, Art. 1", "detail_contains": "Art. 44"}
+    },
+    {
+      "id": "european-patent-organisation-has-no-eea-shortcut",
+      "source": {"celex": "32016R0679", "pinpoint": "GDPR Art. 44", "quote": "Any transfer of personal data which are undergoing processing or are intended for processing after transfer to a third country or to an international organisation shall take place only if"},
+      "input": {"transfers": {"destinations": ["EPO"]}},
+      "expected": {"status": "PRESENT", "severity": "LOW", "cites": "Commission Implementing Decision (EU) 2025/1382, Art. 1", "detail_contains": "Munich"}
+    },
+    {
+      "id": "european-patent-organisation-day-before-adoption",
+      "interpretation": "As brazil-day-before-adoption.",
+      "source": {"celex": "32025D1382", "pinpoint": "Implementing Decision (EU) 2025/1382, date of adoption", "quote": "Done at Brussels, 15 July 2025."},
+      "input": {"review_date": "2025-07-14", "transfers": {"destinations": ["EPO"], "mechanisms": {"EPO": "adequacy"}}},
+      "expected": {"status": "MISSING", "severity": "HIGH", "cites": "Commission Implementing Decision (EU) 2025/1382, Art. 1"}
+    },
+    {
+      "id": "european-patent-organisation-on-adoption-day",
+      "interpretation": "As brazil-day-before-adoption.",
+      "source": {"celex": "32025D1382", "pinpoint": "Implementing Decision (EU) 2025/1382, date of adoption", "quote": "Done at Brussels, 15 July 2025."},
+      "input": {"review_date": "2025-07-15", "transfers": {"destinations": ["EPO"], "mechanisms": {"EPO": "adequacy"}}},
+      "expected": {"status": "PRESENT", "severity": "LOW", "cites": "Commission Implementing Decision (EU) 2025/1382, Art. 1", "detail_contains": "so the tool reads it as applying from its date of adoption"}
+    },
+    {
+      "id": "european-patent-organisation-day-after-adoption",
+      "interpretation": "As brazil-day-before-adoption.",
+      "source": {"celex": "32025D1382", "pinpoint": "Implementing Decision (EU) 2025/1382, date of adoption", "quote": "Done at Brussels, 15 July 2025."},
+      "input": {"review_date": "2025-07-16", "transfers": {"destinations": ["EPO"], "mechanisms": {"EPO": "adequacy"}}},
+      "expected": {"status": "PRESENT", "severity": "LOW", "cites": "Commission Implementing Decision (EU) 2025/1382, Art. 1"}
+    },
+    {
+      "id": "european-patent-organisation-sccs",
+      "source": {"celex": "32016R0679", "pinpoint": "GDPR Art. 45(1)", "quote": "Such a transfer shall not require any specific authorisation."},
+      "input": {"transfers": {"destinations": ["EPO"], "mechanisms": {"EPO": "sccs"}}},
+      "expected": {"status": "PRESENT", "severity": "LOW", "cites": "Commission Implementing Decision (EU) 2025/1382, Art. 1"}
+    },
+    {
+      "id": "switzerland-review-date-after-the-table",
+      "source": {"celex": "32000D0518", "pinpoint": "Decision 2000/518/EC, Art. 1", "quote": "for all the activities falling within the scope of that Directive"},
+      "input": {"review_date": "2027-03-01", "transfers": {"destinations": ["CH"], "mechanisms": {"CH": "adequacy"}}},
+      "expected": {"status": "PRESENT", "severity": "LOW", "cites": "Commission Decision 2000/518/EC, Art. 1", "detail_contains": "later Commission acts are not reflected"}
+    },
+    {
+      "id": "country-without-a-decision",
+      "source": {"celex": "32016R0679", "pinpoint": "GDPR Art. 46(1)", "quote": "In the absence of a decision pursuant to Article 45(3)"},
+      "input": {"transfers": {"destinations": ["IN"]}},
+      "expected": {"status": "MISSING", "severity": "HIGH", "cites": null}
+    },
+    {
+      "id": "adequacy-recorded-for-a-country-without-a-decision",
+      "source": {"celex": "32016R0679", "pinpoint": "GDPR Art. 45(1)", "quote": "A transfer of personal data to a third country or an international organisation may take place where the Commission has decided that the third country, a territory or one or more specified sectors within that third country, or the international organisation in question ensures an adequate level of protection."},
+      "input": {"transfers": {"destinations": ["IN"], "mechanisms": {"IN": "adequacy"}}},
+      "expected": {"status": "MISSING", "severity": "HIGH", "cites": null}
+    },
+    {
+      "id": "us-dpf-certified-for-the-data-transferred",
+      "source": {"celex": "32023D1795", "pinpoint": "Implementing Decision (EU) 2023/1795, Art. 1", "quote": "the United States ensures an adequate level of protection for personal data transferred from the Union to organisations in the United States that are included in the ‘Data Privacy Framework List’"},
+      "input": {"processing": {"includes_hr_data": false, "includes_non_hr_data": true}, "transfers": {"destinations": ["US"], "mechanisms": {"US": "dpf"}, "dpf_certified": {"US": true}, "dpf_covers_non_hr_data": {"US": true}}},
+      "expected": {"status": "PRESENT", "severity": "LOW", "cites": "Commission Implementing Decision (EU) 2023/1795, Art. 1"}
+    },
+    {
+      "id": "us-dpf-hr-data-and-hr-coverage-not-recorded",
+      "source": {"celex": "32023D1795", "pinpoint": "Implementing Decision (EU) 2023/1795, Annex I, Section III.6.c", "quote": "the organization must indicate this in its initial self-certification submission, as well as in any re-certification submissions"},
+      "input": {"processing": {"includes_non_hr_data": true}, "transfers": {"destinations": ["US"], "mechanisms": {"US": "dpf"}, "dpf_certified": {"US": true}, "dpf_covers_non_hr_data": {"US": true}}},
+      "expected": {"status": "NEEDS_REVIEW", "severity": "HIGH", "cites": "Commission Implementing Decision (EU) 2023/1795, Art. 1"}
+    },
+    {
+      "id": "us-dpf-neither-type-of-data-recorded-as-transferred",
+      "interpretation": "Every personal datum is HR or non-HR data, so an input recording that neither is transferred contradicts itself; the coverage stays unresolved.",
+      "source": {"celex": "32023D1795", "pinpoint": "Implementing Decision (EU) 2023/1795, Annex I, Section I.6", "quote": "Organizations are obligated to apply the Principles to all personal data transferred in reliance on the EU-U.S. DPF after they enter the EU-U.S. DPF."},
+      "input": {"processing": {"includes_hr_data": false, "includes_non_hr_data": false}, "transfers": {"destinations": ["US"], "mechanisms": {"US": "dpf"}, "dpf_certified": {"US": true}, "dpf_covers_non_hr_data": {"US": true}, "dpf_covers_hr_data": {"US": true}}},
+      "expected": {"status": "NEEDS_REVIEW", "severity": "HIGH", "cites": "Commission Implementing Decision (EU) 2023/1795, Art. 1"}
+    },
+    {
+      "id": "us-dpf-review-date-before-adoption",
+      "interpretation": "As brazil-day-before-adoption.",
+      "source": {"celex": "32023D1795", "pinpoint": "Implementing Decision (EU) 2023/1795, date of adoption", "quote": "Done at Brussels, 10 July 2023."},
+      "input": {"review_date": "2023-07-09", "processing": {"includes_hr_data": false, "includes_non_hr_data": true}, "transfers": {"destinations": ["US"], "mechanisms": {"US": "dpf"}, "dpf_certified": {"US": true}, "dpf_covers_non_hr_data": {"US": true}}},
+      "expected": {"status": "MISSING", "severity": "HIGH", "cites": "Commission Implementing Decision (EU) 2023/1795, Art. 1"}
+    },
+    {
+      "id": "us-dpf-on-adoption-day",
+      "interpretation": "As brazil-day-before-adoption.",
+      "source": {"celex": "32023D1795", "pinpoint": "Implementing Decision (EU) 2023/1795, date of adoption", "quote": "Done at Brussels, 10 July 2023."},
+      "input": {"review_date": "2023-07-10", "processing": {"includes_hr_data": false, "includes_non_hr_data": true}, "transfers": {"destinations": ["US"], "mechanisms": {"US": "dpf"}, "dpf_certified": {"US": true}, "dpf_covers_non_hr_data": {"US": true}}},
+      "expected": {"status": "PRESENT", "severity": "LOW", "cites": "Commission Implementing Decision (EU) 2023/1795, Art. 1", "detail_contains": "so the tool reads it as applying from its date of adoption"}
+    },
+    {
+      "id": "us-dpf-day-after-adoption",
+      "interpretation": "As brazil-day-before-adoption.",
+      "source": {"celex": "32023D1795", "pinpoint": "Implementing Decision (EU) 2023/1795, date of adoption", "quote": "Done at Brussels, 10 July 2023."},
+      "input": {"review_date": "2023-07-11", "processing": {"includes_hr_data": false, "includes_non_hr_data": true}, "transfers": {"destinations": ["US"], "mechanisms": {"US": "dpf"}, "dpf_certified": {"US": true}, "dpf_covers_non_hr_data": {"US": true}}},
+      "expected": {"status": "PRESENT", "severity": "LOW", "cites": "Commission Implementing Decision (EU) 2023/1795, Art. 1"}
+    },
+    {
+      "id": "us-dpf-review-date-after-the-table",
+      "source": {"celex": "32023D1795", "pinpoint": "Implementing Decision (EU) 2023/1795, Art. 3(5)", "quote": "it will decide to suspend, amend or repeal this Decision, or limit its scope"},
+      "input": {"review_date": "2027-03-01", "processing": {"includes_hr_data": false, "includes_non_hr_data": true}, "transfers": {"destinations": ["US"], "mechanisms": {"US": "dpf"}, "dpf_certified": {"US": true}, "dpf_covers_non_hr_data": {"US": true}}},
+      "expected": {"status": "PRESENT", "severity": "LOW", "cites": "Commission Implementing Decision (EU) 2023/1795, Art. 1", "detail_contains": "later Commission acts are not reflected"}
+    },
+    {
+      "id": "us-sccs-review-date-before-the-dpf-decision",
+      "source": {"celex": "32016R0679", "pinpoint": "GDPR Art. 46(1)", "quote": "In the absence of a decision pursuant to Article 45(3)"},
+      "input": {"review_date": "2023-07-09", "transfers": {"destinations": ["US"], "mechanisms": {"US": "sccs"}}},
+      "expected": {"status": "NEEDS_REVIEW", "severity": "LOW", "cites": "Commission Implementing Decision (EU) 2021/914", "impact_assessment_finding": true}
+    }
+  ]
+}

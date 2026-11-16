@@ -20,9 +20,12 @@ sys.path.insert(0, str(ROOT / "src"))
 from dpa_review.checks import (  # noqa: E402
     ADEQUACY,
     ADEQUACY_VERIFIED_ON,
+    ADOPTION_DATE_NOTE,
+    AMENDMENT_DATE_NOTE,
     DPF_ADEQUACY,
     EEA,
     SAFEGUARDS,
+    TABLE_AS_OF,
     AdequacyDecision,
     assess_transfer,
     check_transfers,
@@ -41,6 +44,7 @@ _KIND = {
     "name": "non-empty string",
     "description": "string or boolean",
     "country": "country code",
+    "date": "date (YYYY-MM-DD)",
     "choice": "one of {options}",
     "labels": "list of strings",
     "countries": "list of country codes",
@@ -107,7 +111,11 @@ def input_format() -> str:
         "`processing.nature_and_purpose`) that reads as yes or no, such as `\"false\"`, is refused: record "
         "yes/no as a JSON boolean.",
         "- Country codes are upper-case ISO 3166-1 alpha-2 codes. `UK`, `EL` and `EU` are refused with "
-        "the code to use instead (`GB`, `GR`, a member state).",
+        "the code to use instead (`GB`, `GR`, a member state). A direct transfer to the European Patent "
+        "Organisation, an international organisation with an adequacy decision, is recorded as `EPO`, in "
+        "`transfers.destinations` and as a key under `transfers`; a sub-processor's `country` stays a country.",
+        "- `review_date` is a calendar date written as `YYYY-MM-DD`; anything else, such as `2031-13-01`, is "
+        "refused.",
         "- Every key of `transfers.mechanisms`, and of the other per-country objects under `transfers`, must "
         "be a country that `transfers.destinations` lists.",
         "- Sub-processor names must contain a letter or digit and must differ, ignoring case, spaces and "
@@ -218,21 +226,28 @@ def _probe(present: bool) -> dict:
 def _reads(rule_id: str, dpa: dict) -> str:
     if rule_id == "transfer.<country>":
         return (
-            "`transfers.destinations`, `transfers.mechanisms.<COUNTRY>`; for `dpf`, "
+            "`transfers.destinations`, `transfers.mechanisms.<COUNTRY>`; for a destination whose adequacy "
+            "decision has scope conditions, `transfers.recipient_type.<COUNTRY>`, "
+            "`transfers.scope_carve_out.<COUNTRY>` or `transfers.automated_processing.<COUNTRY>`; for a "
+            "destination with an adequacy decision, `review_date`; for `dpf`, "
             "`transfers.dpf_certified.<COUNTRY>`, `transfers.dpf_covers_non_hr_data.<COUNTRY>`, "
             "`transfers.dpf_covers_hr_data.<COUNTRY>`, `processing.includes_non_hr_data`, "
             "`processing.includes_hr_data`; for `derogation_art49`, "
             "`transfers.occasional_and_not_repetitive.<COUNTRY>`; for an Art. 46 safeguard to a destination "
-            "whose adequacy decision has a scope limit (the US included), `transfers.transfer_impact_assessment`"
+            "whose adequacy decision may not cover the importer (the US included), "
+            "`transfers.transfer_impact_assessment`"
         )
     if rule_id == "transfer.subprocessor.<name>":
         return (
-            "`subprocessors[].country`, `subprocessors[].transfer_mechanism`; for `dpf`, "
+            "`subprocessors[].country`, `subprocessors[].transfer_mechanism`; for a country whose adequacy "
+            "decision has scope conditions, `subprocessors[].recipient_type`, `subprocessors[].scope_carve_out` "
+            "or `subprocessors[].automated_processing`; for a country with an adequacy decision, `review_date`; "
+            "for `dpf`, "
             "`subprocessors[].dpf_certified`, `subprocessors[].dpf_covers_non_hr_data`, "
             "`subprocessors[].dpf_covers_hr_data`, `processing.includes_non_hr_data`, "
             "`processing.includes_hr_data`; for `derogation_art49`, "
             "`subprocessors[].occasional_and_not_repetitive`; for an Art. 46 safeguard to a country whose "
-            "adequacy decision has a scope limit (the US included), `transfers.transfer_impact_assessment`"
+            "adequacy decision may not cover the importer (the US included), `transfers.transfer_impact_assessment`"
         )
     return ", ".join(f"`{format_path(path)}`" for path in rule_facts(dpa, rule_id))
 
@@ -242,8 +257,10 @@ _PROBE_SUBPROCESSOR = subprocessor_rule_id("<name>")
 _TRANSFER_BASES = (
     ("EEA member state (e.g. DE)", "DE"),
     ("Adequacy decision without a scope limit (e.g. CH)", "CH"),
-    ("Adequacy decision with a scope limit (e.g. JP)", "JP"),
+    ("Scope limit without an input (BR, FO)", "BR"),
+    ("Scope conditions, no fact recorded (e.g. JP)", "JP"),
     ("United States (DPF decision)", "US"),
+    ("International organisation (EPO)", "EPO"),
     ("Third country without an adequacy decision (e.g. IN)", "IN"),
 )
 
@@ -261,17 +278,53 @@ _PROVISIONS = {
 }
 
 
+# Marks a start date the table takes from the date of adoption (checks.ADOPTION_DATE_NOTE).
+_ADOPTION_MARK = "(adoption date, see note)"
+
+
 def _decision_row(decision: AdequacyDecision) -> str:
     """One row of the reference-data table."""
-    act = f"[{decision.act}](https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:{decision.celex}) of {decision.adopted}"
+    act = (
+        f"[{decision.act}](https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:{decision.celex}) of "
+        f"{decision.adopted}, {decision.provision}"
+    )
     if decision.directive_era:
         act += ", in force under Art. 45(9)"
     if decision.amended:
         act += "; " + decision.amended
     code = decision.country + (" (via `dpf`)" if decision is DPF_ADEQUACY else "")
-    return (
-        f"| {code} | {decision.name} | {_cell(act)} | {decision.oj} | {_cell(decision.scope_limit or 'none')} |"
+    start = (
+        f"{decision.applies_from} ({decision.applies_from_source})"
+        if decision.applies_from
+        else f"{decision.adopted} {_ADOPTION_MARK}"
     )
+    until = f"{decision.expires} (last day)" if decision.expires else "no end date"
+    if decision is DPF_ADEQUACY:
+        conditions = "`dpf` with the importer's certification (see the transfer rules)"
+    elif decision.conditions:
+        conditions = "; ".join(f"`{condition.fact}` ({condition.pinpoint})" for condition in decision.conditions)
+    elif decision.scope_limit:
+        conditions = "none recorded; read as covering every importer (interpretation)"
+    else:
+        conditions = "none"
+    return (
+        f"| {code} | {decision.name} | {_cell(act)} | {decision.oj} | {start} | {until} "
+        f"| {_cell(decision.scope_limit or 'none')} | {_cell(conditions)} |"
+    )
+
+
+def _condition_rows() -> list[str]:
+    """One row per scope condition the tool reads from the input."""
+    rows = []
+    for decision in sorted(ADEQUACY.values(), key=lambda item: item.country):
+        for condition in decision.conditions:
+            covered = ", ".join(f"`{json.dumps(value)}`" for value in sorted(condition.covered, key=str))
+            not_covered = ", ".join(f"`{json.dumps(value)}`" for value in sorted(condition.not_covered, key=str))
+            rows.append(
+                f"| {decision.country} | `{condition.fact}` | {condition.pinpoint} | {_cell(condition.requirement)} "
+                f"| {covered} | {not_covered} | {_cell(condition.interpretation or 'none')} |"
+            )
+    return rows
 
 
 def _transfer_citation(country: str, mechanism: str) -> str:
@@ -317,7 +370,8 @@ def rules() -> str:
         if rule_id == "transfer.impact_assessment":
             absent_status += (
                 "; checked only when an Art. 46 safeguard is relied on for a transfer to a third country "
-                "with no adequacy decision (the United States has one, the DPF decision)"
+                "with no adequacy decision that applied on the review date (the United States has one, the DPF "
+                "decision)"
             )
         lines.append(
             f"| `{rule_id}` | {_cell(finding.title)} | {citation} | {severity} "
@@ -334,11 +388,18 @@ def rules() -> str:
         "recorded as occasional and not repetitive; for an Art. 46 safeguard, no transfer impact assessment. "
         "Art. 46(1) makes the safeguards the transfer basis only in the absence of an adequacy decision, so "
         "a safeguard recorded for a destination with a decision is not needed where the decision covers the "
-        "importer. Where the decision has a scope limit the tool cannot check, the finding asks whether the "
-        "importer is within it; once a transfer impact assessment is recorded that finding is LOW instead of "
-        "MEDIUM. The United States has such a decision: Implementing Decision (EU) 2023/1795 covers only "
-        "organisations on the Data Privacy Framework List, so a safeguard recorded for the US gets the same "
-        "question, about that list.",
+        "importer. Where the decision's scope turns on facts about the importer (Canada, Israel, Japan, "
+        "Korea; see [Scope conditions](#scope-conditions)), the recorded facts decide: a failed condition "
+        "means the decision does not cover the importer, and an unknown one never counts as adequacy, so a "
+        "transfer recorded as relying on the decision is `NEEDS_REVIEW` (`HIGH`) until the facts are recorded. "
+        "With a safeguard recorded, the finding asks whether the importer is within the decision, or says it is "
+        "not and the safeguard carries the transfer; once a transfer impact assessment is recorded that finding "
+        "is LOW instead of MEDIUM. Brazil and the Faroe Islands have a scope limit the input records no fact "
+        "for: a transfer on the decision is read as covered and the finding asks the reviewer to confirm the "
+        "limit, and a safeguard gets the same question. The United States has a decision that covers only "
+        "organisations on the Data Privacy Framework List (Implementing Decision (EU) 2023/1795), so a "
+        "safeguard recorded for the US gets the same question, about that list. With a `review_date`, each "
+        "decision is read as it applied on that date (see [Reference data](#reference-data)).",
         "",
         "| Mechanism | Provision | " + " | ".join(label for label, _ in _TRANSFER_BASES) + " |",
         "| --- | --- |" + " --- |" * len(_TRANSFER_BASES),
@@ -364,31 +425,58 @@ def rules() -> str:
         "",
         "## Reference data",
         "",
-        f"The country lists the transfer rules use, as they stand in `checks.py`. Every adequacy decision "
-        f"below was read on EUR-Lex on {ADEQUACY_VERIFIED_ON}: its operative part, its date, its Official "
-        "Journal reference and the EUR-Lex record of its status and amendments. The scope limit is the "
-        "decision's own; the tool cannot check it from the input, so a finding that relies on the decision "
-        "states it. Decisions are amended, extended and adopted after that date: re-check the decision on "
-        "EUR-Lex before relying on a result.",
+        f"The destination lists the transfer rules use, as they stand in `checks.py`. Every adequacy decision "
+        f"below rests on its Official Journal text, snapshotted under [`sources/oj`](../sources/oj) with its "
+        "URL, retrieval date and SHA-256 in [`sources/manifest.json`](../sources/manifest.json); "
+        "`tests/test_adequacy.py` checks each number, date, Official Journal reference and operative "
+        f"provision against the snapshot. The table is as at {TABLE_AS_OF}: on that date every snapshot was "
+        "re-fetched and found unchanged, and the Publications Office's Cellar was searched for later adequacy "
+        f"acts (`dpa-review-table-age` reports its age). The EUR-Lex records of status and amendments were "
+        f"read on {ADEQUACY_VERIFIED_ON}. Decisions are amended, extended and adopted after these dates: "
+        "re-check the decision on EUR-Lex before relying on a result.",
         "",
         f"- EEA ({len(EEA)}): " + ", ".join(sorted(EEA)),
         f"- Adequacy (Art. 45) ({len(ADEQUACY)}): " + ", ".join(sorted(ADEQUACY)),
         "",
-        "| Code | Country | Decision | Official Journal | Scope limit |",
-        "| --- | --- | --- | --- | --- |",
+        "| Code | Destination | Decision | Official Journal | Applies from | Valid until | Scope limit "
+        "| Conditions read from the input |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     for decision in [*sorted(ADEQUACY.values(), key=lambda item: item.country), DPF_ADEQUACY]:
         lines.append(_decision_row(decision))
     lines += [
+        "",
+        f"Start dates marked {_ADOPTION_MARK}: {ADOPTION_DATE_NOTE} (interpretation). With a `review_date`, a decision "
+        "does not cover a transfer before the date it applies from or after its last day of validity, and a "
+        "review date before an amendment that changed its scope or validity sends the transfer to review "
+        f"(`HIGH`, or the safeguard question where a safeguard is recorded): {AMENDMENT_DATE_NOTE}. A review "
+        f"date after {TABLE_AS_OF} gets a note that later Commission acts are not reflected.",
         "",
         "Decisions adopted under Article 25(6) of Directive 95/46/EC stay in force under Art. 45(9) GDPR "
         "until amended, replaced or repealed; their findings cite Art. 45(9) too. Implementing Decision (EU) "
         "2016/2295 replaced their articles on suspending data flows and on monitoring and left Article 1 "
         "unchanged. "
         "The US decision is reached through the `dpf` mechanism, with the importer's certification, so the US "
-        "is not on the adequacy list. The tool models countries only: Commission Implementing Decision (EU) "
-        "2025/1382 of 15 July 2025 on the European Patent Organisation, an international organisation, is "
-        "not on the list.",
+        "is not on the adequacy list. The European Patent Organisation (`EPO`) is an international "
+        "organisation with its seat in Munich: a transfer to it is a transfer under Chapter V (Art. 44), so the "
+        "EEA exemption does not apply. The United Kingdom decisions under Directive (EU) 2016/680 (law "
+        "enforcement) are outside the tool's GDPR scope.",
+        "",
+        "### Scope conditions",
+        "",
+        "Each condition reads one fact about the importer, recorded per destination under `transfers` or on "
+        "a sub-processor entry ([input-format.md](input-format.md)). A value in the covered column meets the "
+        "condition and one in the not-covered column fails it; any other value, or no value, leaves it "
+        "unresolved, which never counts as adequacy. An interpretation maps the input's categories onto the "
+        "decision's text and is repeated in a finding it decides.",
+        "",
+        "| Destination | Fact | Provision | Requirement | Covered | Not covered | Interpretation |",
+        "| --- | --- | --- | --- | --- | --- | --- |",
+        *_condition_rows(),
+        "",
+        "Uruguay: " + ADEQUACY["UY"].scope_reading + " (interpretation). Brazil: "
+        + ADEQUACY["BR"].scope_reading + " (interpretation). Faroe Islands: " + ADEQUACY["FO"].scope_reading
+        + " (interpretation). Israel: " + ADEQUACY["IL"].scope_reading + " (interpretation).",
         "",
     ]
     return "\n".join(lines)

@@ -8,7 +8,11 @@ from typing import Any
 
 from dpa_review.checks import (
     EEA,
+    INTERNATIONAL_ORGANISATIONS,
+    destination_facts,
+    recorded_review_date,
     relies_on_art46_safeguard,
+    subprocessor_facts,
     subprocessor_country,
     subprocessor_name,
     subprocessor_rule_id,
@@ -98,6 +102,7 @@ def build_transfer_evidence_graph(
     flowdown = _finding(packet, "subprocessor.flowdown")
     authorization = _finding(packet, "subprocessor.authorization")
     transfer_impact = _finding(packet, "transfer.impact_assessment")
+    review_date = recorded_review_date(dpa)
     represented_destinations: set[str] = set()
     # Read the input as the checks do, so that an omitted or null value means the same here.
     for index, subprocessor in enumerate(subprocessors(dpa)):
@@ -134,7 +139,8 @@ def build_transfer_evidence_graph(
             )
             location_findings = [transfer_finding] if transfer_finding else []
             location_controls = [transfer_rule_id]
-            if transfer_impact and relies_on_art46_safeguard(country, mechanism):
+            facts = subprocessor_facts(subprocessor, index)
+            if transfer_impact and relies_on_art46_safeguard(country, mechanism, facts, review_date):
                 location_findings.append(transfer_impact)
                 location_controls.append(transfer_impact.rule_id)
             jurisdiction_id = add_node(
@@ -164,12 +170,16 @@ def build_transfer_evidence_graph(
 
     mechanisms = transfer_mechanisms(dpa)
     for country in transfer_destinations(dpa):
-        jurisdiction_id = add_node("jurisdiction", country, eea=country in EEA)
+        # An international organisation is a destination of its own, never inside the EEA (Art. 44).
+        kind = "international_organisation" if country in INTERNATIONAL_ORGANISATIONS else "jurisdiction"
+        jurisdiction_id = add_node(kind, country, eea=country in EEA)
         finding = _finding(packet, f"transfer.{country.lower()}")
         mechanism = _mechanism(mechanisms.get(country))
         direct_findings = [finding] if finding else []
         direct_controls = [f"transfer.{country.lower()}"]
-        if transfer_impact and relies_on_art46_safeguard(country, mechanism):
+        if transfer_impact and relies_on_art46_safeguard(
+            country, mechanism, destination_facts(dpa, country), review_date
+        ):
             direct_findings.append(transfer_impact)
             direct_controls.append(transfer_impact.rule_id)
         edges.append(

@@ -7,11 +7,11 @@
     "legal_review_note": ""
   },
   "02-adequacy-only.json": {
-    "checks": "Direct transfers to Japan and Switzerland and a UK sub-processor, all on adequacy decisions.",
+    "checks": "Direct transfers to Japan and Switzerland and a UK sub-processor, all on adequacy decisions; the Japanese importer is recorded as a private commercial organisation outside the Article 1(2) carve-outs.",
     "review_state": "CLEARED_FOR_REVIEW",
     "exit_code": 0,
     "open_rules": [],
-    "legal_review_note": ""
+    "legal_review_note": "Changed input: the fixture now records the facts the Japanese decision's scope turns on (recipient_type private_commercial, scope_carve_out none). Without them the transfer to Japan is NEEDS_REVIEW (HIGH) and the packet BLOCKED (fixture 17), because an unknown adequacy condition never counts as adequacy (owner's answer of 10 November 2026). Reading a private commercial organisation as a personal information handling business operator rests on recital 32 of Implementing Decision (EU) 2019/419 and is an interpretation."
   },
   "03-sccs-with-tia.json": {
     "checks": "A direct transfer to the US on SCCs, with a transfer impact assessment recorded.",
@@ -67,7 +67,7 @@
     "review_state": "CLEARED_FOR_REVIEW",
     "exit_code": 0,
     "open_rules": [],
-    "legal_review_note": "Changed: Brazil is now in the adequacy reference data under Commission Implementing Decision (EU) 2026/179 of 26 January 2026 (OJ L, 2026/179, 28.1.2026), read on EUR-Lex on 2026-11-10, so the transfer is PRESENT and the packet CLEARED_FOR_REVIEW instead of BLOCKED. Article 1 of the decision covers only controllers and processors in Brazil subject to the LGPD; the finding states that scope for the reviewer."
+    "legal_review_note": "Changed: Brazil is now in the adequacy reference data under Commission Implementing Decision (EU) 2026/179 of 26 January 2026 (OJ L, 2026/179, 28.1.2026), read on EUR-Lex on 2026-11-10, so the transfer is PRESENT and the packet CLEARED_FOR_REVIEW instead of BLOCKED. Article 1 of the decision covers only controllers and processors in Brazil subject to the LGPD; the finding states that scope for the reviewer. The input records no fact for that limit: the tool reads every importer in Brazil as subject to the LGPD (interpretation, owner's answer of 10 November 2026) and asks the reviewer to confirm it."
   },
   "11-misspelt-transfers-key.json": {
     "checks": "\"transfer\" instead of \"transfers\", with every sub-processor in the EEA: the fail-open input that used to come out CLEARED_FOR_REVIEW with exit 0.",
@@ -102,6 +102,48 @@
     "review_state": "NEEDS_REVIEW",
     "exit_code": 1,
     "open_rules": ["transfer.impact_assessment", "transfer.in", "transfer.subprocessor.example_ledger_pvt_ltd"],
+    "legal_review_note": ""
+  },
+  "16-canada-public-body.json": {
+    "checks": "Adequacy recorded for a direct transfer to a public body in Canada.",
+    "review_state": "BLOCKED",
+    "exit_code": 2,
+    "open_rules": ["transfer.ca"],
+    "legal_review_note": "Decision 2002/2/EC covers recipients subject to PIPEDA (Art. 1); recital 5 says the Act does not apply to organisations under the Federal Privacy Act or the provincial public sector. Reading a public body as outside the decision is an interpretation (owner's answer of 10 November 2026: private-sector scope, a non-profit goes to review)."
+  },
+  "17-japan-carve-out-not-recorded.json": {
+    "checks": "Adequacy recorded for Japan, with the importer's Article 1(2) carve-out not recorded.",
+    "review_state": "BLOCKED",
+    "exit_code": 2,
+    "open_rules": ["transfer.jp"],
+    "legal_review_note": "An unknown adequacy condition is NEEDS_REVIEW with HIGH severity, so the packet is BLOCKED until the carve-out is recorded (owner's answer of 10 November 2026). It was CLEARED_FOR_REVIEW before scope conditions were modelled."
+  },
+  "18-israel-and-korea-conditions-met.json": {
+    "checks": "Automated transfers to Israel and a Korean sub-processor recorded outside the Article 1(2) carve-outs.",
+    "review_state": "CLEARED_FOR_REVIEW",
+    "exit_code": 0,
+    "open_rules": [],
+    "legal_review_note": ""
+  },
+  "19-european-patent-organisation.json": {
+    "checks": "A direct transfer to the European Patent Organisation, an international organisation with its seat in Munich, on Implementing Decision (EU) 2025/1382; no EEA exemption (Art. 44).",
+    "review_state": "CLEARED_FOR_REVIEW",
+    "exit_code": 0,
+    "open_rules": [],
+    "legal_review_note": ""
+  },
+  "20-review-date-before-uk-amendment.json": {
+    "checks": "A UK transfer on adequacy assessed on 18 December 2025, before Implementing Decision (EU) 2025/2574 repealed Article 1(2) and moved the expiry.",
+    "review_state": "BLOCKED",
+    "exit_code": 2,
+    "open_rules": ["transfer.gb"],
+    "legal_review_note": "A review date before an amendment that changed the decision's scope or validity is a review state (NEEDS_REVIEW, HIGH): the tool models only the decision as last amended (owner's answer of 10 November 2026). The amendment is dated by its adoption (interpretation)."
+  },
+  "21-review-date-not-a-date.json": {
+    "checks": "A review date of 2031-13-01, which is not a calendar date.",
+    "review_state": null,
+    "exit_code": 3,
+    "errors": ["review_date must be a calendar date written as YYYY-MM-DD"],
     "legal_review_note": ""
   }
 }

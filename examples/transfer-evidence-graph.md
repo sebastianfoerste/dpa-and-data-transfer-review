@@ -5,7 +5,7 @@
 - Review packet state: `BLOCKED`
 - Blocked edges: 5
 - Review edges: 0
-- Graph SHA-256: `5b746bccfac33fea7b59da641e5ff34f1a7efbf63be6d0ccde79c9adb806221e`
+- Graph SHA-256: `e0eb860fe1221d4711acc4b2ac6e956d4a40d19b02af6fb80327510cb05ac9da`
 - External actions: disabled
 
 ## Transfer chain

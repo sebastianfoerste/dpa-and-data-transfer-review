@@ -15,6 +15,7 @@ dependencies = []
 
 [project.scripts]
 dpa-review = "dpa_review.cli:main"
+dpa-review-table-age = "dpa_review.table_age:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
